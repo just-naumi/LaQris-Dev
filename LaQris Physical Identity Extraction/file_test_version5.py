@@ -1,22 +1,21 @@
 # ==============================================================================
-# FILE: file_test_version3.py
-# FUNGSI: TrustQR Identity Verification Engine V3 (Dynamic OCR Scaling & Threshold Verdict)
-# REVISI KRITIS ARSITEKTUR:
-# 1. Layer 1 — Entity Canonicalization & Normalization (PT, CV, Toko, Warung Stripping)
-# 2. Layer 2 — Multi-Attribute Feature Builder (S_name, S_nmid, S_acq, S_tid)
-# 3. Layer 3 — Weighted Evidence Fusion:
-#              BaseTrust = (0.25 * S_name) + (0.50 * S_nmid) + (0.15 * S_acq) + (0.10 * S_tid)
-# 4. Layer 4 — Dynamic OCR Confidence Scaling (FIXED MATHEMATICAL FORMULA):
-#              C_ocr = 0.5 + 0.5 * (avg_conf_percent / 100.0)
-#              (Scaling linier: 20% -> 0.60, 50% -> 0.75, 80% -> 0.90, 100% -> 1.00)
-# 5. Layer 5 — Strict Threshold Verdict Engine (WORST-CASE RISKS SAFE):
-#              - FinalScore >= 85% & S_nmid == 100 & S_name >= 70 -> SANGAT AMAN
-#              - 70% <= FinalScore < 85% & S_nmid == 100 -> AMAN DENGAN CATATAN (PERHATIAN)
-#              - FinalScore < 70% OR S_nmid == 0 -> BAHAYA / MENCURIGAKAN (SUSPICIOUS / PALSU)
-# GAYA KODE: Dasar Pemrograman / Pemula (Menggunakan Fungsi & Loop Terbuka)
+# FILE: file_test_version5.py
+# FUNGSI: TrustQR Final Production Identity Engine (Sistem Verifikasi Keaslian QRIS Rill)
+# ARSITEKTUR SIKLUS FINAL:
+# 1. EMVCo Digital QR Decoder (Tag 51 NMID, Tag 59 Merchant, Tag 60 City, Tag 62 TID, Acquirer)
+# 2. YOLO26 Bounding Box Detection & TrOCR Physical Text Extraction
+# 3. Layer 1 — Entity Canonicalization & Normalization (Pembersihan PT, CV, Toko, Warung, Simbol)
+# 4. Layer 2 — Multi-Attribute Feature Scoring (S_name 25%, S_nmid 50%, S_acq 15%, S_tid 10%)
+# 5. Layer 3 & 4 — Weighted Evidence Fusion & Dynamic OCR Confidence Scaling Formula:
+#                   C_ocr = 0.5 + 0.5 * (avg_conf_percent / 100)
+#                   FinalTrust = BaseTrust * C_ocr
+# 6. Layer 5 — Anti-Fraud Strict Threshold Verdict Engine (Anti False Positive)
+# 7. Output Explainable JSON Report (Siap Konsumsi UI / Backend Production API)
+# GAYA KODE: Dasar Pemrograman / Pemula (Fungsi Terbuka, Loop Jelas, Tanpa Emoji)
 # ==============================================================================
 
 import os
+import sys
 import cv2
 import numpy as np
 import torch
@@ -35,7 +34,7 @@ warnings.filterwarnings("ignore")
 # Cek apakah komputer memiliki GPU Nvidia (CUDA) atau CPU biasa
 PERANGKAT = "cuda" if torch.cuda.is_available() else "cpu"
 
-# Variabel penyimpan model AI (dibuat None dulu, diisi saat pertama kali dijalankan)
+# Variabel global penyimpan model AI (dibuat None dulu, diisi saat pertama kali dijalankan)
 MODEL_YOLO_SAYA = None
 PROCESSOR_TROCR_SAYA = None
 MODEL_TROCR_SAYA = None
@@ -106,7 +105,7 @@ def siapkan_model_yolo_dan_trocr():
 def normalisasi_teks_identitas(teks_mentah):
     """
     Entity Canonicalization: Membersihkan string nama dari sebutan badan usaha (PT, CV, Toko, Warung),
-    tanda baca, dan spasi berlebih untuk mengekstrak entitas bisnis inti.
+    tanda baca, dan spasi berlebih untuk mengekstrak entitas bisnis murni.
     Contoh: 'TOKO BERKAH JAYA.' -> 'BERKAH JAYA' | 'CV BERKAH JAYA' -> 'BERKAH JAYA'
     """
     if teks_mentah is None or teks_mentah == "" or teks_mentah == "Tidak terbaca":
@@ -217,7 +216,7 @@ def hitung_skor_fitur_identitas(digital_entity, physical_entity):
 
 
 # ==============================================================================
-# LAYER 3 & 4: WEIGHTED EVIDENCE FUSION & DYNAMIC OCR CONFIDENCE INJECTION
+# LAYER 3 & 4: WEIGHTED EVIDENCE FUSION & DYNAMIC OCR SCALING
 # ==============================================================================
 def hitung_weighted_trust_score(scores, ocr_conf_dict):
     """
@@ -225,9 +224,9 @@ def hitung_weighted_trust_score(scores, ocr_conf_dict):
     TrustScore = (w1 * S_name) + (w2 * S_nmid) + (w3 * S_acq) + (w4 * S_tid)
     dengan bobot: w1=0.25 (Nama), w2=0.50 (NMID), w3=0.15 (Acquirer), w4=0.10 (TID)
     
-    Layer 4 - DYNAMIC OCR Confidence Injection (SOLVED MATH FORMULA):
+    Layer 4 - DYNAMIC OCR Confidence Scaling:
     C_ocr = 0.5 + 0.5 * (avg_conf_percent / 100.0)
-    (Scaling dinamis linier: 20% -> 0.60, 50% -> 0.75, 80% -> 0.90, 100% -> 1.00)
+    (Scaling linier: 20% -> 0.60, 50% -> 0.75, 80% -> 0.90, 100% -> 1.00)
     """
     w1 = 0.25  # Bobot Nama Merchant
     w2 = 0.50  # Bobot NMID (Unique Identifier utama)
@@ -253,7 +252,7 @@ def hitung_weighted_trust_score(scores, ocr_conf_dict):
     else:
         avg_conf_percent = 70.0
 
-    # DYNAMIC FORMULA REVISION: C_ocr = 0.5 + 0.5 * (avg_conf_percent / 100.0)
+    # DYNAMIC FORMULA: C_ocr = 0.5 + 0.5 * (avg_conf_percent / 100.0)
     c_ocr_factor = 0.5 + (0.5 * (avg_conf_percent / 100.0))
 
     # Skor Akhir Gabungan (Final Trust Score)
@@ -482,9 +481,11 @@ def baca_tulisan_pake_trocr(gambar_potongan, processor, model):
     return teks_bacaan.strip()
 
 
-def periksa_keaslian_qris_v3(nama_file_gambar):
+def verifikasi_keaslian_qris_final(nama_file_gambar):
     """
-    Fungsi utama TrustQR Engine V3 dengan Dynamic OCR Scaling & Strict Threshold Verdict.
+    Fungsi Utama TrustQR Final Engine V5 (Produksi Rill).
+    Menggabungkan ekstraksi digital, deteksi visual YOLO, OCR TrOCR, Normalisasi Entitas,
+    Multi-Evidence Fusion, dan Threshold Decision Engine.
     """
     folder_script = os.path.dirname(os.path.abspath(__file__))
     
@@ -502,28 +503,32 @@ def periksa_keaslian_qris_v3(nama_file_gambar):
                 path_foto = path_coba
                 break
 
+    if not os.path.exists(path_foto):
+        print(f"[ERROR] File gambar '{nama_file_gambar}' tidak ditemukan!")
+        return None
+
     nama_basemame = os.path.basename(path_foto)
     nama_tanpa_ekstensi = os.path.splitext(nama_basemame)[0]
     folder_output_crop = os.path.join(folder_script, f"hasil_crop_{nama_tanpa_ekstensi}")
 
     print("==========================================================================")
-    print("TRUSTQR IDENTITY ENGINE V3 (DYNAMIC OCR SCALING & STRICT THRESHOLD VERDICT)")
+    print("TRUSTQR FINAL PRODUCTION ENGINE (VERIFIKASI KEASLIAN QRIS RILL V5)")
     print("File Foto Yang Dicek:", path_foto)
     print("==========================================================================")
 
     gambar_asli = cv2.imread(path_foto)
     if gambar_asli is None:
-        print("[ERROR] File gambar tidak bisa dibuka atau tidak ditemukan!")
-        return
+        print("[ERROR] Gambar gagal dibaca oleh OpenCV!")
+        return None
 
-    # 1. Siapkan model AI
+    # 1. Load Model AI
     model_yolo, processor_trocr, model_trocr = siapkan_model_yolo_dan_trocr()
 
-    # 2. Scan & Bedah Data Digital QR Code (Digital Entity)
+    # 2. Extract Data Digital QR Code
     isi_qr_digital = scan_qr_code_digital(gambar_asli)
     if isi_qr_digital is None:
-        print("[ERROR] QR Code tidak terbaca di gambar ini!")
-        return
+        print("[ERROR] QR Code tidak terbaca di dalam foto ini!")
+        return None
         
     nama_dig, nmid_dig, acq_dig, tid_dig = ambil_data_dari_qr_code(isi_qr_digital)
 
@@ -534,7 +539,7 @@ def periksa_keaslian_qris_v3(nama_file_gambar):
         "tid": tid_dig
     }
 
-    # 3. Potong Objek Fisik dengan YOLO26 & Baca dengan TrOCR (Physical Entity)
+    # 3. Potong Objek & Baca Teks Fisik dengan TrOCR
     kumpulan_potongan, conf_visual = potong_gambar_pake_yolo(gambar_asli, model_yolo, folder_output_crop)
 
     print("\n--- [LANGKAH 3] BACA TULISAN FISIK PAKAI HUGGINGFACE TrOCR ---")
@@ -598,19 +603,10 @@ def periksa_keaslian_qris_v3(nama_file_gambar):
         "tid": tid_fisik
     }
 
-    # ==============================================================================
-    # 4. MULTI-EVIDENCE FEATURE SCORING & WEIGHTED FUSION (LAYER 2, 3, 4)
-    # ==============================================================================
-    print("\n--- [LANGKAH 4] EVALUASI MULTI-EVIDENCE & DYNAMIC OCR SCALING ---")
+    # 4. Multi-Evidence Feature Scoring & Fusion
+    print("\n--- [LANGKAH 4] EVALUASI MULTI-EVIDENCE VERIFICATION ---")
 
-    # Layer 2: Hitung Skor Fitur Atribut (S_name, S_nmid, S_acq, S_tid)
     scores = hitung_skor_fitur_identitas(digital_entity, physical_entity)
-    print(f"  -> S_name (Nama Merchant) : {scores['S_name']} ({scores['level_name']})")
-    print(f"  -> S_nmid (NMID Unique)   : {scores['S_nmid']}")
-    print(f"  -> S_acq  (Acquirer Bank) : {scores['S_acq']}")
-    print(f"  -> S_tid  (Terminal ID)   : {scores['S_tid']}")
-
-    # Layer 3 & 4: Hitung Weighted Evidence Fusion + Dynamic OCR Scaling
     fusion_result = hitung_weighted_trust_score(scores, conf_visual)
     
     base_trust = fusion_result["base_trust_score"]
@@ -618,34 +614,33 @@ def periksa_keaslian_qris_v3(nama_file_gambar):
     c_ocr = fusion_result["c_ocr_factor"]
     final_trust = fusion_result["final_trust_score"]
 
-    print(f"  -> Base Trust Score       : {base_trust:.1f} (Bobot: Name 25%, NMID 50%, Acq 15%, TID 10%)")
+    print(f"  -> S_name (Nama Merchant) : {scores['S_name']} ({scores['level_name']})")
+    print(f"  -> S_nmid (NMID Unique)   : {scores['S_nmid']}")
+    print(f"  -> S_acq  (Acquirer Bank) : {scores['S_acq']}")
+    print(f"  -> S_tid  (Terminal ID)   : {scores['S_tid']}")
+    print(f"  -> Base Trust Score       : {base_trust:.1f}")
     print(f"  -> Rata-Rata Conf YOLO   : {avg_conf:.1f}%")
-    print(f"  -> C_ocr Factor (Dinamis) : {c_ocr:.2f}  [Rumus: 0.5 + 0.5*(conf/100)]")
+    print(f"  -> C_ocr Factor (Dinamis) : {c_ocr:.2f}")
     print(f"  -> Final Trust Score      : {final_trust:.1f}")
 
-    # ==============================================================================
-    # 5. STRICT THRESHOLD VERDICT ENGINE (SOLVED WORST-CASE RISKS)
-    # ==============================================================================
-    # Pengujian Kasus Terburuk (Worst Case Safe Decision Engine):
-    # - TrustScore >= 85 & S_nmid == 100 & S_name >= 70 -> SANGAT AMAN
-    # - 70 <= TrustScore < 85 & S_nmid == 100 -> AMAN DENGAN CATATAN (PERHATIAN)
-    # - TrustScore < 70 OR S_nmid == 0 -> BAHAYA / MENCURIGAKAN (SUSPICIOUS / PALSU)
-
+    # 5. Anti-Fraud Strict Threshold Verdict Engine
     if scores["S_nmid"] == 100.0 and final_trust >= 85.0 and scores["S_name"] >= 70.0:
         status_verdict = "SANGAT AMAN (100% TERVERIFIKASI ASLI)"
         penjelasan_ringkas = f"Skor kepercayaan tinggi ({final_trust:.1f}%). Identitas fisik dan digital terverifikasi asli."
-    elif scores["S_nmid"] == 100.0 and final_trust >= 65.0:
+    elif scores["S_nmid"] == 100.0 and final_trust >= 65.0 and scores["S_name"] >= 50.0:
         status_verdict = "AMAN DENGAN CATATAN (PERHATIAN)"
         penjelasan_ringkas = f"NMID valid, namun skor kepercayaan berada di tingkat sedang ({final_trust:.1f}%). Ada perbedaan nama/acquirer atau kejelasan OCR kurang."
     else:
         status_verdict = "MENCURIGAKAN / BAHAYA (SUSPICIOUS / QRIS PALSU)"
         if scores["S_nmid"] == 0.0:
             penjelasan_ringkas = "NMID Digital dan NMID Fisik tidak cocok! Terindikasi stiker QRIS ditimpa penipu."
+        elif scores["S_name"] < 50.0:
+            penjelasan_ringkas = f"Nama merchant fisik dan digital sangat jauh berbeda ({scores['S_name']}%)! Terindikasi pencurian identitas / QRIS toko lain."
         else:
             penjelasan_ringkas = f"Skor kepercayaan sangat rendah ({final_trust:.1f}%). Nama merchant/acquirer fisik tidak sesuai dengan data digital."
 
-    # Objek JSON Explainable Berbasis Strict Threshold Verdict Engine (Version 3)
-    laporan_json_explainable = {
+    # Formulasi Objek Laporan JSON Akhir
+    laporan_json = {
         "file_target": nama_basemame,
         "verdict_status": status_verdict,
         "final_trust_score": final_trust,
@@ -685,23 +680,29 @@ def periksa_keaslian_qris_v3(nama_file_gambar):
     }
 
     print("\n==========================================================================")
-    print("OUTPUT JSON EXPLAINABLE V3 (STRICT THRESHOLD VERDICT REPORT UNTUK JURI):")
-    print(json.dumps(laporan_json_explainable, indent=2))
-    print("==========================================================================")
+    print("OUTPUT JSON EXPLAINABLE FINAL (LAPORAN RESMI HASIL VERIFIKASI QRIS):")
+    print(json.dumps(laporan_json, indent=2))
+    print("==========================================================================\n")
+
+    return laporan_json
 
 
 # ==============================================================================
-# EKSEKUSI UTAMA UNTUK 5 GAMBAR TEST
+# EKSEKUSI UTAMA (PRODUCTION RUNNER)
 # ==============================================================================
 if __name__ == "__main__":
-    daftar_file_test = [
-        "qris_test1.png",
-        "qris_test2.jpeg",
-        "qris_test3.jpeg",
-        "qris_test4.png",
-        "qris_test5.png"
-    ]
-    
-    for foto_uji in daftar_file_test:
-        periksa_keaslian_qris_v3(foto_uji)
-        print("\n")
+    # Jika pengguna memberikan argumen nama file di terminal: python file_test_version5.py nama_foto.jpg
+    if len(sys.argv) > 1:
+        file_input_user = sys.argv[1]
+        verifikasi_keaslian_qris_final(file_input_user)
+    else:
+        # Jalankan pada 5 foto sampel uji fisik rill
+        daftar_foto_rill = [
+            "qris_test1.png",
+            "qris_test2.png",
+            "qris_test3.jpeg",
+            "qris_test4.png",
+            "qris_test5.png"
+        ]
+        for foto in daftar_foto_rill:
+            verifikasi_keaslian_qris_final(foto)
