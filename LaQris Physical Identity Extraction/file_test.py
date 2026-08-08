@@ -193,13 +193,19 @@ def ambil_data_dari_qr_code(teks_qr_mentah):
     return nama_toko_digital, nmid_digital, acquirer_digital, tid_digital
 
 
-def potong_gambar_pake_yolo(gambar_input, model_yolo):
+def potong_gambar_pake_yolo(gambar_input, model_yolo, folder_output):
     """
     Fungsi ini bertugas menyuruh YOLO26 mencari kotak bidang tulisan di gambar stiker QRIS.
     Lalu memotong gambar per-bagian dan memperbesarnya 1.5x (zooming) supaya tulisannya jelas.
+    Hasil potongan disimpan ke folder terpisah masing-masing.
     """
     print("\n--- [LANGKAH 2] CARI DAN POTONG KOTAK TULISAN PAKAI YOLO26 ---")
     tinggi_foto, lebar_foto = gambar_input.shape[:2]
+    
+    # Buat folder tersendiri untuk menyimpan hasil crop jika belum ada
+    if not os.path.exists(folder_output):
+        os.makedirs(folder_output, exist_ok=True)
+    print(f"  -> Folder Penyimpanan Crop : '{folder_output}'")
     
     # Jalankan deteksi objek dengan model YOLO26
     hasil_deteksi = model_yolo.predict(gambar_input, conf=0.10, verbose=False)[0]
@@ -260,9 +266,10 @@ def potong_gambar_pake_yolo(gambar_input, model_yolo):
             foto_final = cv2.resize(foto_potongan_mentah, None, fx=1.5, fy=1.5, interpolation=cv2.INTER_CUBIC)
             print(f"  -> Ditemukan [{nama_label.upper()}] : Crop & Zoom 1.5x ({foto_final.shape[1]}x{foto_final.shape[0]} px)")
 
-        # Simpan file potongan ke folder supaya bisa kita cek gambar potongannya
+        # Simpan file potongan ke folder tersendiri untuk file gambar ini
         nama_file_hasil = f"crop_zoom_{nama_label.upper()}.jpg"
-        cv2.imwrite(nama_file_hasil, foto_final)
+        path_simpan_file = os.path.join(folder_output, nama_file_hasil)
+        cv2.imwrite(path_simpan_file, foto_final)
         
         hasil_potongan_foto[nama_label] = foto_final
 
@@ -273,7 +280,9 @@ def potong_gambar_pake_yolo(gambar_input, model_yolo):
         potongan_merchant = gambar_input[y_mulai:y_selesai, 0:lebar_foto]
         potongan_merchant_zoom = cv2.resize(potongan_merchant, None, fx=1.5, fy=1.5, interpolation=cv2.INTER_CUBIC)
         hasil_potongan_foto["nama_merchant"] = potongan_merchant_zoom
-        cv2.imwrite("crop_zoom_NAMA_MERCHANT.jpg", potongan_merchant_zoom)
+        
+        path_simpan_merchant = os.path.join(folder_output, "crop_zoom_NAMA_MERCHANT.jpg")
+        cv2.imwrite(path_simpan_merchant, potongan_merchant_zoom)
         print(f"  -> Cadangan [NAMA_MERCHANT] : Potong Area Header Merchant ({potongan_merchant_zoom.shape[1]}x{potongan_merchant_zoom.shape[0]} px)")
 
     # Jika label Acquirer (bank) tidak ditemukan YOLO, potong area paling atas gambar (18% tinggi foto)
@@ -282,8 +291,12 @@ def potong_gambar_pake_yolo(gambar_input, model_yolo):
         potongan_atas = gambar_input[0:tinggi_potong_atas, 0:lebar_foto]
         potongan_atas_zoom = cv2.resize(potongan_atas, None, fx=1.5, fy=1.5, interpolation=cv2.INTER_CUBIC)
         hasil_potongan_foto["acquirer"] = potongan_atas_zoom
-        cv2.imwrite("crop_zoom_ACQUIRER.jpg", potongan_atas_zoom)
+        
+        path_simpan_acquirer = os.path.join(folder_output, "crop_zoom_ACQUIRER.jpg")
+        cv2.imwrite(path_simpan_acquirer, potongan_atas_zoom)
         print(f"  -> Cadangan [ACQUIRER]   : Potong Area Atas Foto ({potongan_atas_zoom.shape[1]}x{potongan_atas_zoom.shape[0]} px)")
+
+    return hasil_potongan_foto
 
     return hasil_potongan_foto
 
@@ -316,6 +329,7 @@ def baca_tulisan_pake_trocr(gambar_potongan, processor, model):
 def periksa_keaslian_qris(nama_file_gambar):
     """
     Fungsi utama untuk mengecek dan mencocokkan data digital vs data fisik stiker QRIS.
+    Masing-masing gambar akan disimpan hasil crop-nya ke folder terpisah.
     """
     folder_script = os.path.dirname(os.path.abspath(__file__))
     
@@ -335,10 +349,7 @@ def periksa_keaslian_qris(nama_file_gambar):
                 path_foto = path_coba
                 break
 
-    # ==============================================================================
-    # PENCARIAN SIMPEL (TANPA COMPREHENSION / SATU BARIS RUMIT):
     # Jika file gambar masih belum ketemu, cari file gambar apa saja di folder test
-    # ==============================================================================
     if not os.path.exists(path_foto):
         folder_uji = os.path.join(folder_script, "Train OCR Model", "test", "images")
         
@@ -352,6 +363,11 @@ def periksa_keaslian_qris(nama_file_gambar):
             
             if len(daftar_foto_test) > 0:
                 path_foto = daftar_foto_test[0]
+
+    # Ambil nama file tanpa ekstensi untuk penamaan folder hasil crop terpisah
+    nama_basemame = os.path.basename(path_foto)
+    nama_tanpa_ekstensi = os.path.splitext(nama_basemame)[0]
+    folder_output_crop = os.path.join(folder_script, f"hasil_crop_{nama_tanpa_ekstensi}")
 
     print("==========================================================================")
     print("SISTEM VERIFIKASI KEASLIAN QRIS (YOLO26 DETEKSI + HUGGINGFACE TrOCR)")
@@ -375,8 +391,8 @@ def periksa_keaslian_qris(nama_file_gambar):
         
     nama_dig, nmid_dig, acq_dig, tid_dig = ambil_data_dari_qr_code(isi_qr_digital)
 
-    # 3. Potong area tulisan di foto fisik memakai YOLO26
-    kumpulan_potongan = potong_gambar_pake_yolo(gambar_asli, model_yolo)
+    # 3. Potong area tulisan di foto fisik memakai YOLO26 (Simpan ke folder terpisah)
+    kumpulan_potongan = potong_gambar_pake_yolo(gambar_asli, model_yolo, folder_output_crop)
 
     print("\n--- [LANGKAH 3] BACA TULISAN FISIK PAKAI HUGGINGFACE TrOCR ---")
 
@@ -523,7 +539,17 @@ def periksa_keaslian_qris(nama_file_gambar):
 
 
 # ==============================================================================
-# EKSEKUSI PENGECEKAN GAMBAR
+# EKSEKUSI PENGECEKAN UTAMA UNTUK 5 FOTO GAMBAR TEST
 # ==============================================================================
 if __name__ == "__main__":
-    periksa_keaslian_qris("qris_test5.png")
+    daftar_file_test = [
+        "qris_test1.png",
+        "qris_test2.jpeg",
+        "qris_test3.jpeg",
+        "qris_test4.png",
+        "qris_test5.png"
+    ]
+    
+    for nama_foto in daftar_file_test:
+        periksa_keaslian_qris(nama_foto)
+        print("\n")
