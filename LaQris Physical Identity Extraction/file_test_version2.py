@@ -554,18 +554,25 @@ def periksa_keaslian_qris_v2(nama_file_gambar):
     # ==============================================================================
     skor_confidence_ocr = conf_visual.get("nama_merchant", 85.0)
     skor_kemiripan_merchant = hasil_match_merchant["rasio"]
+    level_pencocokan = hasil_match_merchant["level"]
     
     # Formula Trust Score: (Kemiripan Teks x 70%) + (Skor Confidence Visual OCR x 30%)
     skor_trust_akhir = (skor_kemiripan_merchant * 0.70) + (skor_confidence_ocr * 0.30)
     
-    # Keputusan Akhir Keaslian
+    # Penentuan Keputusan Akhir Keaslian secara Dinamis
     if cocok_nmid:
-        if skor_trust_akhir >= 80.0:
+        if level_pencocokan == "LEVEL_1_EXACT_MATCH":
             status_verdict = "SANGAT AMAN (100% TERVERIFIKASI ASLI)"
-            penjelasan_ringkas = "NMID cocok sempurna dan identitas entitas merchant terverifikasi."
+            penjelasan_ringkas = "NMID cocok sempurna dan nama merchant fisik 100% sama persis dengan digital."
+        elif level_pencocokan == "LEVEL_2_NORMALIZED_MATCH":
+            status_verdict = "SANGAT AMAN (100% TERVERIFIKASI ASLI)"
+            penjelasan_ringkas = f"NMID cocok sempurna dan entitas nama merchant terverifikasi sama ('{norm_merchant_digital}')."
+        elif level_pencocokan == "LEVEL_3_FUZZY_MATCH":
+            status_verdict = "AMAN DENGAN CATATAN"
+            penjelasan_ringkas = f"NMID valid, namun terdapat perbedaan karakter/typo sebesar {skor_kemiripan_merchant:.1f}% pada cetakan fisik."
         else:
             status_verdict = "AMAN DENGAN CATATAN"
-            penjelasan_ringkas = "NMID valid, namun ada sedikit perbedaan sebutan penulisan toko pada cetakan fisik."
+            penjelasan_ringkas = "NMID valid, namun tulisan nama merchant pada cetakan fisik kurang terbaca."
     else:
         status_verdict = "BAHAYA (PENIPUAN TERDETEKSI / QRIS PALSU)"
         penjelasan_ringkas = "NMID Digital dan NMID Fisik berbeda atau tidak cocok!"
