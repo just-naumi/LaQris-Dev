@@ -1,13 +1,15 @@
 # ==============================================================================
 # FILE: file_test_version2.py
-# FUNGSI: TrustQR Identity Engine V2 (Sistem Verifikasi Keaslian QRIS Bertingkat)
-# ARSITEKTUR:
-# 1. Identity Aggregator (Menggabungkan Teks Fisik TrOCR + Metadata QR Digital)
-# 2. Normalization Engine (Pembersihan PT, CV, Toko, Warung, Kios, & Simbol)
-# 3. Tiered Entity Matching (Level 1: Exact, Level 2: Normalized, Level 3: Fuzzy)
-# 4. Skor Kepercayaan OCR & Visual Confidence Integrator
-# 5. Output Engine Explainable (Format JSON Lengkap Siap Presentasi Juri)
-# GAYA KODE: Dasar Pemrograman / Pemula (Menggunakan Fungsi & Loop Jelas)
+# FUNGSI: TrustQR Identity Verification Engine V2 (Multi-Evidence Fusion)
+# ARSITEKTUR MATEMATIS & NLP:
+# 1. Layer 1 — Entity Canonicalization & Normalization (PT, CV, Toko, Warung Stripping)
+# 2. Layer 2 — Multi-Attribute Feature Builder (S_name, S_nmid, S_acq, S_tid)
+# 3. Layer 3 — Weighted Evidence Fusion Engine:
+#              BaseTrust = (0.25 * S_name) + (0.50 * S_nmid) + (0.15 * S_acq) + (0.10 * S_tid)
+# 4. Layer 4 — OCR Visual Confidence Injection:
+#              FinalScore = BaseTrust * C_ocr
+# 5. Layer 5 — Explainable Decision & Bayesian Evidence Output (Format JSON Juri)
+# GAYA KODE: Dasar Pemrograman / Pemula (Menggunakan Fungsi & Loop Terbuka)
 # ==============================================================================
 
 import os
@@ -55,8 +57,7 @@ SEBUTAN_TOKO = [
 
 def siapkan_model_yolo_dan_trocr():
     """
-    Fungsi ini bertugas memuat model AI (YOLO26 & HuggingFace TrOCR) ke dalam memori.
-    Model hanya di-load 1 kali agar eksekusi cepat.
+    Memuat model AI (YOLO26 & HuggingFace TrOCR) ke dalam memori (hanya 1x load).
     """
     global MODEL_YOLO_SAYA, PROCESSOR_TROCR_SAYA, MODEL_TROCR_SAYA
 
@@ -96,12 +97,12 @@ def siapkan_model_yolo_dan_trocr():
 
 
 # ==============================================================================
-# MODUL 1: NORMALIZATION ENGINE
+# LAYER 1: ENTITY CANONICALIZATION & NORMALIZATION LAYER
 # ==============================================================================
 def normalisasi_teks_identitas(teks_mentah):
     """
-    Fungsi ini bertugas membersihkan string nama toko dari sebutan badan usaha (PT, CV, Toko, Warung),
-    tanda baca, dan spasi berlebih sehingga didapatkan nama entitas murni.
+    Entity Canonicalization: Membersihkan string nama dari sebutan badan usaha (PT, CV, Toko, Warung),
+    tanda baca, dan spasi berlebih untuk mengekstrak entitas bisnis inti.
     Contoh: 'TOKO BERKAH JAYA.' -> 'BERKAH JAYA' | 'CV BERKAH JAYA' -> 'BERKAH JAYA'
     """
     if teks_mentah is None or teks_mentah == "" or teks_mentah == "Tidak terbaca":
@@ -116,7 +117,7 @@ def normalisasi_teks_identitas(teks_mentah):
     # 3. Pecah menjadi kata-kata (tokenization)
     daftar_kata = teks_bersih.split()
 
-    # 4. Hapus sebutan toko (stopwords)
+    # 4. Hapus sebutan toko (stopwords stripping)
     daftar_kata_murni = []
     for kata in daftar_kata:
         if kata not in SEBUTAN_TOKO:
@@ -133,65 +134,131 @@ def normalisasi_teks_identitas(teks_mentah):
 
 
 # ==============================================================================
-# MODUL 2: TIERED ENTITY MATCHING ENGINE (FUZZY & EXACT MATCHING)
+# LAYER 2: MULTI-ATTRIBUTE FEATURE BUILDER (SCORE GENERATOR)
 # ==============================================================================
-def hitung_kemiripan_bertingkat(teks_digital, teks_fisik):
+def hitung_skor_fitur_identitas(digital_entity, physical_entity):
     """
-    Fungsi ini melakukan pencocokan nama entitas secara bertingkat:
-    - Level 1: Exact Match (Sama Persis Mentah) -> Skor 100%
-    - Level 2: Normalized Match (Sama Persis Setelah Sebutan Toko Dihapus) -> Skor 100%
-    - Level 3: Fuzzy Match (Toleransi Typo Karakter OCR) -> Skor 50-99%
+    Menghitung skor bukti (evidence scores) untuk masing-masing 4 atribut utama:
+    - S_name : Skor kemiripan nama merchant (Exact/Normalized/Fuzzy)
+    - S_nmid : Skor kebenaran NMID (100 jika sama persis, 0 jika beda)
+    - S_acq  : Skor kebenaran Acquirer/Bank (100 jika sama, 0 jika beda)
+    - S_tid  : Skor kebenaran Terminal ID (100 jika sama/netral, 0 jika beda)
     """
-    if teks_digital == "Tidak ditemukan" or teks_fisik == "Tidak terbaca":
-        return {
-            "level": "UNREAD",
-            "rasio": 0.0,
-            "cocok": False,
-            "keterangan": "Data digital atau fisik tidak terbaca"
-        }
 
-    # Level 1: Exact Match (Sama persis mentah)
-    if teks_digital.lower().strip() == teks_fisik.lower().strip():
-        return {
-            "level": "LEVEL_1_EXACT_MATCH",
-            "rasio": 100.0,
-            "cocok": True,
-            "keterangan": "String mentah digital dan fisik 100% sama persis"
-        }
-
-    # Normalisasi kedua teks
-    norm_digital = normalisasi_teks_identitas(teks_digital)
-    norm_fisik = normalisasi_teks_identitas(teks_fisik)
-
-    # Level 2: Normalized Match (Sama persis setelah sebutan PT/CV/Toko dibersihkan)
-    if norm_digital == norm_fisik and norm_digital != "":
-        return {
-            "level": "LEVEL_2_NORMALIZED_MATCH",
-            "rasio": 100.0,
-            "cocok": True,
-            "keterangan": f"Entitas cocok sempurna setelah sebutan toko dibersihkan ('{norm_digital}')"
-        }
-
-    # Level 3: Fuzzy Match (RapidFuzz / Levenshtein Ratio) untuk toleransi typo OCR
-    rasio_mentah = difflib.SequenceMatcher(None, teks_digital.lower(), teks_fisik.lower()).ratio() * 100
-    rasio_norm = difflib.SequenceMatcher(None, norm_digital, norm_fisik).ratio() * 100
+    # 1. Hitung S_name (Skor Nama Merchant)
+    raw_dig = digital_entity.get("merchant_name", "")
+    raw_phys = physical_entity.get("merchant_name", "")
     
-    # Ambil skor tertinggi antara mentah dan ternormalisasi
-    skor_fuzzy_tertinggi = max(rasio_mentah, rasio_norm)
+    norm_dig = normalisasi_teks_identitas(raw_dig)
+    norm_phys = normalisasi_teks_identitas(raw_phys)
 
-    if (norm_digital in norm_fisik) or (norm_fisik in norm_digital) or (skor_fuzzy_tertinggi >= 65.0):
-        return {
-            "level": "LEVEL_3_FUZZY_MATCH",
-            "rasio": round(skor_fuzzy_tertinggi, 1),
-            "cocok": True,
-            "keterangan": f"Kemiripan fuzzy tingkatan teks cocok ({skor_fuzzy_tertinggi:.1f}%)"
-        }
+    if raw_dig.lower().strip() == raw_phys.lower().strip() and raw_dig != "":
+        s_name = 100.0
+        level_name = "LEVEL_1_EXACT_MATCH"
+    elif norm_dig == norm_phys and norm_dig != "":
+        s_name = 100.0
+        level_name = "LEVEL_2_NORMALIZED_MATCH"
+    else:
+        rasio_mentah = difflib.SequenceMatcher(None, raw_dig.lower(), raw_phys.lower()).ratio() * 100
+        rasio_norm = difflib.SequenceMatcher(None, norm_dig, norm_phys).ratio() * 100
+        s_name = max(rasio_mentah, rasio_norm)
+        level_name = "LEVEL_3_FUZZY_MATCH" if s_name >= 65.0 else "MISMATCH"
+
+    # 2. Hitung S_nmid (Skor NMID - Unique Identifier)
+    nmid_dig = digital_entity.get("nmid", "")
+    nmid_phys = physical_entity.get("nmid", "")
+    
+    if nmid_dig != "" and nmid_dig != "Tidak ditemukan" and nmid_dig == nmid_phys:
+        s_nmid = 100.0
+    else:
+        s_nmid = 0.0
+
+    # 3. Hitung S_acq (Skor Acquirer Bank)
+    acq_dig = digital_entity.get("acquirer", "")
+    acq_phys = physical_entity.get("acquirer", "")
+    bank_dig = DAFTAR_NAMA_BANK.get(acq_dig, "").lower()
+    acq_phys_low = acq_phys.lower()
+
+    if acq_dig != "" and acq_dig != "Tidak ditemukan" and acq_phys != "Tidak terbaca":
+        if (acq_dig in acq_phys) or (acq_phys in acq_dig):
+            s_acq = 100.0
+        elif bank_dig != "" and ((bank_dig in acq_phys_low) or (acq_phys_low in bank_dig)):
+            s_acq = 100.0
+        else:
+            s_acq = 0.0
+    else:
+        s_acq = 100.0  # Netral jika tidak terbaca
+
+    # 4. Hitung S_tid (Skor Terminal ID)
+    tid_dig = digital_entity.get("tid", "")
+    tid_phys = physical_entity.get("tid", "")
+
+    if tid_dig != "Tidak ditemukan" and tid_phys != "Tidak terbaca":
+        if tid_dig.upper() in tid_phys.upper() or tid_phys.upper() in tid_dig.upper():
+            s_tid = 100.0
+        else:
+            s_tid = 0.0
+    else:
+        s_tid = 100.0  # Netral jika TID opsional pada QRIS statis
 
     return {
-        "level": "MISMATCH",
-        "rasio": round(skor_fuzzy_tertinggi, 1),
-        "cocok": False,
-        "keterangan": f"Nama entitas berbeda signifikan ({skor_fuzzy_tertinggi:.1f}%)"
+        "S_name": round(s_name, 1),
+        "S_nmid": round(s_nmid, 1),
+        "S_acq": round(s_acq, 1),
+        "S_tid": round(s_tid, 1),
+        "level_name": level_name,
+        "norm_digital": norm_dig,
+        "norm_physical": norm_phys
+    }
+
+
+# ==============================================================================
+# LAYER 3 & 4: WEIGHTED EVIDENCE FUSION & OCR CONFIDENCE INJECTION
+# ==============================================================================
+def hitung_weighted_trust_score(scores, ocr_conf_dict):
+    """
+    Layer 3 - Weighted Evidence Fusion:
+    TrustScore = (w1 * S_name) + (w2 * S_nmid) + (w3 * S_acq) + (w4 * S_tid)
+    dengan bobot: w1=0.25 (Nama), w2=0.50 (NMID), w3=0.15 (Acquirer), w4=0.10 (TID)
+    
+    Layer 4 - OCR Confidence Injection:
+    FinalScore = BaseTrustScore * C_ocr
+    """
+    w1 = 0.25  # Bobot Nama Merchant
+    w2 = 0.50  # Bobot NMID (Unique Identifier utama)
+    w3 = 0.15  # Bobot Acquirer Bank
+    w4 = 0.10  # Bobot Terminal ID (TID)
+
+    s_name = scores["S_name"]
+    s_nmid = scores["S_nmid"]
+    s_acq = scores["S_acq"]
+    s_tid = scores["S_tid"]
+
+    # Perhitungan Skor Dasar (Base Trust Score)
+    base_trust_score = (w1 * s_name) + (w2 * s_nmid) + (w3 * s_acq) + (w4 * s_tid)
+
+    # Layer 4: Mengambil Rata-Rata Visual Confidence OCR
+    conf_values = []
+    for key, val in ocr_conf_dict.items():
+        if val > 0:
+            conf_values.append(val)
+            
+    if len(conf_values) > 0:
+        avg_conf_percent = sum(conf_values) / len(conf_values)
+    else:
+        avg_conf_percent = 85.0
+
+    # Normalisasi C_ocr menjadi pengali (faktor minimal 0.85 agar foto jelas tidak terpenalti berlebihan)
+    c_ocr_factor = max(0.85, avg_conf_percent / 100.0)
+
+    # Skor Akhir Gabungan (Final Trust Score)
+    final_trust_score = base_trust_score * c_ocr_factor
+
+    return {
+        "base_trust_score": round(base_trust_score, 1),
+        "c_ocr_factor": round(c_ocr_factor, 2),
+        "final_trust_score": round(final_trust_score, 1),
+        "weights": {"w1_name": w1, "w2_nmid": w2, "w3_acq": w3, "w4_tid": w4}
     }
 
 
@@ -301,7 +368,6 @@ def ambil_data_dari_qr_code(teks_qr_mentah):
 def potong_gambar_pake_yolo(gambar_input, model_yolo, folder_output):
     """
     Memotong posisi komponen fisik stiker QRIS memakai YOLO26 dan menyimpan hasil crop ke folder terpisah.
-    Menghitung visual confidence rata-rata dari deteksi bounding box.
     """
     print("\n--- [LANGKAH 2] CARI DAN POTONG KOTAK TULISAN PAKAI YOLO26 ---")
     tinggi_foto, lebar_foto = gambar_input.shape[:2]
@@ -412,7 +478,7 @@ def baca_tulisan_pake_trocr(gambar_potongan, processor, model):
 
 def periksa_keaslian_qris_v2(nama_file_gambar):
     """
-    Fungsi utama TrustQR Engine V2 yang menghasilkan analisis bertingkat dan output JSON Explainable.
+    Fungsi utama TrustQR Engine V2 berbasis Multi-Evidence Verification & Bayesian Evidence Fusion.
     """
     folder_script = os.path.dirname(os.path.abspath(__file__))
     
@@ -435,7 +501,7 @@ def periksa_keaslian_qris_v2(nama_file_gambar):
     folder_output_crop = os.path.join(folder_script, f"hasil_crop_{nama_tanpa_ekstensi}")
 
     print("==========================================================================")
-    print("TRUSTQR IDENTITY ENGINE V2 (VERIFIKASI QRIS BERTINGKAT + EXPLAINABLE JSON)")
+    print("TRUSTQR IDENTITY ENGINE V2 (MULTI-EVIDENCE FUSION & BAYESIAN VERIFICATION)")
     print("File Foto Yang Dicek:", path_foto)
     print("==========================================================================")
 
@@ -447,7 +513,7 @@ def periksa_keaslian_qris_v2(nama_file_gambar):
     # 1. Siapkan model AI
     model_yolo, processor_trocr, model_trocr = siapkan_model_yolo_dan_trocr()
 
-    # 2. Scan & Bedah Data Digital QR Code
+    # 2. Scan & Bedah Data Digital QR Code (Digital Entity)
     isi_qr_digital = scan_qr_code_digital(gambar_asli)
     if isi_qr_digital is None:
         print("[ERROR] QR Code tidak terbaca di gambar ini!")
@@ -455,7 +521,14 @@ def periksa_keaslian_qris_v2(nama_file_gambar):
         
     nama_dig, nmid_dig, acq_dig, tid_dig = ambil_data_dari_qr_code(isi_qr_digital)
 
-    # 3. Potong Objek Fisik dengan YOLO26 & Hitung Confidence Visual
+    digital_entity = {
+        "merchant_name": nama_dig,
+        "nmid": nmid_dig,
+        "acquirer": acq_dig,
+        "tid": tid_dig
+    }
+
+    # 3. Potong Objek Fisik dengan YOLO26 & Baca dengan TrOCR (Physical Entity)
     kumpulan_potongan, conf_visual = potong_gambar_pake_yolo(gambar_asli, model_yolo, folder_output_crop)
 
     print("\n--- [LANGKAH 3] BACA TULISAN FISIK PAKAI HUGGINGFACE TrOCR ---")
@@ -512,109 +585,95 @@ def periksa_keaslian_qris_v2(nama_file_gambar):
         tid_fisik = tid_mentah.upper().replace(" ", "")
         print(f"  -> Terminal ID Fisik  : '{tid_fisik}'")
 
-    # ==============================================================================
-    # 4. PENCOCOKAN IDENTITY ENGINE V2 (NORMALISASI + TIERED MATCHING)
-    # ==============================================================================
-    print("\n--- [LANGKAH 4] EVALUASI ENTITY MATCHING BERTINGKAT ---")
+    physical_entity = {
+        "merchant_name": nama_fisik,
+        "nmid": nmid_fisik,
+        "acquirer": acquirer_fisik,
+        "tid": tid_fisik
+    }
 
-    # Normalisasi Nama Merchant
-    norm_merchant_digital = normalisasi_teks_identitas(nama_dig)
-    norm_merchant_fisik = normalisasi_teks_identitas(nama_fisik)
+    # ==============================================================================
+    # 4. MULTI-EVIDENCE FEATURE SCORING & WEIGHTED FUSION (LAYER 2, 3, 4)
+    # ==============================================================================
+    print("\n--- [LANGKAH 4] EVALUASI MULTI-EVIDENCE VERIFICATION ---")
+
+    # Layer 2: Hitung Skor Fitur Atribut (S_name, S_nmid, S_acq, S_tid)
+    scores = hitung_skor_fitur_identitas(digital_entity, physical_entity)
+    print(f"  -> S_name (Nama Merchant) : {scores['S_name']} ({scores['level_name']})")
+    print(f"  -> S_nmid (NMID Unique)   : {scores['S_nmid']}")
+    print(f"  -> S_acq  (Acquirer Bank) : {scores['S_acq']}")
+    print(f"  -> S_tid  (Terminal ID)   : {scores['S_tid']}")
+
+    # Layer 3 & 4: Hitung Weighted Evidence Fusion + OCR Confidence Injection
+    fusion_result = hitung_weighted_trust_score(scores, conf_visual)
     
-    print(f"  -> Normalisasi Merchant Digital : '{norm_merchant_digital}'")
-    print(f"  -> Normalisasi Merchant Fisik   : '{norm_merchant_fisik}'")
+    base_trust = fusion_result["base_trust_score"]
+    c_ocr = fusion_result["c_ocr_factor"]
+    final_trust = fusion_result["final_trust_score"]
 
-    # Match Merchant Name
-    hasil_match_merchant = hitung_kemiripan_bertingkat(nama_dig, nama_fisik)
-    print(f"  -> Match Merchant Result      : {hasil_match_merchant['level']} ({hasil_match_merchant['rasio']}%) - {hasil_match_merchant['keterangan']}")
-
-    # Match NMID (Syarat Mutlak Verifikasi Keaslian)
-    cocok_nmid = (nmid_dig == nmid_fisik) and (nmid_dig != "Tidak ditemukan")
-    print(f"  -> Match NMID Status           : [{'COCOK' if cocok_nmid else 'TIDAK COCOK'}] (Digital: {nmid_dig} | Fisik: {nmid_fisik})")
-
-    # Match Acquirer
-    nama_bank_digital = DAFTAR_NAMA_BANK.get(acq_dig, "").lower()
-    acq_fisik_kecil = acquirer_fisik.lower()
-    cocok_acquirer = False
-    if acq_dig != "Tidak ditemukan" and acquirer_fisik != "Tidak terbaca":
-        if (acq_dig in acquirer_fisik) or (acquirer_fisik in acq_dig):
-            cocok_acquirer = True
-        elif nama_bank_digital != "" and ((nama_bank_digital in acq_fisik_kecil) or (acq_fisik_kecil in nama_bank_digital)):
-            cocok_acquirer = True
-
-    # Match TID
-    cocok_tid = False
-    if tid_dig != "Tidak ditemukan" and tid_fisik != "Tidak terbaca":
-        rasio_tid = difflib.SequenceMatcher(None, tid_dig.upper(), tid_fisik.upper()).ratio()
-        if (tid_dig.upper() in tid_fisik.upper()) or (tid_fisik.upper() in tid_dig.upper()) or (rasio_tid > 0.5):
-            cocok_tid = True
+    print(f"  -> Base Trust Score       : {base_trust:.1f} (Bobot: Name 25%, NMID 50%, Acq 15%, TID 10%)")
+    print(f"  -> OCR Confidence Factor  : {c_ocr:.2f}")
+    print(f"  -> Final Trust Score      : {final_trust:.1f}")
 
     # ==============================================================================
-    # 5. KALKULASI SKOR KEPERCAYAAN (TRUST SCORE) & OUTPUT EXPLAINABLE JSON
+    # 5. EXPLAINABLE DECISION & BAYESIAN EVIDENCE JSON OUTPUT (LAYER 5)
     # ==============================================================================
-    skor_confidence_ocr = conf_visual.get("nama_merchant", 85.0)
-    skor_kemiripan_merchant = hasil_match_merchant["rasio"]
-    level_pencocokan = hasil_match_merchant["level"]
-    
-    # Formula Trust Score: (Kemiripan Teks x 70%) + (Skor Confidence Visual OCR x 30%)
-    skor_trust_akhir = (skor_kemiripan_merchant * 0.70) + (skor_confidence_ocr * 0.30)
-    
-    # Penentuan Keputusan Akhir Keaslian secara Dinamis
-    if cocok_nmid:
-        if level_pencocokan == "LEVEL_1_EXACT_MATCH":
+    # Keputusan Logis Berdasarkan Bukti
+    if scores["S_nmid"] == 100.0:
+        if scores["S_name"] == 100.0:
             status_verdict = "SANGAT AMAN (100% TERVERIFIKASI ASLI)"
-            penjelasan_ringkas = "NMID cocok sempurna dan nama merchant fisik 100% sama persis dengan digital."
-        elif level_pencocokan == "LEVEL_2_NORMALIZED_MATCH":
-            status_verdict = "SANGAT AMAN (100% TERVERIFIKASI ASLI)"
-            penjelasan_ringkas = f"NMID cocok sempurna dan entitas nama merchant terverifikasi sama ('{norm_merchant_digital}')."
-        elif level_pencocokan == "LEVEL_3_FUZZY_MATCH":
+            penjelasan_ringkas = "P(SameEntity|Evidence) = 1.00. NMID cocok sempurna dan nama merchant fisik identik secara sistem."
+        elif scores["S_name"] >= 65.0:
             status_verdict = "AMAN DENGAN CATATAN"
-            penjelasan_ringkas = f"NMID valid, namun terdapat perbedaan karakter/typo sebesar {skor_kemiripan_merchant:.1f}% pada cetakan fisik."
+            penjelasan_ringkas = f"NMID valid (S_nmid=100), namun nama merchant terdapat perbedaan tulisan fuzzy ({scores['S_name']}%)."
         else:
-            status_verdict = "AMAN DENGAN CATATAN"
-            penjelasan_ringkas = "NMID valid, namun tulisan nama merchant pada cetakan fisik kurang terbaca."
+            status_verdict = "MENCURIGAKAN (SUSPICIOUS)"
+            penjelasan_ringkas = "NMID cocok, namun nama merchant fisik dan digital sangat jauh berbeda."
     else:
         status_verdict = "BAHAYA (PENIPUAN TERDETEKSI / QRIS PALSU)"
-        penjelasan_ringkas = "NMID Digital dan NMID Fisik berbeda atau tidak cocok!"
+        penjelasan_ringkas = "P(SameEntity|Evidence) = 0.00. NMID Digital dan NMID Fisik tidak cocok (Indikasi stiker ditimpa penipu)."
 
-    # Objek JSON Explainable Siap Presentasi / Konsumsi Frontend UI
+    # Objek JSON Explainable Berbasis Multi-Evidence Fusion (Siap untuk Presentasi Juri & UI)
     laporan_json_explainable = {
         "file_target": nama_basemame,
         "verdict_status": status_verdict,
-        "trust_score": round(skor_trust_akhir, 1),
+        "trust_score": final_trust,
+        "base_evidence_score": base_trust,
+        "ocr_confidence_factor": c_ocr,
+        "probabilitas_sameness_P_SameEntity": round(final_trust / 100.0, 2),
         "explanation": penjelasan_ringkas,
-        "decision_level": hasil_match_merchant["level"],
-        "identity_details": {
-            "nmid": {
+        "evidence_breakdown": {
+            "S_name_merchant": {
+                "score": scores["S_name"],
+                "weight": 0.25,
+                "matching_level": scores["level_name"],
+                "digital_canonical": scores["norm_digital"],
+                "physical_canonical": scores["norm_physical"]
+            },
+            "S_nmid_identifier": {
+                "score": scores["S_nmid"],
+                "weight": 0.50,
                 "digital": nmid_dig,
                 "physical": nmid_fisik,
-                "is_matched": cocok_nmid
+                "is_matched": (scores["S_nmid"] == 100.0)
             },
-            "merchant_name": {
-                "raw_digital": nama_dig,
-                "raw_physical": nama_fisik,
-                "normalized_digital": norm_merchant_digital,
-                "normalized_physical": norm_merchant_fisik,
-                "similarity_score_percent": skor_kemiripan_merchant,
-                "ocr_confidence_percent": skor_confidence_ocr,
-                "is_matched": hasil_match_merchant["cocok"]
-            },
-            "acquirer": {
+            "S_acquirer_bank": {
+                "score": scores["S_acq"],
+                "weight": 0.15,
                 "digital_code": acq_dig,
-                "digital_bank_name": DAFTAR_NAMA_BANK.get(acq_dig, "Unknown"),
-                "physical_text": acquirer_fisik,
-                "is_matched": cocok_acquirer
+                "physical_text": acquirer_fisik
             },
-            "terminal_id": {
+            "S_terminal_id": {
+                "score": scores["S_tid"],
+                "weight": 0.10,
                 "digital": tid_dig,
-                "physical": tid_fisik,
-                "is_matched": cocok_tid
+                "physical": tid_fisik
             }
         }
     }
 
     print("\n==========================================================================")
-    print("OUTPUT JSON EXPLAINABLE (RINGKASAN KEPUTUSAN UNTUK JURI / UI):")
+    print("OUTPUT JSON EXPLAINABLE (MULTI-EVIDENCE BAYESIAN REPORT UNTUK JURI):")
     print(json.dumps(laporan_json_explainable, indent=2))
     print("==========================================================================")
 
