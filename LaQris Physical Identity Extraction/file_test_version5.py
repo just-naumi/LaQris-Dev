@@ -1,16 +1,17 @@
 # ==============================================================================
 # FILE: file_test_version5.py
-# FUNGSI: TrustQR Final Production Identity Engine (Sistem Verifikasi Keaslian QRIS Rill)
+# FUNGSI: TrustQR Final Production Identity Engine (Clean Evidence & Scan Quality Separation)
 # ARSITEKTUR SIKLUS FINAL:
 # 1. EMVCo Digital QR Decoder (Tag 51 NMID, Tag 59 Merchant, Tag 60 City, Tag 62 TID, Acquirer)
 # 2. YOLO26 Bounding Box Detection & TrOCR Physical Text Extraction
 # 3. Layer 1 — Entity Canonicalization & Normalization (Pembersihan PT, CV, Toko, Warung, Simbol)
 # 4. Layer 2 — Multi-Attribute Feature Scoring (S_name 25%, S_nmid 50%, S_acq 15%, S_tid 10%)
-# 5. Layer 3 & 4 — Weighted Evidence Fusion & Dynamic OCR Confidence Scaling Formula:
-#                   C_ocr = 0.5 + 0.5 * (avg_conf_percent / 100)
-#                   FinalTrust = BaseTrust * C_ocr
-# 6. Layer 5 — Anti-Fraud Strict Threshold Verdict Engine (Anti False Positive)
-# 7. Output Explainable JSON Report (Siap Konsumsi UI / Backend Production API)
+# 5. Layer 3 — MURE WEIGHTED EVIDENCE FUSION (Tanpa Double Punishment OCR Scaling):
+#               TrustScore = (0.25 * S_name) + (0.50 * S_nmid) + (0.15 * S_acq) + (0.10 * S_tid)
+# 6. Layer 4 — DEDICATED SCAN QUALITY METRIC (Metrik Kualitas Input Foto Terpisah dari Keaslian):
+#               ScanQuality = Rata-Rata Confidence Deteksi YOLO26
+# 7. Layer 5 — Anti-Fraud Strict Threshold Verdict Engine (Anti False Positive)
+# 8. Output Explainable JSON Report (Siap Konsumsi UI / Backend Production API)
 # GAYA KODE: Dasar Pemrograman / Pemula (Fungsi Terbuka, Loop Jelas, Tanpa Emoji)
 # ==============================================================================
 
@@ -216,17 +217,16 @@ def hitung_skor_fitur_identitas(digital_entity, physical_entity):
 
 
 # ==============================================================================
-# LAYER 3 & 4: WEIGHTED EVIDENCE FUSION & DYNAMIC OCR SCALING
+# LAYER 3 & 4: PURE WEIGHTED EVIDENCE FUSION & SEPARATED SCAN QUALITY METRIC
 # ==============================================================================
-def hitung_weighted_trust_score(scores, ocr_conf_dict):
+def hitung_pure_evidence_trust_score(scores, ocr_conf_dict):
     """
-    Layer 3 - Weighted Evidence Fusion:
+    Layer 3 - Pure Weighted Evidence Fusion (Murni Keaslian Merchant):
     TrustScore = (w1 * S_name) + (w2 * S_nmid) + (w3 * S_acq) + (w4 * S_tid)
     dengan bobot: w1=0.25 (Nama), w2=0.50 (NMID), w3=0.15 (Acquirer), w4=0.10 (TID)
     
-    Layer 4 - DYNAMIC OCR Confidence Scaling:
-    C_ocr = 0.5 + 0.5 * (avg_conf_percent / 100.0)
-    (Scaling linier: 20% -> 0.60, 50% -> 0.75, 80% -> 0.90, 100% -> 1.00)
+    Layer 4 - Separated Input Scan Quality Metric (Terpisah dari Skor Keaslian):
+    Mengukur kualitas visual pencahayaan & jarak foto berdasarkan deteksi YOLO26.
     """
     w1 = 0.25  # Bobot Nama Merchant
     w2 = 0.50  # Bobot NMID (Unique Identifier utama)
@@ -238,10 +238,10 @@ def hitung_weighted_trust_score(scores, ocr_conf_dict):
     s_acq = scores["S_acq"]
     s_tid = scores["S_tid"]
 
-    # Perhitungan Skor Dasar (Base Trust Score)
-    base_trust_score = (w1 * s_name) + (w2 * s_nmid) + (w3 * s_acq) + (w4 * s_tid)
+    # Skor Keaslian Murni (Pure Trust Score) - Tanpa Pengali Kualitas Foto
+    trust_score = (w1 * s_name) + (w2 * s_nmid) + (w3 * s_acq) + (w4 * s_tid)
 
-    # Layer 4: Mengambil Rata-Rata Visual Confidence OCR
+    # Hitung Rata-Rata Kualitas Visual Deteksi Bounding Box YOLO26
     conf_values = []
     for key, val in ocr_conf_dict.items():
         if val > 0:
@@ -252,17 +252,24 @@ def hitung_weighted_trust_score(scores, ocr_conf_dict):
     else:
         avg_conf_percent = 70.0
 
-    # DYNAMIC FORMULA: C_ocr = 0.5 + 0.5 * (avg_conf_percent / 100.0)
-    c_ocr_factor = 0.5 + (0.5 * (avg_conf_percent / 100.0))
-
-    # Skor Akhir Gabungan (Final Trust Score)
-    final_trust_score = base_trust_score * c_ocr_factor
+    # Penentuan Status Kualitas Scan Foto
+    if avg_conf_percent >= 70.0:
+        status_kualitas = "BAGUS (HIGH_QUALITY)"
+        saran_kualitas = "Kualitas visual foto sangat jelas dan terdeteksi sempurna."
+    elif avg_conf_percent >= 40.0:
+        status_kualitas = "SEDANG (MEDIUM_QUALITY)"
+        saran_kualitas = "Kualitas foto cukup baik, tulisan berhasil diekstrak."
+    else:
+        status_kualitas = "KURANG OPTIMAL (LOW_QUALITY)"
+        saran_kualitas = "Kualitas visual deteksi kurang optimal. Disarankan memfoto lebih dekat atau dengan pencahayaan terang."
 
     return {
-        "base_trust_score": round(base_trust_score, 1),
-        "avg_ocr_confidence": round(avg_conf_percent, 1),
-        "c_ocr_factor": round(c_ocr_factor, 2),
-        "final_trust_score": round(final_trust_score, 1),
+        "trust_score": round(trust_score, 1),
+        "scan_quality": {
+            "avg_visual_confidence_percent": round(avg_conf_percent, 1),
+            "status": status_kualitas,
+            "recommendation": saran_kualitas
+        },
         "weights": {"w1_name": w1, "w2_nmid": w2, "w3_acq": w3, "w4_tid": w4}
     }
 
@@ -485,7 +492,7 @@ def verifikasi_keaslian_qris_final(nama_file_gambar):
     """
     Fungsi Utama TrustQR Final Engine V5 (Produksi Rill).
     Menggabungkan ekstraksi digital, deteksi visual YOLO, OCR TrOCR, Normalisasi Entitas,
-    Multi-Evidence Fusion, dan Threshold Decision Engine.
+    Multi-Evidence Fusion (Murni), dan Threshold Decision Engine dengan Scan Quality terpisah.
     """
     folder_script = os.path.dirname(os.path.abspath(__file__))
     
@@ -603,33 +610,29 @@ def verifikasi_keaslian_qris_final(nama_file_gambar):
         "tid": tid_fisik
     }
 
-    # 4. Multi-Evidence Feature Scoring & Fusion
+    # 4. Multi-Evidence Feature Scoring & Fusion (Pure Trust Score)
     print("\n--- [LANGKAH 4] EVALUASI MULTI-EVIDENCE VERIFICATION ---")
 
     scores = hitung_skor_fitur_identitas(digital_entity, physical_entity)
-    fusion_result = hitung_weighted_trust_score(scores, conf_visual)
+    fusion_result = hitung_pure_evidence_trust_score(scores, conf_visual)
     
-    base_trust = fusion_result["base_trust_score"]
-    avg_conf = fusion_result["avg_ocr_confidence"]
-    c_ocr = fusion_result["c_ocr_factor"]
-    final_trust = fusion_result["final_trust_score"]
+    trust_score = fusion_result["trust_score"]
+    scan_qual = fusion_result["scan_quality"]
 
     print(f"  -> S_name (Nama Merchant) : {scores['S_name']} ({scores['level_name']})")
     print(f"  -> S_nmid (NMID Unique)   : {scores['S_nmid']}")
     print(f"  -> S_acq  (Acquirer Bank) : {scores['S_acq']}")
     print(f"  -> S_tid  (Terminal ID)   : {scores['S_tid']}")
-    print(f"  -> Base Trust Score       : {base_trust:.1f}")
-    print(f"  -> Rata-Rata Conf YOLO   : {avg_conf:.1f}%")
-    print(f"  -> C_ocr Factor (Dinamis) : {c_ocr:.2f}")
-    print(f"  -> Final Trust Score      : {final_trust:.1f}")
+    print(f"  -> Trust Score (Keaslian) : {trust_score:.1f} / 100")
+    print(f"  -> Kualitas Scan Visual  : {scan_qual['avg_visual_confidence_percent']}% ({scan_qual['status']})")
 
-    # 5. Anti-Fraud Strict Threshold Verdict Engine
-    if scores["S_nmid"] == 100.0 and final_trust >= 85.0 and scores["S_name"] >= 70.0:
+    # 5. Anti-Fraud Strict Threshold Verdict Engine (Berbasis Trust Score Murni)
+    if scores["S_nmid"] == 100.0 and trust_score >= 85.0 and scores["S_name"] >= 70.0:
         status_verdict = "SANGAT AMAN (100% TERVERIFIKASI ASLI)"
-        penjelasan_ringkas = f"Skor kepercayaan tinggi ({final_trust:.1f}%). Identitas fisik dan digital terverifikasi asli."
-    elif scores["S_nmid"] == 100.0 and final_trust >= 65.0 and scores["S_name"] >= 50.0:
+        penjelasan_ringkas = f"Skor keaslian identitas tinggi ({trust_score:.1f}%). Identitas fisik dan digital terverifikasi cocok sempurna."
+    elif scores["S_nmid"] == 100.0 and trust_score >= 65.0 and scores["S_name"] >= 50.0:
         status_verdict = "AMAN DENGAN CATATAN (PERHATIAN)"
-        penjelasan_ringkas = f"NMID valid, namun skor kepercayaan berada di tingkat sedang ({final_trust:.1f}%). Ada perbedaan nama/acquirer atau kejelasan OCR kurang."
+        penjelasan_ringkas = f"NMID valid, namun skor keaslian berada di tingkat sedang ({trust_score:.1f}%). Ada perbedaan minor pada penulisan nama/acquirer."
     else:
         status_verdict = "MENCURIGAKAN / BAHAYA (SUSPICIOUS / QRIS PALSU)"
         if scores["S_nmid"] == 0.0:
@@ -637,18 +640,16 @@ def verifikasi_keaslian_qris_final(nama_file_gambar):
         elif scores["S_name"] < 50.0:
             penjelasan_ringkas = f"Nama merchant fisik dan digital sangat jauh berbeda ({scores['S_name']}%)! Terindikasi pencurian identitas / QRIS toko lain."
         else:
-            penjelasan_ringkas = f"Skor kepercayaan sangat rendah ({final_trust:.1f}%). Nama merchant/acquirer fisik tidak sesuai dengan data digital."
+            penjelasan_ringkas = f"Skor keaslian identitas sangat rendah ({trust_score:.1f}%). Nama merchant/acquirer fisik tidak sesuai dengan data digital."
 
     # Formulasi Objek Laporan JSON Akhir
     laporan_json = {
         "file_target": nama_basemame,
         "verdict_status": status_verdict,
-        "final_trust_score": final_trust,
-        "base_evidence_score": base_trust,
-        "avg_ocr_visual_confidence": avg_conf,
-        "c_ocr_factor": c_ocr,
-        "probabilitas_sameness_P_SameEntity": round(final_trust / 100.0, 2),
+        "trust_score": trust_score,
+        "probabilitas_sameness_P_SameEntity": round(trust_score / 100.0, 2),
         "explanation": penjelasan_ringkas,
+        "scan_quality": scan_qual,
         "evidence_breakdown": {
             "S_name_merchant": {
                 "score": scores["S_name"],
@@ -699,7 +700,7 @@ if __name__ == "__main__":
         # Jalankan pada 5 foto sampel uji fisik rill
         daftar_foto_rill = [
             "qris_test1.png",
-            "qris_test2.png",
+            "qris_test2.jpeg",
             "qris_test3.jpeg",
             "qris_test4.png",
             "qris_test5.png"

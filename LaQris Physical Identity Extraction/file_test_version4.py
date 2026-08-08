@@ -214,17 +214,16 @@ def hitung_skor_fitur_identitas(digital_entity, physical_entity):
 
 
 # ==============================================================================
-# LAYER 3 & 4: WEIGHTED EVIDENCE FUSION & DYNAMIC OCR CONFIDENCE INJECTION
+# LAYER 3 & 4: PURE WEIGHTED EVIDENCE FUSION & SEPARATED SCAN QUALITY METRIC
 # ==============================================================================
-def hitung_weighted_trust_score(scores, ocr_conf_dict):
+def hitung_pure_evidence_trust_score(scores, ocr_conf_dict):
     """
-    Layer 3 - Weighted Evidence Fusion:
+    Layer 3 - Pure Weighted Evidence Fusion (Murni Keaslian Merchant):
     TrustScore = (w1 * S_name) + (w2 * S_nmid) + (w3 * S_acq) + (w4 * S_tid)
     dengan bobot: w1=0.25 (Nama), w2=0.50 (NMID), w3=0.15 (Acquirer), w4=0.10 (TID)
     
-    Layer 4 - DYNAMIC OCR Confidence Injection:
-    C_ocr = 0.5 + 0.5 * (avg_conf_percent / 100.0)
-    (Scaling linier: 20% -> 0.60, 50% -> 0.75, 80% -> 0.90, 100% -> 1.00)
+    Layer 4 - Separated Input Scan Quality Metric (Terpisah dari Skor Keaslian):
+    Mengukur kualitas visual pencahayaan & jarak foto berdasarkan deteksi YOLO26.
     """
     w1 = 0.25  # Bobot Nama Merchant
     w2 = 0.50  # Bobot NMID (Unique Identifier utama)
@@ -236,10 +235,10 @@ def hitung_weighted_trust_score(scores, ocr_conf_dict):
     s_acq = scores["S_acq"]
     s_tid = scores["S_tid"]
 
-    # Perhitungan Skor Dasar (Base Trust Score)
-    base_trust_score = (w1 * s_name) + (w2 * s_nmid) + (w3 * s_acq) + (w4 * s_tid)
+    # Skor Keaslian Murni (Pure Trust Score) - Tanpa Pengali Kualitas Foto
+    trust_score = (w1 * s_name) + (w2 * s_nmid) + (w3 * s_acq) + (w4 * s_tid)
 
-    # Layer 4: Mengambil Rata-Rata Visual Confidence OCR
+    # Hitung Rata-Rata Kualitas Visual Deteksi Bounding Box YOLO26
     conf_values = []
     for key, val in ocr_conf_dict.items():
         if val > 0:
@@ -250,40 +249,45 @@ def hitung_weighted_trust_score(scores, ocr_conf_dict):
     else:
         avg_conf_percent = 70.0
 
-    # DYNAMIC FORMULA: C_ocr = 0.5 + 0.5 * (avg_conf_percent / 100.0)
-    c_ocr_factor = 0.5 + (0.5 * (avg_conf_percent / 100.0))
-
-    # Skor Akhir Gabungan (Final Trust Score)
-    final_trust_score = base_trust_score * c_ocr_factor
+    # Penentuan Status Kualitas Scan Foto
+    if avg_conf_percent >= 70.0:
+        status_kualitas = "BAGUS (HIGH_QUALITY)"
+        saran_kualitas = "Kualitas visual foto sangat jelas dan terdeteksi sempurna."
+    elif avg_conf_percent >= 40.0:
+        status_kualitas = "SEDANG (MEDIUM_QUALITY)"
+        saran_kualitas = "Kualitas foto cukup baik, tulisan berhasil diekstrak."
+    else:
+        status_kualitas = "KURANG OPTIMAL (LOW_QUALITY)"
+        saran_kualitas = "Kualitas visual deteksi kurang optimal. Disarankan memfoto lebih dekat atau dengan pencahayaan terang."
 
     return {
-        "base_trust_score": round(base_trust_score, 1),
-        "avg_ocr_confidence": round(avg_conf_percent, 1),
-        "c_ocr_factor": round(c_ocr_factor, 2),
-        "final_trust_score": round(final_trust_score, 1),
+        "trust_score": round(trust_score, 1),
+        "scan_quality": {
+            "avg_visual_confidence_percent": round(avg_conf_percent, 1),
+            "status": status_kualitas,
+            "recommendation": saran_kualitas
+        },
         "weights": {"w1_name": w1, "w2_nmid": w2, "w3_acq": w3, "w4_tid": w4}
     }
 
 
 def evaluasi_skenario_entitas(digital_entity, physical_entity, ocr_conf_dict, nama_skenario=""):
     """
-    Fungsi penilai skenario untuk menghitung skor dan menentukan verdict (Strict Threshold Engine).
+    Fungsi penilai skenario untuk menghitung skor keaslian murni dan menentukan verdict.
     """
     scores = hitung_skor_fitur_identitas(digital_entity, physical_entity)
-    fusion_result = hitung_weighted_trust_score(scores, ocr_conf_dict)
+    fusion_result = hitung_pure_evidence_trust_score(scores, ocr_conf_dict)
     
-    base_trust = fusion_result["base_trust_score"]
-    avg_conf = fusion_result["avg_ocr_confidence"]
-    c_ocr = fusion_result["c_ocr_factor"]
-    final_trust = fusion_result["final_trust_score"]
+    trust_score = fusion_result["trust_score"]
+    scan_qual = fusion_result["scan_quality"]
 
     # Strict Threshold Verdict Engine (Anti-Fraud Safety)
-    if scores["S_nmid"] == 100.0 and final_trust >= 85.0 and scores["S_name"] >= 70.0:
+    if scores["S_nmid"] == 100.0 and trust_score >= 85.0 and scores["S_name"] >= 70.0:
         status_verdict = "SANGAT AMAN (100% TERVERIFIKASI ASLI)"
-        penjelasan_ringkas = f"Skor kepercayaan tinggi ({final_trust:.1f}%). Identitas fisik dan digital terverifikasi asli."
-    elif scores["S_nmid"] == 100.0 and final_trust >= 65.0 and scores["S_name"] >= 50.0:
+        penjelasan_ringkas = f"Skor keaslian identitas tinggi ({trust_score:.1f}%). Identitas fisik dan digital terverifikasi asli."
+    elif scores["S_nmid"] == 100.0 and trust_score >= 65.0 and scores["S_name"] >= 50.0:
         status_verdict = "AMAN DENGAN CATATAN (PERHATIAN)"
-        penjelasan_ringkas = f"NMID valid, namun skor kepercayaan berada di tingkat sedang ({final_trust:.1f}%). Ada perbedaan nama/acquirer atau kejelasan OCR kurang."
+        penjelasan_ringkas = f"NMID valid, namun skor keaslian berada di tingkat sedang ({trust_score:.1f}%). Ada perbedaan minor pada penulisan nama/acquirer."
     else:
         status_verdict = "MENCURIGAKAN / BAHAYA (SUSPICIOUS / QRIS PALSU)"
         if scores["S_nmid"] == 0.0:
@@ -291,17 +295,15 @@ def evaluasi_skenario_entitas(digital_entity, physical_entity, ocr_conf_dict, na
         elif scores["S_name"] < 50.0:
             penjelasan_ringkas = f"Nama merchant fisik dan digital sangat jauh berbeda ({scores['S_name']}%)! Terindikasi pencurian identitas / QRIS toko lain."
         else:
-            penjelasan_ringkas = f"Skor kepercayaan sangat rendah ({final_trust:.1f}%). Nama merchant/acquirer fisik tidak sesuai dengan data digital."
+            penjelasan_ringkas = f"Skor keaslian identitas sangat rendah ({trust_score:.1f}%). Nama merchant/acquirer fisik tidak sesuai dengan data digital."
 
     laporan_json = {
         "skenario": nama_skenario,
         "verdict_status": status_verdict,
-        "final_trust_score": final_trust,
-        "base_evidence_score": base_trust,
-        "avg_ocr_visual_confidence": avg_conf,
-        "c_ocr_factor": c_ocr,
-        "probabilitas_sameness_P_SameEntity": round(final_trust / 100.0, 2),
+        "trust_score": trust_score,
+        "probabilitas_sameness_P_SameEntity": round(trust_score / 100.0, 2),
         "explanation": penjelasan_ringkas,
+        "scan_quality": scan_qual,
         "evidence_breakdown": {
             "S_name_merchant": {
                 "score": scores["S_name"],
