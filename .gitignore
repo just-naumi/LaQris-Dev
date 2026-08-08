@@ -1,0 +1,25 @@
+# Python Virtual Environment
+.venv/
+venv/
+ENV/
+
+# Python Cache & Compiled Files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Temporary Crop Results
+crop_zoom_*.jpg
+crop_zoom_*.png
+
+# Dataset Zips & Extracted Unnecessary Large Files
+*.zip
+dataset/
+datasets/
+
+# IDE & OS Settings
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
