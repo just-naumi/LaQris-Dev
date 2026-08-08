@@ -12,8 +12,6 @@ __pycache__/
 # Temporary Crop Results
 crop_zoom_*.jpg
 crop_zoom_*.png
-hasil_crop_*/
-hasil_crop_*.jpg
 
 # Dataset Zips & Extracted Unnecessary Large Files
 *.zip
