@@ -17,23 +17,45 @@
 
 import os
 import sys
-import cv2
-import numpy as np
-import torch
-from PIL import Image
-from pyzbar import pyzbar
+
+# Matikan warning HuggingFace dan tqdm agar tampilan terminal bersih dan rapi
+os.environ["TRANSFORMERS_VERBOSITY"] = "error"
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+
+import cv2  # type: ignore
+import numpy as np  # type: ignore
+import torch  # type: ignore
+from PIL import Image  # type: ignore
 import re
 import difflib
 import json
 import warnings
-from ultralytics import YOLO
-from transformers import TrOCRProcessor, VisionEncoderDecoderModel, ViTImageProcessor, RobertaTokenizer
+from ultralytics import YOLO  # type: ignore
+from transformers import TrOCRProcessor, VisionEncoderDecoderModel, ViTImageProcessor, RobertaTokenizer  # type: ignore
+
+# Penanganan tangguh untuk pyzbar jika DLL C++ runtime (msvcr120.dll/libzbar-64.dll) tidak ditemukan di Windows
+try:
+    if sys.platform == "win32":
+        import site
+        for sp in site.getsitepackages():
+            pyzbar_dir = os.path.join(sp, "pyzbar")
+            if os.path.exists(pyzbar_dir):
+                if hasattr(os, "add_dll_directory"):
+                    try:
+                        os.add_dll_directory(pyzbar_dir)  # type: ignore
+                    except Exception:
+                        pass
+                os.environ["PATH"] = pyzbar_dir + os.pathsep + os.environ.get("PATH", "")
+    from pyzbar import pyzbar  # type: ignore
+    PYZBAR_AVAILABLE = True
+except Exception:
+    PYZBAR_AVAILABLE = False
 
 # Mematikan pesan peringatan agar tampilan log console tetap bersih
 warnings.filterwarnings("ignore")
 
 # Cek apakah komputer memiliki GPU Nvidia (CUDA) atau CPU biasa
-PERANGKAT = "cuda" if torch.cuda.is_available() else "cpu"
+PERANGKAT = "cuda" if torch.cuda.is_available() else "cpu"  # type: ignore
 
 # Variabel global penyimpan model AI (dibuat None dulu, diisi saat pertama kali dijalankan)
 MODEL_YOLO_SAYA = None
@@ -74,7 +96,7 @@ def siapkan_model_yolo_dan_trocr():
 
     if MODEL_YOLO_SAYA is None:
         print("[LOG] Lagi muat model YOLO26 dari:", os.path.basename(lokasi_model_yolo))
-        MODEL_YOLO_SAYA = YOLO(lokasi_model_yolo)
+        MODEL_YOLO_SAYA = YOLO(lokasi_model_yolo)  # type: ignore
         print("[OK] Model YOLO26 berhasil masuk ke memori.")
 
     # 2. Muat model HuggingFace TrOCR
@@ -83,18 +105,18 @@ def siapkan_model_yolo_dan_trocr():
         print(f"[LOG] Lagi muat model TrOCR ({nama_trocr}) di {PERANGKAT}...")
         
         try:
-            tokenizer = RobertaTokenizer.from_pretrained(nama_trocr)
-            image_processor = ViTImageProcessor.from_pretrained(nama_trocr)
-            PROCESSOR_TROCR_SAYA = TrOCRProcessor(image_processor=image_processor, tokenizer=tokenizer)
-            MODEL_TROCR_SAYA = VisionEncoderDecoderModel.from_pretrained(nama_trocr).to(PERANGKAT)
+            tokenizer = RobertaTokenizer.from_pretrained(nama_trocr)  # type: ignore
+            image_processor = ViTImageProcessor.from_pretrained(nama_trocr)  # type: ignore
+            PROCESSOR_TROCR_SAYA = TrOCRProcessor(image_processor=image_processor, tokenizer=tokenizer)  # type: ignore
+            MODEL_TROCR_SAYA = VisionEncoderDecoderModel.from_pretrained(nama_trocr).to(PERANGKAT)  # type: ignore
             print("[OK] Model TrOCR berhasil masuk ke memori.")
         except Exception as error:
             print(f"[WARNING] Gagal muat {nama_trocr}, nyoba model alternatif: {error}")
             nama_trocr = "microsoft/trocr-base-stage1"
-            tokenizer = RobertaTokenizer.from_pretrained(nama_trocr)
-            image_processor = ViTImageProcessor.from_pretrained(nama_trocr)
-            PROCESSOR_TROCR_SAYA = TrOCRProcessor(image_processor=image_processor, tokenizer=tokenizer)
-            MODEL_TROCR_SAYA = VisionEncoderDecoderModel.from_pretrained(nama_trocr).to(PERANGKAT)
+            tokenizer = RobertaTokenizer.from_pretrained(nama_trocr)  # type: ignore
+            image_processor = ViTImageProcessor.from_pretrained(nama_trocr)  # type: ignore
+            PROCESSOR_TROCR_SAYA = TrOCRProcessor(image_processor=image_processor, tokenizer=tokenizer)  # type: ignore
+            MODEL_TROCR_SAYA = VisionEncoderDecoderModel.from_pretrained(nama_trocr).to(PERANGKAT)  # type: ignore
             print("[OK] Model TrOCR alternatif berhasil masuk ke memori.")
 
     return MODEL_YOLO_SAYA, PROCESSOR_TROCR_SAYA, MODEL_TROCR_SAYA
@@ -276,12 +298,26 @@ def hitung_pure_evidence_trust_score(scores, ocr_conf_dict):
 
 def scan_qr_code_digital(gambar_input):
     """
-    Scan dan mengambil teks mentah QR Code menggunakan pyzbar.
+    Scan dan mengambil teks mentah QR Code menggunakan pyzbar atau OpenCV QRCodeDetector sebagai fallback.
     """
-    hasil_scan = pyzbar.decode(gambar_input)
-    if len(hasil_scan) == 0:
-        return None
-    return hasil_scan[0].data.decode('utf-8')
+    if PYZBAR_AVAILABLE:
+        try:
+            hasil_scan = pyzbar.decode(gambar_input)
+            if len(hasil_scan) > 0:
+                return hasil_scan[0].data.decode('utf-8')
+        except Exception:
+            pass
+
+    # Fallback menggunakan OpenCV QRCodeDetector jika pyzbar tidak tersedia / bermasalah DLL
+    try:
+        detector = cv2.QRCodeDetector()  # type: ignore
+        teks_qr, _, _ = detector.detectAndDecode(gambar_input)  # type: ignore
+        if teks_qr and len(teks_qr) > 0:
+            return teks_qr
+    except Exception as e:
+        print(f"[WARNING] Gagal membaca QR Code: {e}")
+
+    return None
 
 
 def ambil_data_dari_qr_code(teks_qr_mentah):
@@ -388,14 +424,14 @@ def potong_gambar_pake_yolo(gambar_input, model_yolo, folder_output):
         os.makedirs(folder_output, exist_ok=True)
     print(f"  -> Folder Penyimpanan Crop : '{folder_output}'")
     
-    hasil_deteksi = model_yolo.predict(gambar_input, conf=0.10, verbose=False)[0]
-    daftar_nama_label = hasil_deteksi.names
+    hasil_deteksi = model_yolo.predict(gambar_input, conf=0.10, verbose=False)[0]  # type: ignore
+    daftar_nama_label = hasil_deteksi.names  # type: ignore
     
     kotak_terbaik = {}
-    for box in hasil_deteksi.boxes:
-        id_label = int(box.cls[0].item())
+    for box in hasil_deteksi.boxes:  # type: ignore
+        id_label = int(box.cls[0].item())  # type: ignore
         nama_label = daftar_nama_label[id_label]
-        nilai_yakin = float(box.conf[0].item())
+        nilai_yakin = float(box.conf[0].item())  # type: ignore
         
         minimal_yakin = 0.10
         if nilai_yakin >= minimal_yakin:
@@ -410,7 +446,7 @@ def potong_gambar_pake_yolo(gambar_input, model_yolo, folder_output):
 
     for nama_label, data_kotak in kotak_terbaik.items():
         box = data_kotak['box']
-        koordinat = box.xyxy[0].tolist()
+        koordinat = box.xyxy[0].tolist()  # type: ignore
         
         x1 = int(koordinat[0])
         y1 = int(koordinat[1])
@@ -431,7 +467,7 @@ def potong_gambar_pake_yolo(gambar_input, model_yolo, folder_output):
             foto_final = foto_potongan_mentah.copy()
             print(f"  -> Ditemukan [{nama_label.upper()}] : Ukuran Asli ({foto_final.shape[1]}x{foto_final.shape[0]} px) - Conf: {data_kotak['conf']*100:.1f}%")
         else:
-            foto_final = cv2.resize(foto_potongan_mentah, None, fx=1.5, fy=1.5, interpolation=cv2.INTER_CUBIC)
+            foto_final = cv2.resize(foto_potongan_mentah, None, fx=1.5, fy=1.5, interpolation=cv2.INTER_CUBIC)  # type: ignore
             print(f"  -> Ditemukan [{nama_label.upper()}] : Crop & Zoom 1.5x ({foto_final.shape[1]}x{foto_final.shape[0]} px) - Conf: {data_kotak['conf']*100:.1f}%")
 
         nama_file_hasil = f"crop_zoom_{nama_label.upper()}.jpg"
@@ -476,15 +512,15 @@ def baca_tulisan_pake_trocr(gambar_potongan, processor, model):
     if gambar_potongan is None or gambar_potongan.size == 0:
         return ""
 
-    gambar_rgb = cv2.cvtColor(gambar_potongan, cv2.COLOR_BGR2RGB)
+    gambar_rgb = cv2.cvtColor(gambar_potongan, cv2.COLOR_BGR2RGB)  # type: ignore
     gambar_pil = Image.fromarray(gambar_rgb)
 
-    data_piksel = processor(gambar_pil, return_tensors="pt").pixel_values.to(PERANGKAT)
+    data_piksel = processor(gambar_pil, return_tensors="pt").pixel_values.to(PERANGKAT)  # type: ignore
 
-    with torch.no_grad():
-        hasil_tebakan_token = model.generate(data_piksel, max_new_tokens=64)
+    with torch.no_grad():  # type: ignore
+        hasil_tebakan_token = model.generate(data_piksel, max_new_tokens=64)  # type: ignore
 
-    teks_bacaan = processor.batch_decode(hasil_tebakan_token, skip_special_tokens=True)[0]
+    teks_bacaan = processor.batch_decode(hasil_tebakan_token, skip_special_tokens=True)[0]  # type: ignore
     return teks_bacaan.strip()
 
 
@@ -703,7 +739,8 @@ if __name__ == "__main__":
             "qris_test2.jpeg",
             "qris_test3.jpeg",
             "qris_test4.png",
-            "qris_test5.png"
+            "qris_test5.png",
+            "qris_test7.png"
         ]
         for foto in daftar_foto_rill:
             verifikasi_keaslian_qris_final(foto)

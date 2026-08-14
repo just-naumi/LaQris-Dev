@@ -6,22 +6,41 @@
 # ==============================================================================
 
 import os
-import cv2
+import sys
+import cv2  # type: ignore
 import numpy as np
-import torch
+import torch  # type: ignore
 from PIL import Image
-from pyzbar import pyzbar
 import re
 import difflib
+import json
 import warnings
-from ultralytics import YOLO
-from transformers import TrOCRProcessor, VisionEncoderDecoderModel, ViTImageProcessor, RobertaTokenizer
+from ultralytics import YOLO  # type: ignore
+from transformers import TrOCRProcessor, VisionEncoderDecoderModel, ViTImageProcessor, RobertaTokenizer  # type: ignore
+
+# Penanganan tangguh untuk pyzbar jika DLL C++ runtime (msvcr120.dll/libzbar-64.dll) tidak ditemukan di Windows
+try:
+    if sys.platform == "win32":
+        import site
+        for sp in site.getsitepackages():
+            pyzbar_dir = os.path.join(sp, "pyzbar")
+            if os.path.exists(pyzbar_dir):
+                if hasattr(os, "add_dll_directory"):
+                    try:
+                        os.add_dll_directory(pyzbar_dir)  # type: ignore
+                    except Exception:
+                        pass
+                os.environ["PATH"] = pyzbar_dir + os.pathsep + os.environ.get("PATH", "")
+    from pyzbar import pyzbar  # type: ignore
+    PYZBAR_AVAILABLE = True
+except Exception:
+    PYZBAR_AVAILABLE = False
 
 # Mematikan pesan peringatan yang tidak perlu agar tampilan log tetap bersih
 warnings.filterwarnings("ignore")
 
 # Cek apakah komputer menggunakan GPU Nvidia (CUDA) atau CPU biasa
-PERANGKAT = "cuda" if torch.cuda.is_available() else "cpu"
+PERANGKAT = "cuda" if torch.cuda.is_available() else "cpu"  # type: ignore
 
 # Variabel penyimpan model (dibuat None dulu, diisi saat pertama kali dijalankan)
 MODEL_YOLO_SAYA = None
@@ -86,16 +105,26 @@ def siapkan_model_yolo_dan_trocr():
 
 def scan_qr_code_digital(gambar_input):
     """
-    Fungsi sederhana buat scan dan mengambil tulisan teks di dalam QR Code.
+    Scan dan mengambil teks mentah QR Code menggunakan pyzbar atau OpenCV QRCodeDetector sebagai fallback.
     """
-    hasil_scan = pyzbar.decode(gambar_input)
-    if len(hasil_scan) == 0:
-        return None
-    
-    # Ambil hasil scan pertama dan ubah format byte jadi teks string biasa
-    data_pertama = hasil_scan[0]
-    teks_qr = data_pertama.data.decode('utf-8')
-    return teks_qr
+    if PYZBAR_AVAILABLE:
+        try:
+            hasil_scan = pyzbar.decode(gambar_input)
+            if len(hasil_scan) > 0:
+                return hasil_scan[0].data.decode('utf-8')
+        except Exception:
+            pass
+
+    # Fallback menggunakan OpenCV QRCodeDetector
+    try:
+        detector = cv2.QRCodeDetector()
+        teks_qr, _, _ = detector.detectAndDecode(gambar_input)
+        if teks_qr and len(teks_qr) > 0:
+            return teks_qr
+    except Exception as e:
+        print(f"[WARNING] Gagal membaca QR Code: {e}")
+
+    return None
 
 
 def ambil_data_dari_qr_code(teks_qr_mentah):
