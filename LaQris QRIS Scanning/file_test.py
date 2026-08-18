@@ -306,7 +306,7 @@ if __name__ == "__main__":
         daftar_foto_rill = [
             "qris_safe1.png",
             "qris_danger1.png",
-            "qris_danger1.png"
+            "qris_danger2.png"
         ]
         
         print("==========================================================================")

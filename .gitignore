@@ -16,10 +16,6 @@ hasil_crop_*/
 hasil_crop_barcode_*/
 _temp_extract/
 
-# Model Weights & Training Runs
-runs/
-*.pt
-
 # Dataset Zips & Extracted Unnecessary Large Files
 *.zip
 dataset/
