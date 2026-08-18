@@ -25,27 +25,30 @@ def pisahkan_dan_siapkan_dataset():
     # 1. Menentukan lokasi folder script ini berada
     folder_saat_ini = Path(os.path.dirname(os.path.abspath(__file__)))
     folder_utama_project = folder_saat_ini.parent.parent
-    path_zip_dataset = folder_utama_project / "QRIS.v2-v1.yolo26.zip"
-    
+
+    # Cari file ZIP dataset terbaru jika ada di folder utama project
+    path_zip_dataset = None
+    for file_name in os.listdir(folder_utama_project):
+        if file_name.lower().endswith('.zip') and ('qris' in file_name.lower() or 'ocr' in file_name.lower()):
+            path_zip_dataset = folder_utama_project / file_name
+            break
+
+    if not path_zip_dataset:
+        path_zip_dataset = folder_utama_project / "QRIS.v2-v1.yolo26.zip"
+
     print("=================================================================")
     print("       LANGKAH 1: MENSIAPKAN & MEMBAGI DATASET OCR QRIS         ")
     print("=================================================================")
     print(f"Lokasi folder kerja: {folder_saat_ini}")
 
-    # 2. Jika file ZIP dataset ditemukan, kita ekstrak (buka) dulu isi zip-nya
     folder_ekstrak_sementara = folder_saat_ini / "_temp_extract"
-    
-    if os.path.exists(path_zip_dataset):
+
+    if path_zip_dataset and os.path.exists(path_zip_dataset):
         print(f"Membuka dan mengekstrak file ZIP: {path_zip_dataset.name} ...")
-        
-        # Bersihkan folder sementara jika dulu pernah ada
         if folder_ekstrak_sementara.exists():
             shutil.rmtree(folder_ekstrak_sementara)
-            
-        # Ekstrak seluruh file di zip ke folder sementara
         with zipfile.ZipFile(path_zip_dataset, 'r') as file_zip:
             file_zip.extractall(folder_ekstrak_sementara)
-            
         print("Ekstraksi ZIP selesai!")
     
     # 3. Mengumpulkan semua gambar (.jpg / .png) beserta label pasangannya (.txt)

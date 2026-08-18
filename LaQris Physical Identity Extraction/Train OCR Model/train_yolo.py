@@ -17,6 +17,7 @@
 # ==============================================================================
 
 import os
+import torch
 from pathlib import Path
 from ultralytics import YOLO
 
@@ -26,22 +27,22 @@ from evaluate_and_plot import buat_laporan_dan_plot_lengkap
 
 def jalankan_pelatihan_yolo():
     """
-    Fungsi utama untuk melatih model YOLO26 OCR dengan parameter anti-overfitting.
+    Fungsi utama untuk melatih model YOLO26s OCR dengan parameter anti-overfitting.
     """
     # 1. Tentukan lokasi folder kerja
     folder_saat_ini = Path(os.path.dirname(os.path.abspath(__file__)))
     path_data_yaml = folder_saat_ini / "data.yaml"
 
     print("=================================================================")
-    print("      MULAI PELATIHAN MODEL YOLO26 NANO (yolo26n.pt) DETEKSI QRIS")
+    print("      MULAI PELATIHAN MODEL YOLO26 SMALL (yolo26s.pt) DETEKSI QRIS OCR")
     print("=================================================================")
 
     # 2. LANGKAH PERTAMA: Pastikan dataset terbagi dengan rapi (train, valid, test)
     print("\n--- [Langkah 1/3] Memeriksa & Menyiapkan Pembagian Dataset ---")
     pisahkan_dan_siapkan_dataset()
 
-    # 3. LANGKAH KEDUA: Memuat Model Terbaru Ultralytics YOLO26
-    nama_model_dasar = "yolo26n.pt"
+    # 3. LANGKAH KEDUA: Memuat Model Terbaru Ultralytics YOLO26 Small
+    nama_model_dasar = "yolo26s.pt"
     print(f"\n--- [Langkah 2/3] Memuat Pretrained Model Terbaru: {nama_model_dasar} ---")
     
     try:
@@ -49,20 +50,25 @@ def jalankan_pelatihan_yolo():
         print(f"[OK] Berhasil memuat model {nama_model_dasar}")
     except Exception as error:
         print(f"[Warning] Gagal memuat {nama_model_dasar}: {error}")
-        print("Pastikan paket ultralytics sudah versi terbaru (pip install -U ultralytics)")
-        return
+        print("Mencoba memuat model cadangan yolo26n.pt...")
+        try:
+            model = YOLO("yolo26n.pt")
+            print("[OK] Menggunakan model cadangan yolo26n.pt")
+        except Exception as err2:
+            print(f"[ERROR] Gagal memuat model YOLO: {err2}")
+            return
 
-    # 4. LANGKAH KETIGA: Memulai Proses Latihan (Training YOLO26)
-    print("\n--- [Langkah 3/3] Memulai Proses Latihan YOLO26 dengan Pengaturan Anti-Overfitting ---")
-    print("Keunggulan Pengaturan YOLO26 untuk OCR QRIS:")
-    print(" - Model Backbone   : YOLO26 Nano (yolo26n.pt)")
+    # 4. LANGKAH KETIGA: Memulai Proses Latihan (Training YOLO26s)
+    print("\n--- [Langkah 3/3] Memulai Proses Latihan YOLO26s dengan Pengaturan Anti-Overfitting ---")
+    print("Keunggulan Pengaturan YOLO26s untuk OCR QRIS:")
+    print(" - Model Backbone   : YOLO26 Small (yolo26s.pt)")
     print(" - End-to-End       : Tanpa NMS post-processing, deteksi bidang teks lebih presisi")
     print(" - STAL Support     : Mengoptimalkan deteksi teks kecil (NMID & TID)")
     print(" - Epochs Max       : 100 ronde")
     print(" - Early Stopping   : 30 ronde (Stop otomatis jika val loss mandek)")
     print("-----------------------------------------------------------------\n")
 
-    # Jalankan pelatihan model YOLO26
+    # Jalankan pelatihan model YOLO26s
     hasil_training = model.train(
         # File petunjuk lokasi data
         data=str(path_data_yaml),
@@ -78,7 +84,7 @@ def jalankan_pelatihan_yolo():
         dropout=0.1,          # Mematikan 10% neuron acak tiap langkah agar jaringan lebih mandiri
         warmup_epochs=3.0,    # 3 ronde pertama untuk pemanasan penyesuaian kecepatan belajar
         
-        # Augmentasi Data (Mengubah foto secara halus untuk melatih ketahanan model terhadap foto dari HP berbeda)
+        # Augmentasi Data
         degrees=5.0,          # Putar miring foto secara acak (+/- 5 derajat)
         translate=0.05,       # Geser posisi foto ringan (5%)
         scale=0.1,            # Zoom in / Zoom out ringan (+/- 10%)
@@ -89,11 +95,12 @@ def jalankan_pelatihan_yolo():
         hsv_v=0.4,            # Variasi terang-gelap pencahayaan (Value)
         
         # Aturan Penting Khusus OCR Teks:
-        fliplr=0.0,           # DILARANG flip horizontal (karena jika dibalik, bacaan teks jadi terbalik!)
-        mixup=0.0,            # Mematikan campur dua foto (agar bacaan tulisan tidak bertumpukan)
-        mosaic=0.5,           # Penggabungan sub-foto ringan untuk melatih deteksi objek beda ukuran
+        fliplr=0.0,           # DILARANG flip horizontal
+        mixup=0.0,            # Mematikan campur dua foto
+        mosaic=0.5,           # Penggabungan sub-foto ringan
         
-        # Tempat Penyimpanan Hasil Latihan
+        # Tempat Penyimpanan Hasil Latihan & Hardware Acceleration (GPU RTX)
+        device=0 if torch.cuda.is_available() else 'cpu',
         project=str(folder_saat_ini / "runs" / "detect"),
         name="train",
         exist_ok=True,        # Jika folder train sudah ada, timpa/perbarui secara rapi
