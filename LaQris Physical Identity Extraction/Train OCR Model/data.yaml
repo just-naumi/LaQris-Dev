@@ -3,10 +3,16 @@ path: "D:/My Project/L\xE0Qris/LaQris-Dev/LaQris Physical Identity Extraction/Tr
 train: train/images
 val: valid/images
 test: test/images
-nc: 5
+nc: 11
 names:
 - acquirer
 - nama_merchant
 - nmid
 - qrcode
 - tid
+- komponen_5
+- komponen_6
+- komponen_7
+- komponen_8
+- komponen_9
+- komponen_10
