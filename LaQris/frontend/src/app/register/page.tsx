@@ -12,6 +12,15 @@ export default function RegisterPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    try {
+      const stored = localStorage.getItem("laqris_users");
+      const users = stored ? JSON.parse(stored) : [];
+      users.push({ name, email: email.trim().toLowerCase(), password });
+      localStorage.setItem("laqris_users", JSON.stringify(users));
+      localStorage.setItem("laqris_logged_in_user", JSON.stringify({ name, email }));
+    } catch (err) {
+      console.error(err);
+    }
     router.push("/dashboard");
   };
 
