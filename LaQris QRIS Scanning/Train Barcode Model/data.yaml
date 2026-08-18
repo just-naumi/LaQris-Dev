@@ -1,0 +1,8 @@
+path: "D:/My Project/L\xE0Qris/LaQris-Dev/LaQris QRIS Scanning/Train Barcode Model"
+train: train/images
+val: valid/images
+test: test/images
+nc: 2
+names:
+- Barcode_Asli
+- Barcode_Palsu
