@@ -51,90 +51,93 @@ def pisahkan_dan_siapkan_dataset():
             file_zip.extractall(folder_ekstrak_sementara)
         print("Ekstraksi ZIP selesai!")
     
-    # 3. Mengumpulkan semua gambar (.jpg / .png) beserta label pasangannya (.txt)
-    daftar_pasangan_data = [] # List untuk menyimpan pasangan (path_gambar, path_label)
-    
-    # Cari di dalam folder hasil ekstraksi sementara
-    search_dir = folder_ekstrak_sementara if folder_ekstrak_sementara.exists() else folder_saat_ini
-    
-    for root, subfolders, files in os.walk(search_dir):
-        for nama_file in files:
-            # Cek apakah file ini adalah gambar
-            if nama_file.lower().endswith(('.jpg', '.jpeg', '.png')):
-                path_gambar = Path(root) / nama_file
+    # 3. Cek apakah folder train/images sudah terisi rapi
+    train_img_dir = folder_saat_ini / 'train' / 'images'
+    valid_img_dir = folder_saat_ini / 'valid' / 'images'
+    test_img_dir = folder_saat_ini / 'test' / 'images'
+
+    ada_zip_baru = (folder_ekstrak_sementara.exists() and any(folder_ekstrak_sementara.iterdir()))
+    sudah_terbagi = train_img_dir.exists() and any(train_img_dir.iterdir())
+
+    # Jika data sudah terbagi rapi dan tidak ada ekstraksi zip baru, langsung update data.yaml
+    if sudah_terbagi and not ada_zip_baru:
+        total_train = len(list((folder_saat_ini / 'train' / 'images').glob('*.*')))
+        total_valid = len(list((folder_saat_ini / 'valid' / 'images').glob('*.*')))
+        total_test = len(list((folder_saat_ini / 'test' / 'images').glob('*.*')))
+        print("[INFO] Dataset train, valid, test sudah terbagi dengan rapi:")
+        print(f"  - Data Train : {total_train} gambar")
+        print(f"  - Data Valid : {total_valid} gambar")
+        print(f"  - Data Test  : {total_test} gambar")
+    else:
+        # Mengumpulkan pasangan gambar dan label dari search_dir
+        daftar_pasangan_data = []
+        search_dir = folder_ekstrak_sementara if ada_zip_baru else folder_saat_ini
+
+        for root, subfolders, files in os.walk(search_dir):
+            # Hindari membaca folder train, valid, test lama jika mencari di folder_saat_ini
+            if not ada_zip_baru and any(skip_dir in Path(root).parts for skip_dir in ['train', 'valid', 'test', 'runs', '_temp_extract']):
+                continue
+
+            for nama_file in files:
+                if nama_file.lower().endswith(('.jpg', '.jpeg', '.png')):
+                    path_gambar = Path(root) / nama_file
+                    path_label = path_gambar.with_suffix('.txt')
+                    if not path_label.exists():
+                        if path_gambar.parent.name == 'images':
+                            path_label = path_gambar.parent.parent / 'labels' / f"{path_gambar.stem}.txt"
+                    if path_label.exists():
+                        daftar_pasangan_data.append((path_gambar, path_label))
+
+        kamus_unik = {}
+        for path_img, path_txt in daftar_pasangan_data:
+            kamus_unik[path_img.name] = (path_img, path_txt)
+        daftar_pasangan_data = list(kamus_unik.values())
+
+        total_semua_data = len(daftar_pasangan_data)
+        print(f"Total data pasangan gambar dan label yang ditemukan: {total_semua_data} buah.")
+
+        if total_semua_data == 0 and not sudah_terbagi:
+            print("[ERROR] Tidak ada data gambar dan label yang ditemukan!")
+            return
+
+        if total_semua_data > 0:
+            random.seed(42)
+            random.shuffle(daftar_pasangan_data)
+
+            jumlah_train = int(total_semua_data * 0.70)
+            jumlah_valid = int(total_semua_data * 0.15)
+            jumlah_test = total_semua_data - jumlah_train - jumlah_valid
+
+            data_train = daftar_pasangan_data[:jumlah_train]
+            data_valid = daftar_pasangan_data[jumlah_train : jumlah_train + jumlah_valid]
+            data_test = daftar_pasangan_data[jumlah_train + jumlah_valid :]
+
+            print("\nRincian Pembagian Data:")
+            print(f"  - Data Train (Belajar) : {len(data_train)} gambar ({len(data_train)/total_semua_data*100:.1f}%)")
+            print(f"  - Data Valid (Ujian 1) : {len(data_valid)} gambar ({len(data_valid)/total_semua_data*100:.1f}%)")
+            print(f"  - Data Test  (Ujian 2) : {len(data_test)} gambar ({len(data_test)/total_semua_data*100:.1f}%)\n")
+
+            kumpulan_split = {
+                'train': data_train,
+                'valid': data_valid,
+                'test': data_test
+            }
+
+            for nama_split, item_pasangan in kumpulan_split.items():
+                folder_gambar_target = folder_saat_ini / nama_split / 'images'
+                folder_label_target = folder_saat_ini / nama_split / 'labels'
                 
-                # Cari file label (.txt) yang namanya sama persis dengan gambar
-                path_label = path_gambar.with_suffix('.txt')
-                
-                # Jika label tidak ada di folder yang sama, coba cari di folder 'labels'
-                if not path_label.exists():
-                    if path_gambar.parent.name == 'images':
-                        path_label = path_gambar.parent.parent / 'labels' / f"{path_gambar.stem}.txt"
-                
-                # Jika pasangannya (file .txt) ditemukan, simpan ke daftar
-                if path_label.exists():
-                    daftar_pasangan_data.append((path_gambar, path_label))
+                if folder_gambar_target.exists():
+                    shutil.rmtree(folder_gambar_target)
+                if folder_label_target.exists():
+                    shutil.rmtree(folder_label_target)
+                    
+                os.makedirs(folder_gambar_target, exist_ok=True)
+                os.makedirs(folder_label_target, exist_ok=True)
 
-    # Pastikan tidak ada data ganda (duplikat) berdasarkan nama file
-    kamus_unik = {}
-    for path_img, path_txt in daftar_pasangan_data:
-        kamus_unik[path_img.name] = (path_img, path_txt)
-    daftar_pasangan_data = list(kamus_unik.values())
-
-    total_semua_data = len(daftar_pasangan_data)
-    print(f"Total data pasangan gambar dan label yang ditemukan: {total_semua_data} buah.")
-
-    if total_semua_data == 0:
-        print("[ERROR] Tidak ada data gambar dan label yang ditemukan!")
-        return
-
-    # 4. Mengacak urutan data dengan angka acak tetap (seed=42)
-    # Tujuan acak: Supaya pembagian data train, valid, dan test bervariasi dan adil.
-    random.seed(42)
-    random.shuffle(daftar_pasangan_data)
-
-    # 5. Menghitung pembagian jumlah data:
-    # 70% untuk Train (Belajar)
-    # 15% untuk Valid (Evaluasi saat belajar)
-    # 15% untuk Test (Ujian akhir)
-    jumlah_train = int(total_semua_data * 0.70)
-    jumlah_valid = int(total_semua_data * 0.15)
-    jumlah_test = total_semua_data - jumlah_train - jumlah_valid
-
-    data_train = daftar_pasangan_data[:jumlah_train]
-    data_valid = daftar_pasangan_data[jumlah_train : jumlah_train + jumlah_valid]
-    data_test = daftar_pasangan_data[jumlah_train + jumlah_valid :]
-
-    print("\nRincian Pembagian Data:")
-    print(f"  - Data Train (Belajar) : {len(data_train)} gambar ({len(data_train)/total_semua_data*100:.1f}%)")
-    print(f"  - Data Valid (Ujian 1) : {len(data_valid)} gambar ({len(data_valid)/total_semua_data*100:.1f}%)")
-    print(f"  - Data Test  (Ujian 2) : {len(data_test)} gambar ({len(data_test)/total_semua_data*100:.1f}%)\n")
-
-    # 6. Membuat struktur folder bersih: train, valid, test (masing-masing punya folder images & labels)
-    kumpulan_split = {
-        'train': data_train,
-        'valid': data_valid,
-        'test': data_test
-    }
-
-    for nama_split, item_pasangan in kumpulan_split.items():
-        # Buat folder images dan labels jika belum ada
-        folder_gambar_target = folder_saat_ini / nama_split / 'images'
-        folder_label_target = folder_saat_ini / nama_split / 'labels'
-        
-        # Kosongkan/hapus folder lama agar tidak tercampur
-        if folder_gambar_target.exists():
-            shutil.rmtree(folder_gambar_target)
-        if folder_label_target.exists():
-            shutil.rmtree(folder_label_target)
-            
-        os.makedirs(folder_gambar_target, exist_ok=True)
-        os.makedirs(folder_label_target, exist_ok=True)
-
-        # Salin (copy) file gambar dan label ke dalam foldernya masing-masing
-        for path_img_asal, path_txt_asal in item_pasangan:
-            shutil.copy2(path_img_asal, folder_gambar_target / path_img_asal.name)
-            shutil.copy2(path_txt_asal, folder_label_target / path_txt_asal.name)
+                for path_img_asal, path_txt_asal in item_pasangan:
+                    shutil.copy2(path_img_asal, folder_gambar_target / path_img_asal.name)
+                    shutil.copy2(path_txt_asal, folder_label_target / path_txt_asal.name)
 
     # Bersihkan folder sementara bekas zip tadi
     if folder_ekstrak_sementara.exists():

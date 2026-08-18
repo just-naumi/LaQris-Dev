@@ -1,13 +1,12 @@
-train: ../train/images
-val: ../valid/images
-test: ../test/images
-
-nc: 11
-names: ['Cara Pakai QRIS', 'Cek Aplikasi Penyelenggara', 'Dicetak Oleh', 'Logo GPN', 'Logo dan deskripsi QRIS', 'Nama Merchant', 'National Merchant ID', 'QR Code', 'Slogan', 'Terminal ID', 'Versi Cetak']
-
-roboflow:
-  workspace: miyams-workspace
-  project: qrisocr
-  version: 1
-  license: CC BY 4.0
-  url: https://universe.roboflow.com/miyams-workspace/qrisocr/dataset/1
+path: "D:/My Project/L\xE0Qris/LaQris-Dev/LaQris Physical Identity Extraction/Train\
+  \ OCR Model"
+train: train/images
+val: valid/images
+test: test/images
+nc: 5
+names:
+- acquirer
+- nama_merchant
+- nmid
+- qrcode
+- tid
