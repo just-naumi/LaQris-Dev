@@ -1,0 +1,34 @@
+services:
+  # ─── Backend (FastAPI + YOLO) ────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: laqris-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app          # hot-reload in dev
+      - ./backend/ai/models:/app/ai/models   # persist downloaded models
+    environment:
+      - DEBUG=true
+    restart: unless-stopped
+
+  # ─── Frontend (Next.js) ──────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile    # create separately when ready for prod
+    container_name: laqris-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+# ─── Networks ─────────────────────────────────────────────────────────────────
+networks:
+  default:
+    name: laqris-network
