@@ -61,17 +61,16 @@ def pisahkan_dan_siapkan_dataset():
 
     total_nc = max(5, max_class_id + 1)
     
-    # Daftar nama kelas resmi dari Roboflow
+    # Daftar nama kelas resmi dari Roboflow (Urutan Alfabetis 11 Kelas Persis)
     daftar_nama_kelas_default = [
         'Cara Pakai QRIS',
         'Cek Aplikasi Penyelenggara',
         'Dicetak Oleh',
-        'Logo dan deskripsi QRIS',
         'Logo GPN',
+        'Logo dan deskripsi QRIS',
         'Nama Merchant',
         'National Merchant ID',
         'QR Code',
-        'QrisOCR',
         'Slogan',
         'Terminal ID',
         'Versi Cetak'

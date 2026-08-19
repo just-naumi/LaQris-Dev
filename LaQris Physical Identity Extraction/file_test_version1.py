@@ -57,7 +57,13 @@ PEMETAAN_LABEL_ROBOFLOW = {
     "national merchant id": "nmid",
     "dicetak oleh": "acquirer",
     "terminal id": "tid",
-    "qr code": "qrcode"
+    "qr code": "qrcode",
+    # Kasus penulisan variasi Roboflow
+    "nama_merchant": "nama_merchant",
+    "national_merchant_id": "nmid",
+    "dicetak_oleh": "acquirer",
+    "terminal_id": "tid",
+    "qr_code": "qrcode"
 }
 
 # Warna visualisasi berdasar indeks label (BGR)
