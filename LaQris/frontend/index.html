@@ -31,9 +31,9 @@
 
         .app-header {
             text-align: center;
-            padding-bottom: 16px;
+            padding-bottom: 14px;
             border-bottom: 1px solid #21262d;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
         }
 
         .app-title {
@@ -58,28 +58,12 @@
             background: rgba(88, 166, 255, 0.05);
         }
 
-        .btn-scan {
-            background: #238636;
-            color: #fff;
-            font-weight: 700;
-            border-radius: 12px;
-            padding: 12px;
-            width: 100%;
-            border: none;
-            margin-top: 12px;
-        }
-
-        .btn-scan:hover {
-            background: #2ea043;
-            color: #fff;
-        }
-
         .result-card {
             background: #0d1117;
             border: 1px solid #30363d;
             border-radius: 16px;
             padding: 16px;
-            margin-top: 16px;
+            margin-top: 14px;
         }
 
         .status-danger {
@@ -105,8 +89,9 @@
         .info-row {
             display: flex;
             justify-content: space-between;
-            font-size: 0.85rem;
-            padding: 6px 0;
+            align-items: center;
+            font-size: 0.82rem;
+            padding: 7px 0;
             border-bottom: 1px solid #21262d;
         }
 
@@ -114,8 +99,15 @@
             border-bottom: none;
         }
 
+        .explanation-text {
+            font-size: 0.8rem;
+            color: #c9d1d9;
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+
         .btn-cancel {
-            background: #da3633;
+            background: linear-gradient(135deg, #da3633 0%, #b62324 100%);
             color: #fff;
             font-weight: 800;
             font-size: 1rem;
@@ -124,6 +116,7 @@
             width: 100%;
             border: none;
             margin-top: 16px;
+            box-shadow: 0 4px 16px rgba(218, 54, 51, 0.4);
         }
     </style>
 </head>
@@ -140,7 +133,7 @@
     <div class="scan-box" onclick="document.getElementById('fileInput').click()">
         <input type="file" id="fileInput" class="d-none" accept="image/*" onchange="processFile(event)">
         <div class="fw-bold text-white mb-1">Ambil Foto / Upload QRIS</div>
-        <small class="text-secondary">Tekan di sini untuk memilih gambar</small>
+        <small class="text-secondary">Tekan di sini untuk memilih foto stiker</small>
     </div>
 
     <!-- Loading Indicator -->
@@ -154,30 +147,44 @@
         <!-- Status Alert Badge -->
         <div id="statusBadge" class="mt-3"></div>
 
+        <!-- Risk Explanation Box -->
+        <div class="result-card" style="border-color: #f85149;" id="explanationCard">
+            <div class="fw-bold text-white mb-1" style="font-size: 0.85rem;">Analisis Risiko:</div>
+            <div id="explanationText" class="explanation-text"></div>
+        </div>
+
         <!-- Bounding Box Image Preview -->
         <div class="text-center mt-3">
             <img id="visImage" src="" class="img-fluid rounded-3 border border-secondary" style="max-height: 280px; width: 100%; object-fit: contain;">
         </div>
 
-        <!-- Comparison Details -->
+        <!-- Detailed Comparison -->
         <div class="result-card">
-            <div class="fw-bold text-white mb-2" style="font-size: 0.9rem;">Perbandingan Identitas:</div>
+            <div class="fw-bold text-white mb-2" style="font-size: 0.9rem;">Rincian Perbandingan Identitas:</div>
             
             <div class="info-row">
-                <span class="text-secondary">Nama Fisik (Stiker):</span>
-                <strong id="physName" class="text-warning">-</strong>
+                <span class="text-secondary">Nama Fisik Toko:</span>
+                <strong id="physName" class="text-warning text-end ms-2">-</strong>
             </div>
             <div class="info-row">
-                <span class="text-secondary">Nama Digital (QR):</span>
-                <strong id="digName" class="text-info">-</strong>
+                <span class="text-secondary">Nama Digital QR:</span>
+                <strong id="digName" class="text-info text-end ms-2">-</strong>
             </div>
             <div class="info-row">
                 <span class="text-secondary">NMID Fisik:</span>
-                <span id="physNmid" class="text-white">-</span>
+                <span id="physNmid" class="text-white font-monospace">-</span>
             </div>
             <div class="info-row">
                 <span class="text-secondary">NMID Digital:</span>
-                <span id="digNmid" class="text-white">-</span>
+                <span id="digNmid" class="text-white font-monospace">-</span>
+            </div>
+            <div class="info-row">
+                <span class="text-secondary">Acquirer / Bank:</span>
+                <span id="digAcquirer" class="text-white">-</span>
+            </div>
+            <div class="info-row">
+                <span class="text-secondary">Terminal ID (TID):</span>
+                <span id="digTid" class="text-white">-</span>
             </div>
         </div>
 
@@ -191,6 +198,14 @@
             <div class="info-row">
                 <span class="text-secondary">Total Laporan:</span>
                 <span id="repReports" class="fw-bold text-danger">-</span>
+            </div>
+            <div class="info-row">
+                <span class="text-secondary">QRIS Ditimpa:</span>
+                <span id="repReplacement" class="fw-bold text-danger">0 Laporan</span>
+            </div>
+            <div class="info-row">
+                <span class="text-secondary">Merchant Mismatch:</span>
+                <span id="repMismatch" class="fw-bold text-info">0 Laporan</span>
             </div>
         </div>
 
@@ -222,34 +237,48 @@ async function processFile(event) {
         // Image Preview
         document.getElementById('visImage').src = data.visualization_url;
 
-        // Names & NMIDs
+        // Explanation text
+        document.getElementById('explanationText').textContent = data.explanation;
+
+        // Detailed Fields
         document.getElementById('physName').textContent = data.physical_merchant || 'Tidak terbaca';
         document.getElementById('digName').textContent = data.digital_merchant || 'Tidak ditemukan';
         document.getElementById('physNmid').textContent = data.physical_nmid || 'Tidak terbaca';
         document.getElementById('digNmid').textContent = data.digital_nmid || 'Tidak ditemukan';
+        document.getElementById('digAcquirer').textContent = data.digital_acquirer || 'Tidak ditemukan';
+        document.getElementById('digTid').textContent = data.digital_tid || 'Tidak ditemukan';
 
         // Status Badge & Cancel Button
         const badge = document.getElementById('statusBadge');
         const btnCancel = document.getElementById('btnCancelPay');
+        const expCard = document.getElementById('explanationCard');
 
         if (data.risk_level === 'HIGH_RISK' || data.is_mismatch) {
             badge.className = 'status-danger';
             badge.innerHTML = '⚠️ BAHAYA! STIKER QRIS DITIMPA';
+            expCard.style.borderColor = '#f85149';
             btnCancel.classList.remove('d-none');
         } else {
             badge.className = 'status-safe';
             badge.innerHTML = '✅ AMAN! IDENTITAS SESUAI';
+            expCard.style.borderColor = '#2ea043';
             btnCancel.classList.add('d-none');
         }
 
-        // Reputation
+        // Reputation Detail
         const rep = data.reputation;
         if (rep) {
             document.getElementById('repRating').textContent = rep.rating.toFixed(1) + ' / 5.0';
-            document.getElementById('repReports').textContent = rep.total_reports + ' Laporan (' + rep.breakdown_categories.qris_replacement + ' QRIS Ditimpa)';
+            document.getElementById('repReports').textContent = rep.total_reports + ' Laporan (' + rep.verified_reports + ' Terverifikasi)';
+            
+            const bc = rep.breakdown_categories || {};
+            document.getElementById('repReplacement').textContent = (bc.qris_replacement || 0) + ' Laporan';
+            document.getElementById('repMismatch').textContent = (bc.merchant_mismatch || 0) + ' Laporan';
         } else {
             document.getElementById('repRating').textContent = '5.0 / 5.0';
             document.getElementById('repReports').textContent = '0 Laporan';
+            document.getElementById('repReplacement').textContent = '0 Laporan';
+            document.getElementById('repMismatch').textContent = '0 Laporan';
         }
 
     } catch (err) {
