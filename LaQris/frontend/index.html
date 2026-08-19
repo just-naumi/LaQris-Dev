@@ -113,17 +113,29 @@
             font-size: 1.25rem;
             font-weight: 800;
             color: #0f172a;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
+        }
+
+        .trust-score-badge {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #475569;
+            background: #f1f5f9;
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-bottom: 10px;
         }
 
         .status-subnote {
             font-size: 0.82rem;
             color: #64748b;
-            padding: 8px 14px;
+            padding: 10px 14px;
             border-radius: 12px;
             background: #f8fafc;
             border: 1px solid #e2e8f0;
             line-height: 1.45;
+            text-align: left;
         }
 
         .status-subnote-danger {
@@ -271,7 +283,7 @@
         <div id="loadingBox" class="loading-box d-none">
             <div class="spinner-custom"></div>
             <div class="fw-semibold text-dark mt-3" style="font-size: 0.9rem;">Memeriksa Keaslian QRIS...</div>
-            <div class="text-secondary small mt-1">Dual YOLO26 & TrOCR OCR Processing</div>
+            <div class="text-secondary small mt-1">EMVCo Validation & Dual YOLO + TrOCR</div>
         </div>
 
         <!-- Verification Result Screen -->
@@ -282,9 +294,10 @@
                 <div id="statusIcon" class="status-circle status-circle-danger">
                     <span>⚠</span>
                 </div>
-                <div id="statusTitle" class="status-headline">Stiker QRIS Ditimpa!</div>
+                <div id="statusTitle" class="status-headline">Indikasi Identitas Tidak Sesuai</div>
+                <div class="trust-score-badge" id="trustScoreBadge">Trust Score: 20 / 100</div>
                 <div id="statusNote" class="status-subnote status-subnote-danger">
-                    Identitas fisik toko tidak sesuai dengan rekening penerima digital.
+                    Identitas stiker toko tidak sesuai dengan rekening penerima digital.
                 </div>
             </div>
 
@@ -296,37 +309,45 @@
             <!-- Receipt Key-Value Rows -->
             <div class="receipt-card">
                 <div class="receipt-row">
-                    <span class="receipt-label">Nama Merchant Fisik</span>
-                    <span id="valPhysName" class="receipt-val val-danger">AKSUY SPAKBOR CAR PARTS</span>
+                    <span class="receipt-label">Merchant Terlihat (Fisik)</span>
+                    <span id="valPhysName" class="receipt-val val-danger">-</span>
                 </div>
                 <div class="receipt-row">
-                    <span class="receipt-label">Nama Merchant Digital</span>
-                    <span id="valDigName" class="receipt-val text-primary">NASI GORENG AA OJOS</span>
+                    <span class="receipt-label">Penerima QRIS (Digital)</span>
+                    <span id="valDigName" class="receipt-val text-primary">-</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Kesesuaian Identitas</span>
+                    <span id="valMatchLevel" class="receipt-val text-secondary">-</span>
                 </div>
                 <div class="receipt-row">
                     <span class="receipt-label">NMID Fisik</span>
-                    <span id="valPhysNmid" class="receipt-val font-monospace">ID1026482737701</span>
+                    <span id="valPhysNmid" class="receipt-val font-monospace">-</span>
                 </div>
                 <div class="receipt-row">
                     <span class="receipt-label">NMID Digital</span>
-                    <span id="valDigNmid" class="receipt-val font-monospace">ID1025399791611</span>
+                    <span id="valDigNmid" class="receipt-val font-monospace">-</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Kota Merchant (EMV)</span>
+                    <span id="valDigCity" class="receipt-val">-</span>
                 </div>
                 <div class="receipt-row">
                     <span class="receipt-label">Acquirer Bank</span>
-                    <span id="valAcquirer" class="receipt-val">93600915 (DANA)</span>
+                    <span id="valAcquirer" class="receipt-val">-</span>
                 </div>
                 <div class="receipt-row">
                     <span class="receipt-label">Terminal ID</span>
-                    <span id="valTid" class="receipt-val">A01</span>
+                    <span id="valTid" class="receipt-val">-</span>
                 </div>
                 <div class="receipt-row">
                     <span class="receipt-label">Reputasi SQLite</span>
-                    <span id="valReputation" class="receipt-val text-dark">5.0 / 5.0 (0 Laporan)</span>
+                    <span id="valReputation" class="receipt-val text-dark">-</span>
                 </div>
             </div>
 
             <!-- Action Buttons -->
-            <button id="btnCancel" class="btn-cancel-action" onclick="cancelTransaction()">
+            <button id="btnCancel" class="btn-cancel-action" onclick="cancelPayment()">
                 Batalkan Pembayaran
             </button>
 
@@ -361,20 +382,25 @@ async function processQrImage(event) {
         // Bounding Box Image
         document.getElementById('visImage').src = data.visualization_url;
 
+        // Trust Score & Match Level
+        document.getElementById('trustScoreBadge').textContent = `Trust Score: ${data.trust_score.toFixed(0)} / 100`;
+        document.getElementById('valMatchLevel').textContent = `${data.name_similarity}% (${data.match_level})`;
+
         // Key Value Data
         document.getElementById('valPhysName').textContent = data.physical_merchant || 'Tidak terbaca';
         document.getElementById('valDigName').textContent = data.digital_merchant || 'Tidak ditemukan';
         document.getElementById('valPhysNmid').textContent = data.physical_nmid || 'Tidak terbaca';
         document.getElementById('valDigNmid').textContent = data.digital_nmid || 'Tidak ditemukan';
+        document.getElementById('valDigCity').textContent = data.digital_city || 'Tidak ditemukan';
         document.getElementById('valAcquirer').textContent = data.digital_acquirer || 'Tidak ditemukan';
         document.getElementById('valTid').textContent = data.digital_tid || 'Tidak ditemukan';
 
         // Reputation Row
         const rep = data.reputation;
-        if (rep) {
-            document.getElementById('valReputation').textContent = `${rep.rating.toFixed(1)} / 5.0 (${rep.total_reports} Laporan)`;
+        if (rep && rep.status === "KNOWN") {
+            document.getElementById('valReputation').textContent = `Rating ${rep.rating.toFixed(1)} / 5.0 (${rep.total_reports} Laporan)`;
         } else {
-            document.getElementById('valReputation').textContent = '5.0 / 5.0 (0 Laporan)';
+            document.getElementById('valReputation').textContent = 'Rating 5.0 / 5.0 (0 Laporan)';
         }
 
         // Status Styling
@@ -386,16 +412,16 @@ async function processQrImage(event) {
         if (data.is_mismatch || data.risk_level === 'HIGH_RISK') {
             iconBox.className = 'status-circle status-circle-danger';
             iconBox.innerHTML = '<span>⚠</span>';
-            titleBox.textContent = 'Stiker QRIS Ditimpa!';
+            titleBox.textContent = 'Indikasi Identitas Tidak Sesuai';
             noteBox.className = 'status-subnote status-subnote-danger';
             noteBox.textContent = data.explanation || 'Identitas stiker toko tidak sesuai dengan rekening penerima digital.';
             btnCancel.style.display = 'block';
         } else {
             iconBox.className = 'status-circle status-circle-safe';
             iconBox.innerHTML = '<span>✓</span>';
-            titleBox.textContent = 'Verifikasi Berhasil';
+            titleBox.textContent = 'Verifikasi Berhasil (Aman)';
             noteBox.className = 'status-subnote';
-            noteBox.textContent = 'Identitas stiker fisik 100% cocok dengan penerima QR Code.';
+            noteBox.textContent = 'Identitas stiker fisik 100% cocok dengan penerima QR Code digital.';
             btnCancel.style.display = 'none';
         }
 
