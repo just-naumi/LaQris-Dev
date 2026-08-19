@@ -3,226 +3,350 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LaQris Scanner</title>
-    <!-- Bootstrap 5.3 -->
+    <title>LaQris - Status Verifikasi QRIS</title>
+    <!-- Font Inter & Bootstrap 5.3 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
         body {
-            background-color: #0d1117;
-            color: #f0f6fc;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f1f5f9;
+            color: #1e293b;
             display: flex;
             justify-content: center;
             align-items: flex-start;
             min-height: 100vh;
             margin: 0;
-            padding: 12px;
+            padding: 16px 12px;
         }
 
-        .mobile-container {
+        .phone-frame {
             width: 100%;
-            max-width: 430px;
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 24px;
-            padding: 20px;
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+            max-width: 410px;
+            background: #ffffff;
+            border-radius: 28px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            margin: auto;
         }
 
-        .app-header {
+        .phone-header {
             text-align: center;
-            padding-bottom: 14px;
-            border-bottom: 1px solid #21262d;
-            margin-bottom: 18px;
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #ffffff;
         }
 
-        .app-title {
-            font-weight: 800;
-            font-size: 1.4rem;
-            color: #58a6ff;
+        .phone-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #0f172a;
             margin: 0;
         }
 
-        .scan-box {
-            border: 2px dashed #30363d;
-            border-radius: 16px;
+        .phone-body {
+            padding: 20px 18px;
+        }
+
+        /* Upload / Scan Area */
+        .scan-trigger {
+            background: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            border-radius: 18px;
             padding: 24px 16px;
             text-align: center;
-            background: #0d1117;
             cursor: pointer;
             transition: all 0.2s ease;
         }
 
-        .scan-box:hover {
-            border-color: #58a6ff;
-            background: rgba(88, 166, 255, 0.05);
+        .scan-trigger:hover {
+            border-color: #0284c7;
+            background: #f0f9ff;
         }
 
-        .result-card {
-            background: #0d1117;
-            border: 1px solid #30363d;
+        .scan-icon-circle {
+            width: 52px;
+            height: 52px;
+            background: #e0f2fe;
+            color: #0284c7;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            font-size: 1.4rem;
+        }
+
+        /* Status Icon & Banner */
+        .status-center {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .status-circle {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 12px;
+        }
+
+        .status-circle-danger {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .status-circle-safe {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .status-headline {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 6px;
+        }
+
+        .status-subnote {
+            font-size: 0.82rem;
+            color: #64748b;
+            padding: 8px 14px;
+            border-radius: 12px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            line-height: 1.45;
+        }
+
+        .status-subnote-danger {
+            background: #fff1f2;
+            border-color: #fecdd3;
+            color: #be123c;
+        }
+
+        /* Key-Value Pair Receipt Rows */
+        .receipt-card {
+            background: #ffffff;
+            border: 1px solid #f1f5f9;
             border-radius: 16px;
-            padding: 16px;
-            margin-top: 14px;
+            padding: 8px 0;
+            margin-bottom: 20px;
         }
 
-        .status-danger {
-            background: rgba(248, 81, 73, 0.15);
-            border: 1px solid #f85149;
-            color: #ff7b72;
-            border-radius: 12px;
-            padding: 12px;
-            text-align: center;
-            font-weight: 700;
-        }
-
-        .status-safe {
-            background: rgba(46, 160, 67, 0.15);
-            border: 1px solid #2ea043;
-            color: #56d364;
-            border-radius: 12px;
-            padding: 12px;
-            text-align: center;
-            font-weight: 700;
-        }
-
-        .info-row {
+        .receipt-row {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            font-size: 0.82rem;
-            padding: 7px 0;
-            border-bottom: 1px solid #21262d;
+            align-items: flex-start;
+            padding: 10px 0;
+            border-bottom: 1px solid #f1f5f9;
+            gap: 12px;
         }
 
-        .info-row:last-child {
+        .receipt-row:last-child {
             border-bottom: none;
         }
 
-        .explanation-text {
-            font-size: 0.8rem;
-            color: #c9d1d9;
-            margin-top: 8px;
-            line-height: 1.4;
+        .receipt-label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #64748b;
+            flex: 1;
+            margin: 0;
         }
 
-        .btn-cancel {
-            background: linear-gradient(135deg, #da3633 0%, #b62324 100%);
-            color: #fff;
-            font-weight: 800;
-            font-size: 1rem;
-            border-radius: 12px;
-            padding: 14px;
+        .receipt-val {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #0f172a;
+            text-align: right;
+            flex: 1.3;
+            margin: 0;
+            word-break: break-word;
+        }
+
+        .val-danger {
+            color: #e11d48;
+        }
+
+        .val-safe {
+            color: #16a34a;
+        }
+
+        /* Image Detection Collapse */
+        .vis-preview-box {
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+            background: #f8fafc;
+            text-align: center;
+        }
+
+        .vis-preview-box img {
             width: 100%;
+            max-height: 260px;
+            object-fit: contain;
+        }
+
+        /* Bottom Action Buttons */
+        .btn-cancel-action {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 14px;
+            border-radius: 14px;
             border: none;
-            margin-top: 16px;
-            box-shadow: 0 4px 16px rgba(218, 54, 51, 0.4);
+            width: 100%;
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+            transition: transform 0.15s ease;
+        }
+
+        .btn-cancel-action:active {
+            transform: scale(0.98);
+        }
+
+        .btn-secondary-action {
+            background: #f1f5f9;
+            color: #475569;
+            font-weight: 600;
+            font-size: 0.9rem;
+            padding: 12px;
+            border-radius: 12px;
+            border: none;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        /* Loading Spinner */
+        .loading-box {
+            text-align: center;
+            padding: 30px 10px;
+        }
+
+        .spinner-custom {
+            width: 42px;
+            height: 42px;
+            border: 3px solid #e2e8f0;
+            border-top-color: #0284c7;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
 
-<div class="mobile-container">
-    <!-- Header App -->
-    <div class="app-header">
-        <h1 class="app-title">LaQris Scanner</h1>
-        <small class="text-secondary">Verifikasi Identitas Fisik vs Digital QRIS</small>
+<div class="phone-frame">
+    <!-- Top Header -->
+    <div class="phone-header">
+        <h2 class="phone-title">Status Verifikasi QRIS</h2>
     </div>
 
-    <!-- Upload / Scan Box -->
-    <div class="scan-box" onclick="document.getElementById('fileInput').click()">
-        <input type="file" id="fileInput" class="d-none" accept="image/*" onchange="processFile(event)">
-        <div class="fw-bold text-white mb-1">Ambil Foto / Upload QRIS</div>
-        <small class="text-secondary">Tekan di sini untuk memilih foto stiker</small>
-    </div>
+    <div class="phone-body">
 
-    <!-- Loading Indicator -->
-    <div id="loading" class="text-center py-4 d-none">
-        <div class="spinner-border text-primary" role="status"></div>
-        <div class="small text-secondary mt-2">Menganalisis dengan Dual YOLO & TrOCR...</div>
-    </div>
-
-    <!-- Result Section -->
-    <div id="resultArea" class="d-none">
-        <!-- Status Alert Badge -->
-        <div id="statusBadge" class="mt-3"></div>
-
-        <!-- Risk Explanation Box -->
-        <div class="result-card" style="border-color: #f85149;" id="explanationCard">
-            <div class="fw-bold text-white mb-1" style="font-size: 0.85rem;">Analisis Risiko:</div>
-            <div id="explanationText" class="explanation-text"></div>
+        <!-- Initial Upload Trigger -->
+        <div id="uploadBox" class="scan-trigger" onclick="document.getElementById('fileInput').click()">
+            <input type="file" id="fileInput" class="d-none" accept="image/*" onchange="processQrImage(event)">
+            <div class="scan-icon-circle">
+                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"></path></svg>
+            </div>
+            <div class="fw-bold text-dark mb-1">Scan / Upload Stiker QRIS</div>
+            <div class="text-secondary small">Tekan untuk mengambil foto atau pilih gambar</div>
         </div>
 
-        <!-- Bounding Box Image Preview -->
-        <div class="text-center mt-3">
-            <img id="visImage" src="" class="img-fluid rounded-3 border border-secondary" style="max-height: 280px; width: 100%; object-fit: contain;">
+        <!-- Loading Box -->
+        <div id="loadingBox" class="loading-box d-none">
+            <div class="spinner-custom"></div>
+            <div class="fw-semibold text-dark mt-3" style="font-size: 0.9rem;">Memeriksa Keaslian QRIS...</div>
+            <div class="text-secondary small mt-1">Dual YOLO26 & TrOCR OCR Processing</div>
         </div>
 
-        <!-- Detailed Comparison -->
-        <div class="result-card">
-            <div class="fw-bold text-white mb-2" style="font-size: 0.9rem;">Rincian Perbandingan Identitas:</div>
-            
-            <div class="info-row">
-                <span class="text-secondary">Nama Fisik Toko:</span>
-                <strong id="physName" class="text-warning text-end ms-2">-</strong>
+        <!-- Verification Result Screen -->
+        <div id="resultContent" class="d-none">
+
+            <!-- Center Status Icon & Headline -->
+            <div class="status-center">
+                <div id="statusIcon" class="status-circle status-circle-danger">
+                    <span>⚠</span>
+                </div>
+                <div id="statusTitle" class="status-headline">Stiker QRIS Ditimpa!</div>
+                <div id="statusNote" class="status-subnote status-subnote-danger">
+                    Identitas fisik toko tidak sesuai dengan rekening penerima digital.
+                </div>
             </div>
-            <div class="info-row">
-                <span class="text-secondary">Nama Digital QR:</span>
-                <strong id="digName" class="text-info text-end ms-2">-</strong>
+
+            <!-- Visual Detection Box -->
+            <div class="vis-preview-box">
+                <img id="visImage" src="" alt="Visual Deteksi YOLO">
             </div>
-            <div class="info-row">
-                <span class="text-secondary">NMID Fisik:</span>
-                <span id="physNmid" class="text-white font-monospace">-</span>
+
+            <!-- Receipt Key-Value Rows -->
+            <div class="receipt-card">
+                <div class="receipt-row">
+                    <span class="receipt-label">Nama Merchant Fisik</span>
+                    <span id="valPhysName" class="receipt-val val-danger">AKSUY SPAKBOR CAR PARTS</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Nama Merchant Digital</span>
+                    <span id="valDigName" class="receipt-val text-primary">NASI GORENG AA OJOS</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">NMID Fisik</span>
+                    <span id="valPhysNmid" class="receipt-val font-monospace">ID1026482737701</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">NMID Digital</span>
+                    <span id="valDigNmid" class="receipt-val font-monospace">ID1025399791611</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Acquirer Bank</span>
+                    <span id="valAcquirer" class="receipt-val">93600915 (DANA)</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Terminal ID</span>
+                    <span id="valTid" class="receipt-val">A01</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Reputasi SQLite</span>
+                    <span id="valReputation" class="receipt-val text-dark">5.0 / 5.0 (0 Laporan)</span>
+                </div>
             </div>
-            <div class="info-row">
-                <span class="text-secondary">NMID Digital:</span>
-                <span id="digNmid" class="text-white font-monospace">-</span>
-            </div>
-            <div class="info-row">
-                <span class="text-secondary">Acquirer / Bank:</span>
-                <span id="digAcquirer" class="text-white">-</span>
-            </div>
-            <div class="info-row">
-                <span class="text-secondary">Terminal ID (TID):</span>
-                <span id="digTid" class="text-white">-</span>
-            </div>
+
+            <!-- Action Buttons -->
+            <button id="btnCancel" class="btn-cancel-action" onclick="cancelTransaction()">
+                Batalkan Pembayaran
+            </button>
+
+            <button class="btn-secondary-action" onclick="resetScanner()">
+                Scan Stiker Lain
+            </button>
+
         </div>
 
-        <!-- SQLite Merchant Reputation -->
-        <div class="result-card" id="repCard">
-            <div class="fw-bold text-white mb-2" style="font-size: 0.9rem;">Reputasi Merchant (SQLite):</div>
-            <div class="info-row">
-                <span class="text-secondary">Rating Merchant:</span>
-                <span id="repRating" class="fw-bold text-warning">-</span>
-            </div>
-            <div class="info-row">
-                <span class="text-secondary">Total Laporan:</span>
-                <span id="repReports" class="fw-bold text-danger">-</span>
-            </div>
-            <div class="info-row">
-                <span class="text-secondary">QRIS Ditimpa:</span>
-                <span id="repReplacement" class="fw-bold text-danger">0 Laporan</span>
-            </div>
-            <div class="info-row">
-                <span class="text-secondary">Merchant Mismatch:</span>
-                <span id="repMismatch" class="fw-bold text-info">0 Laporan</span>
-            </div>
-        </div>
-
-        <!-- Cancel Transaction Button if High Risk -->
-        <button id="btnCancelPay" class="btn-cancel d-none" onclick="cancelPayment()">
-            [ ❌ BATALKAN PEMBAYARAN ]
-        </button>
     </div>
 </div>
 
 <script>
-async function processFile(event) {
+async function processQrImage(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    document.getElementById('loading').classList.remove('d-none');
-    document.getElementById('resultArea').classList.add('d-none');
+    document.getElementById('uploadBox').classList.add('d-none');
+    document.getElementById('loadingBox').classList.remove('d-none');
+    document.getElementById('resultContent').classList.add('d-none');
 
     const formData = new FormData();
     formData.append('file', file);
@@ -230,66 +354,67 @@ async function processFile(event) {
     try {
         const response = await fetch('/api/scan', { method: 'POST', body: formData });
         const data = await response.json();
-        
-        document.getElementById('loading').classList.add('d-none');
-        document.getElementById('resultArea').classList.remove('d-none');
 
-        // Image Preview
+        document.getElementById('loadingBox').classList.add('d-none');
+        document.getElementById('resultContent').classList.remove('d-none');
+
+        // Bounding Box Image
         document.getElementById('visImage').src = data.visualization_url;
 
-        // Explanation text
-        document.getElementById('explanationText').textContent = data.explanation;
+        // Key Value Data
+        document.getElementById('valPhysName').textContent = data.physical_merchant || 'Tidak terbaca';
+        document.getElementById('valDigName').textContent = data.digital_merchant || 'Tidak ditemukan';
+        document.getElementById('valPhysNmid').textContent = data.physical_nmid || 'Tidak terbaca';
+        document.getElementById('valDigNmid').textContent = data.digital_nmid || 'Tidak ditemukan';
+        document.getElementById('valAcquirer').textContent = data.digital_acquirer || 'Tidak ditemukan';
+        document.getElementById('valTid').textContent = data.digital_tid || 'Tidak ditemukan';
 
-        // Detailed Fields
-        document.getElementById('physName').textContent = data.physical_merchant || 'Tidak terbaca';
-        document.getElementById('digName').textContent = data.digital_merchant || 'Tidak ditemukan';
-        document.getElementById('physNmid').textContent = data.physical_nmid || 'Tidak terbaca';
-        document.getElementById('digNmid').textContent = data.digital_nmid || 'Tidak ditemukan';
-        document.getElementById('digAcquirer').textContent = data.digital_acquirer || 'Tidak ditemukan';
-        document.getElementById('digTid').textContent = data.digital_tid || 'Tidak ditemukan';
-
-        // Status Badge & Cancel Button
-        const badge = document.getElementById('statusBadge');
-        const btnCancel = document.getElementById('btnCancelPay');
-        const expCard = document.getElementById('explanationCard');
-
-        if (data.risk_level === 'HIGH_RISK' || data.is_mismatch) {
-            badge.className = 'status-danger';
-            badge.innerHTML = '⚠️ BAHAYA! STIKER QRIS DITIMPA';
-            expCard.style.borderColor = '#f85149';
-            btnCancel.classList.remove('d-none');
-        } else {
-            badge.className = 'status-safe';
-            badge.innerHTML = '✅ AMAN! IDENTITAS SESUAI';
-            expCard.style.borderColor = '#2ea043';
-            btnCancel.classList.add('d-none');
-        }
-
-        // Reputation Detail
+        // Reputation Row
         const rep = data.reputation;
         if (rep) {
-            document.getElementById('repRating').textContent = rep.rating.toFixed(1) + ' / 5.0';
-            document.getElementById('repReports').textContent = rep.total_reports + ' Laporan (' + rep.verified_reports + ' Terverifikasi)';
-            
-            const bc = rep.breakdown_categories || {};
-            document.getElementById('repReplacement').textContent = (bc.qris_replacement || 0) + ' Laporan';
-            document.getElementById('repMismatch').textContent = (bc.merchant_mismatch || 0) + ' Laporan';
+            document.getElementById('valReputation').textContent = `${rep.rating.toFixed(1)} / 5.0 (${rep.total_reports} Laporan)`;
         } else {
-            document.getElementById('repRating').textContent = '5.0 / 5.0';
-            document.getElementById('repReports').textContent = '0 Laporan';
-            document.getElementById('repReplacement').textContent = '0 Laporan';
-            document.getElementById('repMismatch').textContent = '0 Laporan';
+            document.getElementById('valReputation').textContent = '5.0 / 5.0 (0 Laporan)';
+        }
+
+        // Status Styling
+        const iconBox = document.getElementById('statusIcon');
+        const titleBox = document.getElementById('statusTitle');
+        const noteBox = document.getElementById('statusNote');
+        const btnCancel = document.getElementById('btnCancel');
+
+        if (data.is_mismatch || data.risk_level === 'HIGH_RISK') {
+            iconBox.className = 'status-circle status-circle-danger';
+            iconBox.innerHTML = '<span>⚠</span>';
+            titleBox.textContent = 'Stiker QRIS Ditimpa!';
+            noteBox.className = 'status-subnote status-subnote-danger';
+            noteBox.textContent = data.explanation || 'Identitas stiker toko tidak sesuai dengan rekening penerima digital.';
+            btnCancel.style.display = 'block';
+        } else {
+            iconBox.className = 'status-circle status-circle-safe';
+            iconBox.innerHTML = '<span>✓</span>';
+            titleBox.textContent = 'Verifikasi Berhasil';
+            noteBox.className = 'status-subnote';
+            noteBox.textContent = 'Identitas stiker fisik 100% cocok dengan penerima QR Code.';
+            btnCancel.style.display = 'none';
         }
 
     } catch (err) {
         console.error(err);
-        alert('Gagal memproses gambar QRIS.');
-        document.getElementById('loading').classList.add('d-none');
+        alert('Terjadi kesalahan saat memproses gambar QRIS.');
+        resetScanner();
     }
 }
 
+function resetScanner() {
+    document.getElementById('fileInput').value = '';
+    document.getElementById('uploadBox').classList.remove('d-none');
+    document.getElementById('loadingBox').classList.add('d-none');
+    document.getElementById('resultContent').classList.add('d-none');
+}
+
 function cancelPayment() {
-    alert('❌ TRANSACTION CANCELLED!\n\nPembayaran berhasil dibatalkan oleh pengguna. Anda terhindar dari potensi penipuan QRIS ditimpa.');
+    alert('❌ TRANSAKSI DIBATALKAN\n\nAnda berhasil membatalkan pembayaran. Terhindar dari potensi penipuan stiker QRIS ditimpa.');
 }
 </script>
 </body>
