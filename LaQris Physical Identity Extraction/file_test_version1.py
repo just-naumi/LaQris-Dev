@@ -685,11 +685,9 @@ def periksa_keaslian_qris_v4(nama_file_gambar):
 if __name__ == "__main__":
     # Array daftar gambar yang bisa Anda tambah / kurangi dengan mudah
     daftar_foto_rill = [
-        "qris_test1.png",
-        "qris_test2.jpeg",
-        "qris_test3.jpeg",
-        "qris_test4.png",
-        "qris_test5.png"
+        "qris_safe1.png",
+        "qris_danger1.png",
+        "qris_danger2.png"
     ]
     
     print("\n>>> MENJALANKAN PENGUJIAN FOTO AKTUAL DENGAN 12 LABEL ROBOFLOW <<<")
