@@ -1,16 +1,12 @@
 # ==============================================================================
-# FILE: file_test_version4.py
-# FUNGSI: TrustQR Identity Verification Engine V4 (Benchmarking Case Test Suite)
-# ARSITEKTUR & PENGUJIAN SKENARIO:
-# 1. Real Image Pipeline (qris_test1 s/d qris_test5)
-# 2. Synthetic Scenario Test Suite (Skenario Positif Asli & Negatif Penipuan):
-#    - [POSITIF 1] Exact Match (Nama & NMID 100% Sama)
-#    - [POSITIF 2] Normalized Match (Perbedaan sebutan PT/CV/Toko)
-#    - [POSITIF 3] Fuzzy Match (Toleransi Typo Karakter OCR)
-#    - [NEGATIF 1] Beda NMID 2-3 Digit (Stiker Ditimpa / QR Fake Account)
-#    - [NEGATIF 2] Nama Merchant Berbeda Total (Identity Theft / Penukaran QRIS)
-#    - [NEGATIF 3] Multi-Attribute Mismatch (Beda NMID + Beda Acquirer Bank)
-# GAYA KODE: Dasar Pemrograman / Pemula (Menggunakan Fungsi & Loop Terbuka)
+# FILE: file_test_version1.py
+# FUNGSI: TrustQR Final Identity Extraction Engine (Roboflow 12-Label Compatible)
+# ARSITEKTUR SIKLUS:
+# 1. EMVCo Digital QR Decoder (Tag 59 Merchant, Tag 51 NMID, Tag 26/9360 Acquirer, Tag 62 TID)
+# 2. YOLO26 Bounding Box Detection (Menggunakan 12 Label Roboflow Resmi)
+# 3. TrOCR Physical Text Extraction (HuggingFace TrOCR model)
+# 4. Gambar Full Image dengan Bounding Box & Label Roboflow Resmi (Tanpa Crop)
+# 5. Layer 1-4 Multi-Attribute Evidence Fusion & Trust Score Calculation
 # ==============================================================================
 
 import os
@@ -29,15 +25,15 @@ from transformers import TrOCRProcessor, VisionEncoderDecoderModel, ViTImageProc
 # Mematikan pesan peringatan agar tampilan log console tetap bersih
 warnings.filterwarnings("ignore")
 
-# Cek apakah komputer memiliki GPU Nvidia (CUDA) atau CPU biasa
+# Cek ketersediaan GPU Nvidia (CUDA)
 PERANGKAT = "cuda" if torch.cuda.is_available() else "cpu"
 
-# Variabel penyimpan model AI (dibuat None dulu, diisi saat pertama kali dijalankan)
+# Variabel memori model AI (dibuat None dulu)
 MODEL_YOLO_SAYA = None
 PROCESSOR_TROCR_SAYA = None
 MODEL_TROCR_SAYA = None
 
-# Kamus sederhana untuk mengubah kode NNS Acquirer menjadi nama institusi bank
+# Kamus kode NNS Acquirer ke nama institusi bank/fintech
 DAFTAR_NAMA_BANK = {
     "93600014": "BCA",
     "93600009": "BNI",
@@ -49,16 +45,41 @@ DAFTAR_NAMA_BANK = {
     "93600811": "OVO"
 }
 
-# Daftar kata sebutan badan usaha / toko yang akan dibersihkan di Normalization Layer
+# Daftar kata sebutan badan usaha / toko untuk normalisasi
 SEBUTAN_TOKO = [
     "PT", "CV", "TOKO", "UD", "WARUNG", "KIOS", "TB", "PD", 
     "DISTRIBUTOR", "RESTORAN", "RM", "SHOP", "STORE", "AGEN", "DEPOT"
 ]
 
+# Pemetaan alias Roboflow ke kunci internal
+PEMETAAN_LABEL_ROBOFLOW = {
+    "nama merchant": "nama_merchant",
+    "national merchant id": "nmid",
+    "dicetak oleh": "acquirer",
+    "terminal id": "tid",
+    "qr code": "qrcode"
+}
+
+# Warna visualisasi berdasar indeks label (BGR)
+DAFTAR_WARNA_LABEL = [
+    (255, 99, 71),   # 0: Cara Pakai QRIS - Tomato
+    (255, 165, 0),  # 1: Cek Aplikasi Penyelenggara - Orange
+    (30, 144, 255), # 2: Dicetak Oleh - DodgerBlue
+    (147, 112, 219),# 3: Logo dan deskripsi QRIS - MediumPurple
+    (50, 205, 50),  # 4: Logo GPN - LimeGreen
+    (0, 215, 255),  # 5: Nama Merchant - Gold
+    (238, 130, 238),# 6: National Merchant ID - Violet
+    (0, 0, 255),    # 7: QR Code - Red
+    (255, 105, 180),# 8: QrisOCR - HotPink
+    (128, 128, 0),  # 9: Slogan - Olive
+    (0, 255, 255),  # 10: Terminal ID - Cyan
+    (128, 0, 128)   # 11: Versi Cetak - Purple
+]
+
 
 def siapkan_model_yolo_dan_trocr():
     """
-    Memuat model AI (YOLO26 & HuggingFace TrOCR) ke dalam memori (hanya 1x load).
+    Memuat model AI (YOLO26 & HuggingFace TrOCR) ke dalam memori.
     """
     global MODEL_YOLO_SAYA, PROCESSOR_TROCR_SAYA, MODEL_TROCR_SAYA
 
@@ -70,29 +91,29 @@ def siapkan_model_yolo_dan_trocr():
         lokasi_model_yolo = os.path.join(folder_script, "Train OCR Model", "yolo26s.pt")
 
     if MODEL_YOLO_SAYA is None:
-        print("[LOG] Lagi muat model YOLO26 dari:", os.path.basename(lokasi_model_yolo))
+        print("[LOG] Memuat model YOLO26 dari:", os.path.basename(lokasi_model_yolo))
         MODEL_YOLO_SAYA = YOLO(lokasi_model_yolo)
-        print("[OK] Model YOLO26 berhasil masuk ke memori.")
+        print("[OK] Model YOLO26 berhasil dimuat ke memori.")
 
     # 2. Muat model HuggingFace TrOCR
     if PROCESSOR_TROCR_SAYA is None or MODEL_TROCR_SAYA is None:
         nama_trocr = "microsoft/trocr-base-printed"
-        print(f"[LOG] Lagi muat model TrOCR ({nama_trocr}) di {PERANGKAT}...")
+        print(f"[LOG] Memuat model TrOCR ({nama_trocr}) pada perangkat {PERANGKAT}...")
         
         try:
             tokenizer = RobertaTokenizer.from_pretrained(nama_trocr)
             image_processor = ViTImageProcessor.from_pretrained(nama_trocr)
             PROCESSOR_TROCR_SAYA = TrOCRProcessor(image_processor=image_processor, tokenizer=tokenizer)
             MODEL_TROCR_SAYA = VisionEncoderDecoderModel.from_pretrained(nama_trocr).to(PERANGKAT)
-            print("[OK] Model TrOCR berhasil masuk ke memori.")
+            print("[OK] Model TrOCR berhasil dimuat ke memori.")
         except Exception as error:
-            print(f"[WARNING] Gagal muat {nama_trocr}, nyoba model alternatif: {error}")
+            print(f"[WARNING] Gagal muat {nama_trocr}, mencoba model alternatif: {error}")
             nama_trocr = "microsoft/trocr-base-stage1"
             tokenizer = RobertaTokenizer.from_pretrained(nama_trocr)
             image_processor = ViTImageProcessor.from_pretrained(nama_trocr)
             PROCESSOR_TROCR_SAYA = TrOCRProcessor(image_processor=image_processor, tokenizer=tokenizer)
             MODEL_TROCR_SAYA = VisionEncoderDecoderModel.from_pretrained(nama_trocr).to(PERANGKAT)
-            print("[OK] Model TrOCR alternatif berhasil masuk ke memori.")
+            print("[OK] Model TrOCR alternatif berhasil dimuat ke memori.")
 
     return MODEL_YOLO_SAYA, PROCESSOR_TROCR_SAYA, MODEL_TROCR_SAYA
 
@@ -101,33 +122,16 @@ def siapkan_model_yolo_dan_trocr():
 # LAYER 1: ENTITY CANONICALIZATION & NORMALIZATION LAYER
 # ==============================================================================
 def normalisasi_teks_identitas(teks_mentah):
-    """
-    Entity Canonicalization: Membersihkan string nama dari sebutan badan usaha (PT, CV, Toko, Warung),
-    tanda baca, dan spasi berlebih untuk mengekstrak entitas bisnis inti.
-    Contoh: 'TOKO BERKAH JAYA.' -> 'BERKAH JAYA' | 'CV BERKAH JAYA' -> 'BERKAH JAYA'
-    """
     if teks_mentah is None or teks_mentah == "" or teks_mentah == "Tidak terbaca":
         return ""
 
-    # 1. Ubah ke huruf kapital (UPPERCASE)
     teks_kapital = teks_mentah.upper()
-
-    # 2. Hapus tanda baca dan simbol (hanya sisakan huruf dan angka)
     teks_bersih = re.sub(r'[^A-Z0-9\s]', ' ', teks_kapital)
-
-    # 3. Pecah menjadi kata-kata (tokenization)
     daftar_kata = teks_bersih.split()
 
-    # 4. Hapus sebutan toko (stopwords stripping)
-    daftar_kata_murni = []
-    for kata in daftar_kata:
-        if kata not in SEBUTAN_TOKO:
-            daftar_kata_murni.append(kata)
-
-    # 5. Gabungkan kembali kata yang tersisa
+    daftar_kata_murni = [kata for kata in daftar_kata if kata not in SEBUTAN_TOKO]
     hasil_normalisasi = " ".join(daftar_kata_murni).strip()
     
-    # Jika semua kata terhapus (misal hanya berisi 'TOKO'), kembalikan teks bersih asli
     if hasil_normalisasi == "":
         return " ".join(daftar_kata).strip()
         
@@ -135,18 +139,9 @@ def normalisasi_teks_identitas(teks_mentah):
 
 
 # ==============================================================================
-# LAYER 2: MULTI-ATTRIBUTE FEATURE BUILDER (SCORE GENERATOR)
+# LAYER 2: MULTI-ATTRIBUTE FEATURE BUILDER
 # ==============================================================================
 def hitung_skor_fitur_identitas(digital_entity, physical_entity):
-    """
-    Menghitung skor bukti (evidence scores) untuk masing-masing 4 atribut utama:
-    - S_name : Skor kemiripan nama merchant (Exact/Normalized/Fuzzy)
-    - S_nmid : Skor kebenaran NMID (100 jika sama persis, 0 jika beda)
-    - S_acq  : Skor kebenaran Acquirer/Bank (100 jika sama, 0 jika beda)
-    - S_tid  : Skor kebenaran Terminal ID (100 jika sama/netral, 0 jika beda)
-    """
-
-    # 1. Hitung S_name (Skor Nama Merchant)
     raw_dig = digital_entity.get("merchant_name", "")
     raw_phys = physical_entity.get("merchant_name", "")
     
@@ -165,7 +160,6 @@ def hitung_skor_fitur_identitas(digital_entity, physical_entity):
         s_name = max(rasio_mentah, rasio_norm)
         level_name = "LEVEL_3_FUZZY_MATCH" if s_name >= 65.0 else "MISMATCH"
 
-    # 2. Hitung S_nmid (Skor NMID - Unique Identifier)
     nmid_dig = digital_entity.get("nmid", "")
     nmid_phys = physical_entity.get("nmid", "")
     
@@ -174,7 +168,6 @@ def hitung_skor_fitur_identitas(digital_entity, physical_entity):
     else:
         s_nmid = 0.0
 
-    # 3. Hitung S_acq (Skor Acquirer Bank)
     acq_dig = digital_entity.get("acquirer", "")
     acq_phys = physical_entity.get("acquirer", "")
     bank_dig = DAFTAR_NAMA_BANK.get(acq_dig, "").lower()
@@ -190,7 +183,6 @@ def hitung_skor_fitur_identitas(digital_entity, physical_entity):
     else:
         s_acq = 100.0  # Netral jika tidak terbaca
 
-    # 4. Hitung S_tid (Skor Terminal ID)
     tid_dig = digital_entity.get("tid", "")
     tid_phys = physical_entity.get("tid", "")
 
@@ -200,7 +192,7 @@ def hitung_skor_fitur_identitas(digital_entity, physical_entity):
         else:
             s_tid = 0.0
     else:
-        s_tid = 100.0  # Netral jika TID opsional pada QRIS statis
+        s_tid = 100.0  # Netral
 
     return {
         "S_name": round(s_name, 1),
@@ -214,42 +206,21 @@ def hitung_skor_fitur_identitas(digital_entity, physical_entity):
 
 
 # ==============================================================================
-# LAYER 3 & 4: PURE WEIGHTED EVIDENCE FUSION & SEPARATED SCAN QUALITY METRIC
+# LAYER 3 & 4: EVIDENCE FUSION & SCAN QUALITY
 # ==============================================================================
 def hitung_pure_evidence_trust_score(scores, ocr_conf_dict):
-    """
-    Layer 3 - Pure Weighted Evidence Fusion (Murni Keaslian Merchant):
-    TrustScore = (w1 * S_name) + (w2 * S_nmid) + (w3 * S_acq) + (w4 * S_tid)
-    dengan bobot: w1=0.25 (Nama), w2=0.50 (NMID), w3=0.15 (Acquirer), w4=0.10 (TID)
-    
-    Layer 4 - Separated Input Scan Quality Metric (Terpisah dari Skor Keaslian):
-    Mengukur kualitas visual pencahayaan & jarak foto berdasarkan deteksi YOLO26.
-    """
-    w1 = 0.25  # Bobot Nama Merchant
-    w2 = 0.50  # Bobot NMID (Unique Identifier utama)
-    w3 = 0.15  # Bobot Acquirer Bank
-    w4 = 0.10  # Bobot Terminal ID (TID)
+    w1, w2, w3, w4 = 0.25, 0.50, 0.15, 0.10
 
     s_name = scores["S_name"]
     s_nmid = scores["S_nmid"]
     s_acq = scores["S_acq"]
     s_tid = scores["S_tid"]
 
-    # Skor Keaslian Murni (Pure Trust Score) - Tanpa Pengali Kualitas Foto
     trust_score = (w1 * s_name) + (w2 * s_nmid) + (w3 * s_acq) + (w4 * s_tid)
 
-    # Hitung Rata-Rata Kualitas Visual Deteksi Bounding Box YOLO26
-    conf_values = []
-    for key, val in ocr_conf_dict.items():
-        if val > 0:
-            conf_values.append(val)
-            
-    if len(conf_values) > 0:
-        avg_conf_percent = sum(conf_values) / len(conf_values)
-    else:
-        avg_conf_percent = 70.0
+    conf_values = [val for val in ocr_conf_dict.values() if val > 0]
+    avg_conf_percent = sum(conf_values) / len(conf_values) if len(conf_values) > 0 else 70.0
 
-    # Penentuan Status Kualitas Scan Foto
     if avg_conf_percent >= 70.0:
         status_kualitas = "BAGUS (HIGH_QUALITY)"
         saran_kualitas = "Kualitas visual foto sangat jelas dan terdeteksi sempurna."
@@ -258,7 +229,7 @@ def hitung_pure_evidence_trust_score(scores, ocr_conf_dict):
         saran_kualitas = "Kualitas foto cukup baik, tulisan berhasil diekstrak."
     else:
         status_kualitas = "KURANG OPTIMAL (LOW_QUALITY)"
-        saran_kualitas = "Kualitas visual deteksi kurang optimal. Disarankan memfoto lebih dekat atau dengan pencahayaan terang."
+        saran_kualitas = "Kualitas visual deteksi kurang optimal. Disarankan memfoto lebih dekat."
 
     return {
         "trust_score": round(trust_score, 1),
@@ -272,32 +243,28 @@ def hitung_pure_evidence_trust_score(scores, ocr_conf_dict):
 
 
 def evaluasi_skenario_entitas(digital_entity, physical_entity, ocr_conf_dict, nama_skenario=""):
-    """
-    Fungsi penilai skenario untuk menghitung skor keaslian murni dan menentukan verdict.
-    """
     scores = hitung_skor_fitur_identitas(digital_entity, physical_entity)
     fusion_result = hitung_pure_evidence_trust_score(scores, ocr_conf_dict)
     
     trust_score = fusion_result["trust_score"]
     scan_qual = fusion_result["scan_quality"]
 
-    # Strict Threshold Verdict Engine (Anti-Fraud Safety)
     if scores["S_nmid"] == 100.0 and trust_score >= 85.0 and scores["S_name"] >= 70.0:
         status_verdict = "SANGAT AMAN (100% TERVERIFIKASI ASLI)"
         penjelasan_ringkas = f"Skor keaslian identitas tinggi ({trust_score:.1f}%). Identitas fisik dan digital terverifikasi asli."
     elif scores["S_nmid"] == 100.0 and trust_score >= 65.0 and scores["S_name"] >= 50.0:
         status_verdict = "AMAN DENGAN CATATAN (PERHATIAN)"
-        penjelasan_ringkas = f"NMID valid, namun skor keaslian berada di tingkat sedang ({trust_score:.1f}%). Ada perbedaan minor pada penulisan nama/acquirer."
+        penjelasan_ringkas = f"NMID valid, namun skor keaslian berada di tingkat sedang ({trust_score:.1f}%). Ada perbedaan minor."
     else:
         status_verdict = "MENCURIGAKAN / BAHAYA (SUSPICIOUS / QRIS PALSU)"
         if scores["S_nmid"] == 0.0:
             penjelasan_ringkas = "NMID Digital dan NMID Fisik tidak cocok! Terindikasi stiker QRIS ditimpa penipu."
         elif scores["S_name"] < 50.0:
-            penjelasan_ringkas = f"Nama merchant fisik dan digital sangat jauh berbeda ({scores['S_name']}%)! Terindikasi pencurian identitas / QRIS toko lain."
+            penjelasan_ringkas = f"Nama merchant fisik dan digital sangat jauh berbeda ({scores['S_name']}%)! Terindikasi pencurian identitas."
         else:
-            penjelasan_ringkas = f"Skor keaslian identitas sangat rendah ({trust_score:.1f}%). Nama merchant/acquirer fisik tidak sesuai dengan data digital."
+            penjelasan_ringkas = f"Skor keaslian identitas sangat rendah ({trust_score:.1f}%)."
 
-    laporan_json = {
+    return {
         "skenario": nama_skenario,
         "verdict_status": status_verdict,
         "trust_score": trust_score,
@@ -333,75 +300,9 @@ def evaluasi_skenario_entitas(digital_entity, physical_entity, ocr_conf_dict, na
             }
         }
     }
-    return laporan_json
-
-
-def jalankan_suite_pengujian_skenario_positif_dan_negatif():
-    """
-    Fungsi Suite Pengujian Skenario Positif (Asli) vs Skenario Negatif (Penipuan / Mismatch).
-    """
-    print("\n" + "="*80)
-    print("SUITE PENGUJIAN BENCHMARK SKENARIO POSITIF (ASLI) VS NEGATIF (PENIPUAN / FRAUD)")
-    print("="*80)
-
-    daftar_skenario_uji = [
-        # --- SKENARIO POSITIF (ASLI) ---
-        {
-            "kategori": "[POSITIF 1] Exact Match (Nama & NMID 100% Sama Persis)",
-            "digital": {"merchant_name": "ES COKLAT AJA 26 QR", "nmid": "ID1023286077558", "acquirer": "93600014", "tid": "A01"},
-            "physical": {"merchant_name": "ES COKLAT AJA 26 QR", "nmid": "ID1023286077558", "acquirer": "93600014", "tid": "A01"},
-            "ocr_conf": {"nama_merchant": 90.0, "nmid": 88.0, "acquirer": 85.0}
-        },
-        {
-            "kategori": "[POSITIF 2] Entity Canonical Match (Perbedaan Sebutan CV vs TOKO)",
-            "digital": {"merchant_name": "CV BERKAH JAYA", "nmid": "ID1024320253288", "acquirer": "93600915", "tid": "A01"},
-            "physical": {"merchant_name": "TOKO BERKAH JAYA", "nmid": "ID1024320253288", "acquirer": "93600915", "tid": "A01"},
-            "ocr_conf": {"nama_merchant": 88.0, "nmid": 85.0, "acquirer": 82.0}
-        },
-        {
-            "kategori": "[POSITIF 3] Minor OCR Typo Tolerance (Fuzzy Match U vs 0)",
-            "digital": {"merchant_name": "PUSKESMAS DLANGGU", "nmid": "ID2023269910915", "acquirer": "93600114", "tid": "A01"},
-            "physical": {"merchant_name": "PUSKESMAS DLANGG0", "nmid": "ID2023269910915", "acquirer": "93600114", "tid": "A01"},
-            "ocr_conf": {"nama_merchant": 85.0, "nmid": 80.0, "acquirer": 78.0}
-        },
-
-        # --- SKENARIO NEGATIF (PENIPUAN / FRAUD) ---
-        {
-            "kategori": "[NEGATIF 1] Beda NMID 3 Digit (Modus Stiker Ditimpa QR Fake Account)",
-            "digital": {"merchant_name": "082 PUSK PUNGGING", "nmid": "ID2023000885934", "acquirer": "93600114", "tid": "A01"},
-            "physical": {"merchant_name": "082 PUSK PUNGGING", "nmid": "ID2023269910873", "acquirer": "93600114", "tid": "A01"},
-            "ocr_conf": {"nama_merchant": 85.0, "nmid": 82.0, "acquirer": 80.0}
-        },
-        {
-            "kategori": "[NEGATIF 2] Nama Merchant Berbeda Total (Identity Theft / Penukaran QRIS)",
-            "digital": {"merchant_name": "WARUNG MAKAN BU SITI", "nmid": "ID1023999999999", "acquirer": "93600014", "tid": "A01"},
-            "physical": {"merchant_name": "BUDI PRIBADI PERCETAKAN", "nmid": "ID1023999999999", "acquirer": "93600014", "tid": "A01"},
-            "ocr_conf": {"nama_merchant": 90.0, "nmid": 90.0, "acquirer": 85.0}
-        },
-        {
-            "kategori": "[NEGATIF 3] Multi-Attribute Mismatch (Beda NMID + Beda Bank Acquirer)",
-            "digital": {"merchant_name": "TOKO SEMBAKO JAYA", "nmid": "ID1023888888888", "acquirer": "93600014", "tid": "A01"},
-            "physical": {"merchant_name": "TOKO SEMBAKO JAYA", "nmid": "ID1023888888877", "acquirer": "93600914", "tid": "A01"},
-            "ocr_conf": {"nama_merchant": 85.0, "nmid": 80.0, "acquirer": 75.0}
-        }
-    ]
-
-    for skenario in daftar_skenario_uji:
-        hasil_eval = evaluasi_skenario_entitas(
-            skenario["digital"],
-            skenario["physical"],
-            skenario["ocr_conf"],
-            nama_skenario=skenario["kategori"]
-        )
-        print(f"\n--- SKENARIO: {skenario['kategori']} ---")
-        print(json.dumps(hasil_eval, indent=2))
-        print("-" * 80)
 
 
 def scan_qr_code_digital(gambar_input):
-    """
-    Scan dan mengambil teks mentah QR Code menggunakan pyzbar.
-    """
     hasil_scan = pyzbar.decode(gambar_input)
     if len(hasil_scan) == 0:
         return None
@@ -409,12 +310,8 @@ def scan_qr_code_digital(gambar_input):
 
 
 def ambil_data_dari_qr_code(teks_qr_mentah):
-    """
-    Membedah susunan EMVCo QRIS untuk mengambil Nama Toko, NMID (Tag 51-02), Acquirer (Tag 26/9360), dan TID (Tag 62-07).
-    """
     print("\n--- [LANGKAH 1] MEMBEDAH ISI TEKS DIGITAL QR CODE ---")
     print(f"  -> RAW STRING QR CODE : '{teks_qr_mentah}'")
-    print("  -> RINCIAN STRUKTUR TAG EMVCo:")
     
     nama_toko_digital = "Tidak ditemukan"
     tid_digital = "Tidak ditemukan"
@@ -424,7 +321,6 @@ def ambil_data_dari_qr_code(teks_qr_mentah):
     indeks = 0
     total_karakter = len(teks_qr_mentah)
     
-    # Perulangan pembacaan TLV (Tag-Length-Value)
     while indeks < total_karakter:
         kode_tag = teks_qr_mentah[indeks : indeks + 2]
         panjang_teks = teks_qr_mentah[indeks + 2 : indeks + 4]
@@ -435,16 +331,11 @@ def ambil_data_dari_qr_code(teks_qr_mentah):
         ukuran_isi = int(panjang_teks)
         isi_teks = teks_qr_mentah[indeks + 4 : indeks + 4 + ukuran_isi]
         
-        # Tag 59: Nama Merchant
         if kode_tag == "59":
             nama_toko_digital = isi_teks
             print(f"     * Tag 59 (Nama Merchant) : '{nama_toko_digital}'")
-            
-        # Tag 60: Kota Merchant
         elif kode_tag == "60":
             print(f"     * Tag 60 (Kota Merchant) : '{isi_teks}'")
-
-        # Tag 51: Container Resmi QRIS Nasional (ID.CO.QRIS.WWW)
         elif kode_tag == "51":
             sub_indeks = 0
             while sub_indeks < len(isi_teks):
@@ -455,13 +346,10 @@ def ambil_data_dari_qr_code(teks_qr_mentah):
                 sub_panjang = int(sub_panjang_str)
                 sub_isi = isi_teks[sub_indeks + 4 : sub_indeks + 4 + sub_panjang]
                 
-                # Subtag 02 adalah NMID Resmi QRIS
                 if sub_tag == "02" and sub_isi.startswith("ID"):
                     nmid_digital = sub_isi
                     print(f"     * Tag 51-02 (NMID Resmi) : '{nmid_digital}'")
                 sub_indeks = sub_indeks + 4 + sub_panjang
-
-        # Tag 62: Info Tambahan (Terminal ID di sub-tag 07)
         elif kode_tag == "62":
             sub_indeks = 0
             while sub_indeks < len(isi_teks):
@@ -480,14 +368,12 @@ def ambil_data_dari_qr_code(teks_qr_mentah):
 
         indeks = indeks + 4 + ukuran_isi
 
-    # Fallback pencarian NMID jika Tag 51-02 tidak ditemukan
     if nmid_digital == "Tidak ditemukan":
         pencari_nmid = re.search(r'ID\d{13}', teks_qr_mentah) 
         if pencari_nmid:
             nmid_digital = pencari_nmid.group()
             print(f"     * Cadangan NMID Digital  : '{nmid_digital}'")
 
-    # Cari kode Acquirer (NNS 8 angka)
     pencari_acquirer = re.search(r'9360\d{4}', teks_qr_mentah)
     if pencari_acquirer:
         acquirer_digital = pencari_acquirer.group()
@@ -501,45 +387,93 @@ def ambil_data_dari_qr_code(teks_qr_mentah):
     return nama_toko_digital, nmid_digital, acquirer_digital, tid_digital
 
 
-def potong_gambar_pake_yolo(gambar_input, model_yolo, folder_output):
+def gambar_dan_simpan_visualisasi_penuh(gambar_input, hasil_deteksi, folder_output_vis, nama_file_asli):
     """
-    Memotong posisi komponen fisik stiker QRIS memakai YOLO26 dan menyimpan hasil crop ke folder terpisah.
+    Menggambar seluruh Bounding Box & Label resmi Roboflow langsung pada FOTO ASLI UTUH (tanpa crop).
     """
-    print("\n--- [LANGKAH 2] CARI DAN POTONG KOTAK TULISAN PAKAI YOLO26 ---")
+    if not os.path.exists(folder_output_vis):
+        os.makedirs(folder_output_vis, exist_ok=True)
+
+    gambar_visual = gambar_input.copy()
+    daftar_nama_label = hasil_deteksi.names
+
+    for box in hasil_deteksi.boxes:
+        id_label = int(box.cls[0].item())
+        nama_label_resmi = daftar_nama_label.get(id_label, f"Label_{id_label}")
+        conf_score = float(box.conf[0].item())
+
+        if conf_score < 0.10:
+            continue
+
+        koordinat = box.xyxy[0].tolist()
+        x1, y1, x2, y2 = int(koordinat[0]), int(koordinat[1]), int(koordinat[2]), int(koordinat[3])
+
+        # Pilih warna berdasarkan ID label
+        warna_bgr = DAFTAR_WARNA_LABEL[id_label % len(DAFTAR_WARNA_LABEL)]
+
+        # 1. Gambar Bounding Box
+        cv2.rectangle(gambar_visual, (x1, y1), (x2, y2), warna_bgr, 3)
+
+        # 2. Siapkan Teks Label Roboflow & Confidence
+        teks_label = f"{nama_label_resmi}: {conf_score * 100:.1f}%"
+        skala_font = 0.55
+        ketebalan_font = 2
+
+        (lebar_teks, tinggi_teks), baseline = cv2.getTextSize(teks_label, cv2.FONT_HERSHEY_SIMPLEX, skala_font, ketebalan_font)
+
+        # Kotak Latar Belakang Label Teks
+        y_label_top = max(y1 - tinggi_teks - 8, 0)
+        cv2.rectangle(gambar_visual, (x1, y_label_top), (x1 + lebar_teks + 8, y_label_top + tinggi_teks + baseline + 6), warna_bgr, -1)
+
+        # Teks Putih
+        cv2.putText(gambar_visual, teks_label, (x1 + 4, y_label_top + tinggi_teks + 2), cv2.FONT_HERSHEY_SIMPLEX, skala_font, (255, 255, 255), ketebalan_font)
+
+    path_simpan_vis = os.path.join(folder_output_vis, f"visualisasi_LABEL_{nama_file_asli}")
+    cv2.imwrite(path_simpan_vis, gambar_visual)
+    print(f"  [OK] Foto asli berlabel Roboflow disimpan ke: '{path_simpan_vis}'")
+
+
+def potong_gambar_pake_yolo(gambar_input, model_yolo, folder_output, folder_output_vis, nama_file_asli):
+    """
+    Mendeteksi objek memakai 12 Label Roboflow, menyimpan visualisasi gambar utuh, dan memotong area identitas.
+    """
+    print("\n--- [LANGKAH 2] DETEKSI 12 LABEL ROBOFLOW PAKAI YOLO26 ---")
     tinggi_foto, lebar_foto = gambar_input.shape[:2]
     
-    if not os.path.exists(folder_output):
-        os.makedirs(folder_output, exist_ok=True)
-    print(f"  -> Folder Penyimpanan Crop : '{folder_output}'")
+    os.makedirs(folder_output, exist_ok=True)
     
     hasil_deteksi = model_yolo.predict(gambar_input, conf=0.10, verbose=False)[0]
     daftar_nama_label = hasil_deteksi.names
     
+    # Simpan Visualisasi Gambar UTUH dengan Label Roboflow
+    gambar_dan_simpan_visualisasi_penuh(gambar_input, hasil_deteksi, folder_output_vis, nama_file_asli)
+
     kotak_terbaik = {}
     for box in hasil_deteksi.boxes:
         id_label = int(box.cls[0].item())
-        nama_label = daftar_nama_label[id_label]
+        nama_label_resmi = daftar_nama_label.get(id_label, f"Label_{id_label}")
         nilai_yakin = float(box.conf[0].item())
         
-        minimal_yakin = 0.10
-        if nilai_yakin >= minimal_yakin:
-            if nama_label not in kotak_terbaik or nilai_yakin > kotak_terbaik[nama_label]['conf']:
-                kotak_terbaik[nama_label] = {
+        # Petakan ke nama kunci internal jika cocok
+        kunci_internal = PEMETAAN_LABEL_ROBOFLOW.get(nama_label_resmi.lower(), nama_label_resmi.lower())
+        
+        if nilai_yakin >= 0.10:
+            if kunci_internal not in kotak_terbaik or nilai_yakin > kotak_terbaik[kunci_internal]['conf']:
+                kotak_terbaik[kunci_internal] = {
                     'box': box,
-                    'conf': nilai_yakin
+                    'conf': nilai_yakin,
+                    'label_resmi': nama_label_resmi
                 }
 
     hasil_potongan_foto = {}
     skor_confidence_visual = {}
 
-    for nama_label, data_kotak in kotak_terbaik.items():
+    for kunci_internal, data_kotak in kotak_terbaik.items():
         box = data_kotak['box']
+        nama_label_resmi = data_kotak['label_resmi']
         koordinat = box.xyxy[0].tolist()
         
-        x1 = int(koordinat[0])
-        y1 = int(koordinat[1])
-        x2 = int(koordinat[2])
-        y2 = int(koordinat[3])
+        x1, y1, x2, y2 = int(koordinat[0]), int(koordinat[1]), int(koordinat[2]), int(koordinat[3])
         
         margin_x = int((x2 - x1) * 0.05)
         margin_y = int((y2 - y1) * 0.05)
@@ -551,19 +485,19 @@ def potong_gambar_pake_yolo(gambar_input, model_yolo, folder_output):
 
         foto_potongan_mentah = gambar_input[posisi_y1:posisi_y2, posisi_x1:posisi_x2]
         
-        if nama_label == "qrcode":
+        if kunci_internal == "qrcode":
             foto_final = foto_potongan_mentah.copy()
-            print(f"  -> Ditemukan [{nama_label.upper()}] : Ukuran Asli ({foto_final.shape[1]}x{foto_final.shape[0]} px) - Conf: {data_kotak['conf']*100:.1f}%")
+            print(f"  -> Ditemukan Label Roboflow [{nama_label_resmi.upper()}] : {foto_final.shape[1]}x{foto_final.shape[0]} px - Conf: {data_kotak['conf']*100:.1f}%")
         else:
             foto_final = cv2.resize(foto_potongan_mentah, None, fx=1.5, fy=1.5, interpolation=cv2.INTER_CUBIC)
-            print(f"  -> Ditemukan [{nama_label.upper()}] : Crop & Zoom 1.5x ({foto_final.shape[1]}x{foto_final.shape[0]} px) - Conf: {data_kotak['conf']*100:.1f}%")
+            print(f"  -> Ditemukan Label Roboflow [{nama_label_resmi.upper()}] : Zoom 1.5x ({foto_final.shape[1]}x{foto_final.shape[0]} px) - Conf: {data_kotak['conf']*100:.1f}%")
 
-        nama_file_hasil = f"crop_zoom_{nama_label.upper()}.jpg"
+        nama_file_hasil = f"crop_zoom_{kunci_internal.upper()}.jpg"
         path_simpan_file = os.path.join(folder_output, nama_file_hasil)
         cv2.imwrite(path_simpan_file, foto_final)
         
-        hasil_potongan_foto[nama_label] = foto_final
-        skor_confidence_visual[nama_label] = round(data_kotak['conf'] * 100, 1)
+        hasil_potongan_foto[kunci_internal] = foto_final
+        skor_confidence_visual[kunci_internal] = round(data_kotak['conf'] * 100, 1)
 
     # Fallback jika Nama Merchant tidak terdeteksi
     if "nama_merchant" not in hasil_potongan_foto:
@@ -578,7 +512,7 @@ def potong_gambar_pake_yolo(gambar_input, model_yolo, folder_output):
         cv2.imwrite(path_simpan_merchant, potongan_merchant_zoom)
         print(f"  -> Cadangan [NAMA_MERCHANT] : Potong Area Header Merchant ({potongan_merchant_zoom.shape[1]}x{potongan_merchant_zoom.shape[0]} px)")
 
-    # Fallback jika Acquirer tidak terdeteksi
+    # Fallback jika Acquirer (Dicetak Oleh) tidak terdeteksi
     if "acquirer" not in hasil_potongan_foto:
         tinggi_potong_atas = int(tinggi_foto * 0.18)
         potongan_atas = gambar_input[0:tinggi_potong_atas, 0:lebar_foto]
@@ -588,15 +522,12 @@ def potong_gambar_pake_yolo(gambar_input, model_yolo, folder_output):
         
         path_simpan_acquirer = os.path.join(folder_output, "crop_zoom_ACQUIRER.jpg")
         cv2.imwrite(path_simpan_acquirer, potongan_atas_zoom)
-        print(f"  -> Cadangan [ACQUIRER]   : Potong Area Atas Foto ({potongan_atas_zoom.shape[1]}x{potongan_atas_zoom.shape[0]} px)")
+        print(f"  -> Cadangan [DICETAK OLEH / ACQUIRER] : Potong Area Atas Foto ({potongan_atas_zoom.shape[1]}x{potongan_atas_zoom.shape[0]} px)")
 
     return hasil_potongan_foto, skor_confidence_visual
 
 
 def baca_tulisan_pake_trocr(gambar_potongan, processor, model):
-    """
-    Membaca tulisan fisik memakai HuggingFace TrOCR.
-    """
     if gambar_potongan is None or gambar_potongan.size == 0:
         return ""
 
@@ -614,7 +545,7 @@ def baca_tulisan_pake_trocr(gambar_potongan, processor, model):
 
 def periksa_keaslian_qris_v4(nama_file_gambar):
     """
-    Fungsi utama TrustQR Engine V4 untuk foto aktual.
+    Fungsi utama TrustQR Engine untuk mengecek foto fisik QRIS.
     """
     folder_script = os.path.dirname(os.path.abspath(__file__))
     
@@ -625,8 +556,7 @@ def periksa_keaslian_qris_v4(nama_file_gambar):
 
     if not os.path.exists(path_foto):
         nama_tanpa_ext = os.path.splitext(path_foto)[0]
-        daftar_ekstensi = ['.jpeg', '.jpg', '.png']
-        for ekstensi in daftar_ekstensi:
+        for ekstensi in ['.jpeg', '.jpg', '.png']:
             path_coba = nama_tanpa_ext + ekstensi
             if os.path.exists(path_coba):
                 path_foto = path_coba
@@ -635,9 +565,10 @@ def periksa_keaslian_qris_v4(nama_file_gambar):
     nama_basemame = os.path.basename(path_foto)
     nama_tanpa_ekstensi = os.path.splitext(nama_basemame)[0]
     folder_output_crop = os.path.join(folder_script, f"hasil_crop_{nama_tanpa_ekstensi}")
+    folder_output_vis = os.path.join(folder_script, "hasil_visualisasi_label")
 
     print("==========================================================================")
-    print("TRUSTQR IDENTITY ENGINE V4 (BENCHMARKING & SCENARIO TEST SUITE)")
+    print("TRUSTQR IDENTITY ENGINE V4 (ROBOFLOW 12-LABEL ROBUST ENGINE)")
     print("File Foto Yang Dicek:", path_foto)
     print("==========================================================================")
 
@@ -649,7 +580,7 @@ def periksa_keaslian_qris_v4(nama_file_gambar):
     # 1. Siapkan model AI
     model_yolo, processor_trocr, model_trocr = siapkan_model_yolo_dan_trocr()
 
-    # 2. Scan & Bedah Data Digital QR Code (Digital Entity)
+    # 2. Scan & Bedah Data Digital QR Code
     isi_qr_digital = scan_qr_code_digital(gambar_asli)
     if isi_qr_digital is None:
         print("[ERROR] QR Code tidak terbaca di gambar ini!")
@@ -664,8 +595,8 @@ def periksa_keaslian_qris_v4(nama_file_gambar):
         "tid": tid_dig
     }
 
-    # 3. Potong Objek Fisik dengan YOLO26 & Baca dengan TrOCR (Physical Entity)
-    kumpulan_potongan, conf_visual = potong_gambar_pake_yolo(gambar_asli, model_yolo, folder_output_crop)
+    # 3. Deteksi Objek dengan 12 Label Roboflow & Visualisasi Gambar Utuh
+    kumpulan_potongan, conf_visual = potong_gambar_pake_yolo(gambar_asli, model_yolo, folder_output_crop, folder_output_vis, nama_basemame)
 
     print("\n--- [LANGKAH 3] BACA TULISAN FISIK PAKAI HUGGINGFACE TrOCR ---")
 
@@ -673,7 +604,7 @@ def periksa_keaslian_qris_v4(nama_file_gambar):
     nama_fisik = "Tidak terbaca"
     if "nama_merchant" in kumpulan_potongan:
         nama_fisik = baca_tulisan_pake_trocr(kumpulan_potongan["nama_merchant"], processor_trocr, model_trocr)
-        print(f"  -> Nama Merchant Fisik : '{nama_fisik}'")
+        print(f"  -> Nama Merchant Fisik ('Nama Merchant') : '{nama_fisik}'")
 
     # Baca NMID Fisik
     nmid_fisik = "Tidak terbaca"
@@ -695,9 +626,9 @@ def periksa_keaslian_qris_v4(nama_file_gambar):
             if len(teks_nmid_kapital) >= 10:
                 nmid_fisik = re.sub(r'^.*NMID[:\-\s]*', '', teks_nmid_kapital)
 
-        print(f"  -> NMID Fisik          : '{nmid_fisik}'")
+        print(f"  -> NMID Fisik ('National Merchant ID')  : '{nmid_fisik}'")
 
-    # Baca Acquirer Fisik
+    # Baca Acquirer Fisik (Dicetak Oleh)
     acquirer_fisik = "Tidak terbaca"
     if "acquirer" in kumpulan_potongan:
         acq_mentah = baca_tulisan_pake_trocr(kumpulan_potongan["acquirer"], processor_trocr, model_trocr)
@@ -712,14 +643,14 @@ def periksa_keaslian_qris_v4(nama_file_gambar):
             else:
                 acquirer_fisik = acq_mentah
             
-        print(f"  -> Acquirer Fisik      : '{acquirer_fisik}'")
+        print(f"  -> Acquirer Fisik ('Dicetak Oleh')      : '{acquirer_fisik}'")
 
     # Baca Terminal ID Fisik
     tid_fisik = "Tidak terbaca"
     if "tid" in kumpulan_potongan:
         tid_mentah = baca_tulisan_pake_trocr(kumpulan_potongan["tid"], processor_trocr, model_trocr)
         tid_fisik = tid_mentah.upper().replace(" ", "")
-        print(f"  -> Terminal ID Fisik  : '{tid_fisik}'")
+        print(f"  -> Terminal ID Fisik ('Terminal ID')   : '{tid_fisik}'")
 
     physical_entity = {
         "merchant_name": nama_fisik,
@@ -737,17 +668,17 @@ def periksa_keaslian_qris_v4(nama_file_gambar):
     )
 
     print("\n==========================================================================")
-    print("OUTPUT JSON EXPLAINABLE V4 (HASIL EVALUASI FOTO AKTUAL):")
+    print("OUTPUT JSON EXPLAINABLE (HASIL EVALUASI FOTO AKTUAL):")
     print(json.dumps(hasil_eval, indent=2))
     print("==========================================================================")
 
 
 # ==============================================================================
-# EKSEKUSI UTAMA FOTO AKTUAL & BENCHMARK SUITE SKENARIO
+# EKSEKUSI UTAMA DENGAN ARRAY DAFTAR FOTO TEST
 # ==============================================================================
 if __name__ == "__main__":
-    print("\n>>> TAHAP 1: PENGUJIAN FOTO AKTUAL (qris_test1 s/d qris_test5) <<<")
-    daftar_file_test = [
+    # Array daftar gambar yang bisa Anda tambah / kurangi dengan mudah
+    daftar_foto_rill = [
         "qris_test1.png",
         "qris_test2.jpeg",
         "qris_test3.jpeg",
@@ -755,9 +686,7 @@ if __name__ == "__main__":
         "qris_test5.png"
     ]
     
-    for foto_uji in daftar_file_test:
+    print("\n>>> MENJALANKAN PENGUJIAN FOTO AKTUAL DENGAN 12 LABEL ROBOFLOW <<<")
+    for foto_uji in daftar_foto_rill:
         periksa_keaslian_qris_v4(foto_uji)
         print("\n")
-
-    print("\n>>> TAHAP 2: PENGUJIAN SKENARIO BENCHMARK POSITIF & NEGATIF (FRAUD CASES) <<<")
-    jalankan_suite_pengujian_skenario_positif_dan_negatif()

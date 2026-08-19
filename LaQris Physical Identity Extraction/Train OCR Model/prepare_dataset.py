@@ -61,11 +61,21 @@ def pisahkan_dan_siapkan_dataset():
 
     total_nc = max(5, max_class_id + 1)
     
-    # Daftar nama kelas default
-    daftar_nama_kelas_default = ['acquirer', 'nama_merchant', 'nmid', 'qrcode', 'tid']
-    if total_nc > len(daftar_nama_kelas_default):
-        for i in range(len(daftar_nama_kelas_default), total_nc):
-            daftar_nama_kelas_default.append(f"komponen_{i}")
+    # Daftar nama kelas resmi dari Roboflow
+    daftar_nama_kelas_default = [
+        'Cara Pakai QRIS',
+        'Cek Aplikasi Penyelenggara',
+        'Dicetak Oleh',
+        'Logo dan deskripsi QRIS',
+        'Logo GPN',
+        'Nama Merchant',
+        'National Merchant ID',
+        'QR Code',
+        'QrisOCR',
+        'Slogan',
+        'Terminal ID',
+        'Versi Cetak'
+    ]
 
     # Membaca data.yaml lama jika ada untuk mempertahankan nama kelas resmi jika cocok
     path_data_yaml = folder_saat_ini / "data.yaml"
