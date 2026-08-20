@@ -414,11 +414,24 @@ def validate_and_parse_emvco_qr(teks_qr_mentah):
 def ocr_trocr(gambar_potongan, processor, model):
     """
     Fungsi ini menerima potongan gambar (crop) dari stiker QRIS,
+    di-zoom/upscale jika ukurannya kecil agar karakter terlihat sangat tajam,
     lalu meminta AI TrOCR untuk menerjemahkannya menjadi teks string.
     """
     if gambar_potongan is None or gambar_potongan.size == 0:
         return ""
         
+    h, w = gambar_potongan.shape[:2]
+    
+    # Zoom / upscale potongan gambar jika terlalu kecil agar TrOCR membaca dengan presisi tinggi
+    if h < 64:
+        scale = 64.0 / float(h)
+        new_w = max(128, int(w * scale))
+        gambar_potongan = cv2.resize(gambar_potongan, (new_w, 64), interpolation=cv2.INTER_CUBIC)
+    elif w < 128:
+        scale = 128.0 / float(w)
+        new_h = max(64, int(h * scale))
+        gambar_potongan = cv2.resize(gambar_potongan, (128, new_h), interpolation=cv2.INTER_CUBIC)
+
     # Konversi format warna gambar dari BGR (OpenCV) ke RGB (PIL Image)
     gambar_rgb = cv2.cvtColor(gambar_potongan, cv2.COLOR_BGR2RGB)
     gambar_pil = Image.fromarray(gambar_rgb)
@@ -428,7 +441,7 @@ def ocr_trocr(gambar_potongan, processor, model):
     
     # Jalankan prediksi TrOCR tanpa menghitung gradient (agar cepat)
     with torch.inference_mode():
-        tokens = model.generate(piksel, max_new_tokens=24)
+        tokens = model.generate(piksel, max_new_tokens=32)
         
     # Ubah hasil token angka menjadi string teks Latin
     return processor.batch_decode(tokens, skip_special_tokens=True)[0].strip()
@@ -694,16 +707,17 @@ def process_qris_verification(gambar_input, filename_base="scan"):
     model_barcode, model_ocr, proc_trocr, model_trocr = load_ai_models()
     session_id = str(uuid.uuid4())[:8]
 
-    # Predict dengan YOLO
-    res_barcode = model_barcode.predict(gambar_input, conf=0.18, verbose=False)[0]
-    res_ocr = model_ocr.predict(gambar_input, conf=0.10, verbose=False)[0]
-
-    # Resize foto ukuran raksasa dari kamera HP ke max 1280px agar kecepatan scan KILAT (0.6s)
+    # 1. Resize foto ukuran raksasa dari kamera HP ke max 1280px PERTAMA KALI
+    # (Penting agar koordinat kotak YOLO presisi 100% sesuai dengan piksel gambar visualisasi)
     h_orig, w_orig = gambar_input.shape[:2]
     if max(h_orig, w_orig) > 1280:
         scale = 1280.0 / max(h_orig, w_orig)
         new_w, new_h = int(w_orig * scale), int(h_orig * scale)
         gambar_input = cv2.resize(gambar_input, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+    # 2. Predict dengan YOLO pada gambar yang sudah disesuaikan ukurannya
+    res_barcode = model_barcode.predict(gambar_input, conf=0.18, verbose=False)[0]
+    res_ocr = model_ocr.predict(gambar_input, conf=0.10, verbose=False)[0]
 
     gambar_vis = gambar_input.copy()
     tinggi_foto, lebar_foto = gambar_input.shape[:2]
@@ -744,41 +758,51 @@ def process_qris_verification(gambar_input, filename_base="scan"):
     # 2. Parse payload EMVCo QRIS digital
     tech_info, dig_name, dig_city, dig_nmid, dig_acq, dig_tid, qris_analysis = validate_and_parse_emvco_qr(teks_qr_mentah)
 
-    # 3. Ekstraksi teks fisik HANYA untuk Label Esensial (Optimasi Kecepatan 15x Lipat)
+    # 3. Ekstraksi teks fisik HANYA untuk Label Esensial (Dengan Padded Zoomed Crop + Smart Filtering)
     phys_name, phys_nmid, phys_acq, phys_tid = "", "", "", ""
     target_nmid_box = None
     target_qr_box = None
+    all_ocr_results = []
 
-    for box in res_ocr.boxes:
+    # Sort kotak deteksi berdasarkan skor confidence terbesar
+    boxes_sorted = sorted(res_ocr.boxes, key=lambda b: float(b.conf[0].item()), reverse=True)
+
+    for box in boxes_sorted:
         cls_id = int(box.cls[0].item())
+        conf_score = float(box.conf[0].item())
         nama_kelas = model_ocr.names[cls_id]
         label_std = PEMETAAN_LABEL_ROBOFLOW.get(nama_kelas.lower().strip(), nama_kelas.lower().strip())
         x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
         
         # Abaikan TrOCR hanya untuk objek grafik/barcode (qrcode, logo, gpn)
         if label_std in ["qrcode", "logo", "gpn", "logo_gpn", "logo_qris"]:
-            if label_std == "qrcode":
+            if label_std == "qrcode" and target_qr_box is None:
                 target_qr_box = (x1, y1, x2, y2)
             warna = DAFTAR_WARNA_LABEL[cls_id % len(DAFTAR_WARNA_LABEL)]
             cv2.rectangle(gambar_vis, (x1, y1), (x2, y2), warna, 2)
             cv2.putText(gambar_vis, f"{label_std}", (x1, max(15, y1 - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.45, warna, 1)
             continue
 
-        if label_std == "nmid":
+        if label_std == "nmid" and target_nmid_box is None:
             target_nmid_box = (x1, y1, x2, y2)
 
-        # Jalankan AI TrOCR untuk SELURUH label elemen teks (nama merchant, nmid, acquirer, tid, versi cetak, slogan, dll)
-        potongan_teks = gambar_input[max(0, y1):min(tinggi_foto, y2), max(0, x1):min(lebar_foto, x2)]
+        # Beri padding (margin 8%) pada potongan area agar huruf di pinggir tidak terpotong
+        pad_x = max(5, int((x2 - x1) * 0.08))
+        pad_y = max(5, int((y2 - y1) * 0.08))
+        cx1 = max(0, x1 - pad_x)
+        cy1 = max(0, y1 - pad_y)
+        cx2 = min(lebar_foto, x2 + pad_x)
+        cy2 = min(tinggi_foto, y2 + pad_y)
+
+        potongan_teks = gambar_input[cy1:cy2, cx1:cx2]
         teks_ocr = ocr_trocr(potongan_teks, proc_trocr, model_trocr)
 
-        if label_std == "nama_merchant" and not phys_name:
-            phys_name = teks_ocr
-        elif label_std == "nmid" and not phys_nmid:
-            phys_nmid = re.sub(r'^(NMID\s*:?\s*)', '', teks_ocr, flags=re.IGNORECASE).strip()
-        elif label_std == "acquirer" and not phys_acq:
-            phys_acq = teks_ocr
-        elif label_std == "tid" and not phys_tid:
-            phys_tid = teks_ocr
+        all_ocr_results.append({
+            "label": label_std,
+            "text": teks_ocr,
+            "conf": conf_score,
+            "box": (x1, y1, x2, y2)
+        })
 
         # Gambar kotak warna-warni + hasil bacaan teks lengkap pada foto visualisasi
         warna = DAFTAR_WARNA_LABEL[cls_id % len(DAFTAR_WARNA_LABEL)]
@@ -786,10 +810,56 @@ def process_qris_verification(gambar_input, filename_base="scan"):
         cv2.putText(gambar_vis, f"{label_std}: {teks_ocr}", (x1, max(15, y1 - 5)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45, warna, 1)
 
+    # ── Ekstraksi & Validasi NMID Fisik ─────────────────────────────────────────
+    # Prioritas 1: Cari pola NMID resmi (ID + 9 s.d. 15 digit angka) di seluruh hasil TrOCR
+    nmid_match_found = None
+    for item in all_ocr_results:
+        m_nmid = re.search(r'ID\s*\d{9,15}', item["text"], flags=re.IGNORECASE)
+        if m_nmid:
+            nmid_match_found = re.sub(r'\s+', '', m_nmid.group().upper())
+            break
+    
+    if nmid_match_found:
+        phys_nmid = nmid_match_found
+    else:
+        # Fallback 1b: Cari dari box label "nmid" yang mengandung angka (mengabaikan teks "TOTAL AMOUNT")
+        for item in all_ocr_results:
+            if item["label"] == "nmid":
+                txt = re.sub(r'^(NMID\s*:?\s*)', '', item["text"], flags=re.IGNORECASE).strip()
+                if any(c.isdigit() for c in txt) and not any(w in txt.upper() for w in ["TOTAL", "AMOUNT", "DICETAK"]):
+                    phys_nmid = txt
+                    break
+
+    # ── Ekstraksi & Validasi Nama Merchant Fisik ────────────────────────────────
+    for item in all_ocr_results:
+        if item["label"] == "nama_merchant":
+            txt = item["text"].strip()
+            # Jika box nama merchant salah membaca baris NMID (misal "NMID: ID1026482737701"), pisahkan!
+            if re.search(r'ID\d{9,15}', txt, flags=re.IGNORECASE) or txt.upper().startswith("NMID"):
+                if not phys_nmid:
+                    m_n = re.search(r'ID\s*\d{9,15}', txt, flags=re.IGNORECASE)
+                    if m_n:
+                        phys_nmid = re.sub(r'\s+', '', m_n.group().upper())
+                continue  # Jangan gunakan string NMID sebagai nama merchant
+            
+            # Hindari kata kunci footer / header non-merchant
+            if any(bad in txt.upper() for bad in ["TOTAL", "AMOUNT", "DICEK", "DICETAK", "SATU SEHAT", "GPN", "NATIONAL MERCHANT ID"]):
+                continue
+
+            if len(txt) >= 2:
+                phys_name = txt
+                break
+
+    for item in all_ocr_results:
+        if item["label"] == "acquirer" and not phys_acq:
+            phys_acq = item["text"]
+        elif item["label"] == "tid" and not phys_tid:
+            phys_tid = item["text"]
+
     # ── Potongan Presisi Slot Nama Merchant (Tepat di Atas Kotak NMID) ─────────
-    if not phys_name and target_nmid_box is not None:
+    if (not phys_name or phys_name == "Tidak terbaca") and target_nmid_box is not None:
         nx1, ny1, nx2, ny2 = target_nmid_box
-        h_slot = max(35, int((ny2 - ny1) * 1.2))
+        h_slot = max(40, int((ny2 - ny1) * 1.5))
         slot_y1 = max(0, ny1 - h_slot)
         slot_y2 = max(5, ny1 - 2)
         slot_x1 = max(0, nx1 - 40)
@@ -798,23 +868,91 @@ def process_qris_verification(gambar_input, filename_base="scan"):
         potongan_slot = gambar_input[slot_y1:slot_y2, slot_x1:slot_x2]
         if potongan_slot is not None and potongan_slot.size > 0:
             teks_slot = ocr_trocr(potongan_slot, proc_trocr, model_trocr)
-            if teks_slot and len(teks_slot) >= 3:
+            if teks_slot and len(teks_slot) >= 3 and not re.search(r'ID\d{9,15}', teks_slot, flags=re.IGNORECASE):
                 phys_name = teks_slot
                 cv2.rectangle(gambar_vis, (slot_x1, slot_y1), (slot_x2, slot_y2), (0, 215, 255), 2)
                 cv2.putText(gambar_vis, f"nama_merchant (slot): {phys_name}", (slot_x1, max(15, slot_y1 - 5)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 215, 255), 1)
 
+    # ── Fallback Presisi ROI Header Stiker QRIS (Fotografi Layar HP/Laptop) ─────
+    if (not phys_name or phys_name == "Tidak terbaca" or not phys_nmid or phys_nmid == "Tidak terbaca"):
+        top_limit_y = target_qr_box[1] if target_qr_box is not None else int(tinggi_foto * 0.45)
+        top_limit_y = max(60, top_limit_y)
+
+        # 1. Fallback Crop NMID (Area tepat di atas QR Code)
+        if not phys_nmid or phys_nmid == "Tidak terbaca":
+            nmid_y1 = max(0, int(top_limit_y * 0.40))
+            nmid_y2 = min(tinggi_foto, top_limit_y)
+            strip_nmid = gambar_input[nmid_y1:nmid_y2, 0:lebar_foto]
+            if strip_nmid is not None and strip_nmid.size > 0:
+                txt_nmid_strip = ocr_trocr(strip_nmid, proc_trocr, model_trocr)
+                m_nmid = re.search(r'ID\s*\d{9,15}', txt_nmid_strip, flags=re.IGNORECASE)
+                if m_nmid:
+                    phys_nmid = re.sub(r'\s+', '', m_nmid.group().upper())
+                    cv2.rectangle(gambar_vis, (0, nmid_y1), (lebar_foto, nmid_y2), (255, 165, 0), 2)
+                    cv2.putText(gambar_vis, f"nmid (roi): {phys_nmid}", (10, max(15, nmid_y1 + 15)),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 165, 0), 1)
+
+        # 2. Fallback Crop Nama Merchant (Area atas stiker di atas NMID)
+        if not phys_name or phys_name == "Tidak terbaca":
+            name_y1 = max(0, int(top_limit_y * 0.08))
+            name_y2 = max(30, int(top_limit_y * 0.65))
+            strip_name = gambar_input[name_y1:name_y2, 0:lebar_foto]
+            if strip_name is not None and strip_name.size > 0:
+                txt_name_strip = ocr_trocr(strip_name, proc_trocr, model_trocr)
+                cleaned_name = re.sub(r'(QRIS|QR Code Standar|Pembayaran Nasional|GPN|SATU QRIS UNTUK SEMUA)', '', txt_name_strip, flags=re.IGNORECASE).strip()
+                if re.search(r'ID\d{9,15}', cleaned_name, flags=re.IGNORECASE):
+                    cleaned_name = re.sub(r'NMID\s*:?\s*ID\d{9,15}.*', '', cleaned_name, flags=re.IGNORECASE).strip()
+                if len(cleaned_name) >= 2:
+                    phys_name = cleaned_name
+                    cv2.rectangle(gambar_vis, (0, name_y1), (lebar_foto, name_y2), (0, 215, 255), 2)
+                    cv2.putText(gambar_vis, f"nama_merchant (roi): {phys_name}", (10, max(15, name_y1 + 15)),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 215, 255), 1)
+
+    # Clean up empty strings
+    if not phys_name:
+        phys_name = "Tidak terbaca"
+    if not phys_nmid:
+        phys_nmid = "Tidak terbaca"
+
     # 4. Pencocokan Identitas & Kalkulasi Risiko QR Saat Ini
     name_similarity, match_level, identity_risk = calculate_identity_similarity(phys_name, dig_name)
-    is_mismatch = (match_level == "COMPLETELY_DIFFERENT" or name_similarity < 40.0)
+
+    # Cek khusus mismatch NMID: Jika NMID Fisik ditemukan & NMID Digital ditemukan, dan keduanya BERBEDA -> 100% FRAUD STIKER DITIMPA!
+    is_nmid_mismatch = False
+    if phys_nmid and phys_nmid != "Tidak terbaca" and dig_nmid and dig_nmid != "Tidak ditemukan":
+        clean_p_nmid = re.sub(r'[^A-Z0-9]', '', phys_nmid.upper())
+        clean_d_nmid = re.sub(r'[^A-Z0-9]', '', dig_nmid.upper())
+        if clean_p_nmid != clean_d_nmid and len(clean_p_nmid) >= 10:
+            is_nmid_mismatch = True
+
+    # Fraud Mismatch HANYA terjadi jika ada bukti ketidakcocokan nyata (Name < 40% dari teks yang terbaca, atau NMID Berbeda)
+    is_text_unreadable = (phys_name == "Tidak terbaca" and phys_nmid == "Tidak terbaca")
+    is_mismatch = (is_nmid_mismatch or (not is_text_unreadable and match_level == "COMPLETELY_DIFFERENT" and name_similarity < 40.0))
+
+    if is_nmid_mismatch:
+        identity_risk = 100.0
+        match_level = "NMID_MISMATCH"
+    elif is_text_unreadable:
+        identity_risk = 35.0  # Risiko sedang/netral jika teks tidak terbaca (bukan indikasi pasti fraud)
+        match_level = "UNREADABLE_TEXT"
+    elif is_mismatch:
+        identity_risk = 95.0
 
     technical_risk = 0.0 if tech_info.get("is_valid") else 80.0
     current_qr_risk_score = round((0.70 * identity_risk) + (0.30 * technical_risk), 1)
     current_trust_score = round(100.0 - current_qr_risk_score, 1)
 
     # ── Gambar Banner Visual Status Fraud/Safe pada Foto ──────────────────────
-    banner_color = (0, 0, 238) if is_mismatch else (34, 139, 34)  # Merah jika Mismatch, Hijau jika Aman
-    banner_text = " [!] PERINGATAN: STIKER DITIMPA / FRAUD " if is_mismatch else " [v] VERIFIKASI BERHASIL: QRIS AMAN "
+    if is_mismatch:
+        banner_color = (0, 0, 238)  # Merah jika Mismatch/Fraud
+        banner_text = " [!] PERINGATAN: STIKER DITIMPA / FRAUD "
+    elif is_text_unreadable:
+        banner_color = (0, 140, 255)  # Oranye jika Teks Buram/Tidak Terbaca
+        banner_text = " [?] TEKS FISIK BURAM: PERIKSA NAMA DIGITAL "
+    else:
+        banner_color = (34, 139, 34)  # Hijau jika Aman
+        banner_text = " [v] VERIFIKASI BERHASIL: QRIS AMAN "
 
     # Draw top banner strip
     cv2.rectangle(gambar_vis, (0, 0), (lebar_foto, 42), banner_color, -1)
@@ -823,8 +961,8 @@ def process_qris_verification(gambar_input, filename_base="scan"):
     # Sorotan khusus pada kotak QR Code (Highlight Box)
     if target_qr_box is not None:
         qx1, qy1, qx2, qy2 = target_qr_box
-        border_col = (0, 0, 255) if is_mismatch else (0, 200, 0)
-        tag_label = "TERINDIKASI DITIMPA / PALSU" if is_mismatch else "QR CODES MATCHED (AMAN)"
+        border_col = (0, 0, 255) if is_mismatch else ((0, 140, 255) if is_text_unreadable else (0, 200, 0))
+        tag_label = "TERINDIKASI DITIMPA" if is_mismatch else ("TEKS FISIK BURAM" if is_text_unreadable else "QR CODES MATCHED (AMAN)")
         cv2.rectangle(gambar_vis, (qx1 - 4, qy1 - 4), (qx2 + 4, qy2 + 4), border_col, 4)
         cv2.rectangle(gambar_vis, (qx1 - 4, max(42, qy1 - 28)), (qx2 + 4, qy1 - 4), border_col, -1)
         cv2.putText(gambar_vis, tag_label, (qx1 + 4, max(58, qy1 - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (255, 255, 255), 2)
@@ -836,9 +974,15 @@ def process_qris_verification(gambar_input, filename_base="scan"):
     cv2.imwrite(path_vis, gambar_vis)
 
     # Penentuan Tingkat Risiko & Kalimat Penjelasan untuk Pengguna
-    if is_mismatch:
+    if is_nmid_mismatch:
+        risk_level = "HIGH_RISK"
+        explanation = f"PERINGATAN KRITIS: NMID Fisik pada stiker ('{phys_nmid}') BERBEDA dengan NMID Digital QRIS ('{dig_nmid}'). Stiker 100% TERINDIKASI DITIMPA/PALSU!"
+    elif is_mismatch:
         risk_level = "HIGH_RISK"
         explanation = f"PERINGATAN: Identitas stiker fisik ('{phys_name}') TIDAK COCOK dengan penerima QRIS digital ('{dig_name}'). Terindikasi stiker ditimpa/palsu!"
+    elif is_text_unreadable:
+        risk_level = "MODERATE_RISK"
+        explanation = f"PERHATIAN: Teks fisik stiker buram / tidak terbaca. Pastikan nama toko di ponsel Anda ('{dig_name}') sesuai dengan nama toko fisik sebelum bayar."
     elif current_qr_risk_score >= 50.0:
         risk_level = "ELEVATED_RISK"
         explanation = f"HATI-HATI: Kemiripan nama '{name_similarity}%'. Periksa kembali nama toko sebelum melakukan transaksi."
