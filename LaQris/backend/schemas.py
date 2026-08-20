@@ -32,7 +32,27 @@ class DisputeSchema(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────
-# EMRS Component Breakdown (Refined Weights)
+# LaQris Observation History Schema
+# (Data dikumpulkan dari verification_sessions — BUKAN transaksi)
+# ─────────────────────────────────────────────────────────────
+
+class ObservationHistorySchema(BaseModel):
+    total_observations: int           # Total scan QRIS oleh pengguna LaQris
+    unique_observers: int             # Jumlah user unik yang pernah scan merchant ini
+    first_observed: Optional[str]     # Tanggal pertama kali di-scan ("dd MMM yyyy")
+    last_observed: Optional[str]      # Tanggal terakhir di-scan
+    identity_match: int               # Jumlah scan yang identitasnya MATCH
+    identity_mismatch: int            # Jumlah scan yang identitasnya MISMATCH
+    physical_anomaly: int             # Jumlah scan yang terindikasi anomali fisik
+    identity_match_rate: float        # match / total (0.0 - 100.0 %)
+    complaint_rate: Optional[float]   # verified_complaints / total_observations (%)
+    verified_feedback: int            # Total feedback terverifikasi (evidence_level == 2)
+    complaints: int                   # Total complaint/report
+    disputes: int                     # Total dispute (sengketa terverifikasi)
+
+
+# ─────────────────────────────────────────────────────────────
+# EMRS Component Breakdown
 # ─────────────────────────────────────────────────────────────
 
 class EMRSComponents(BaseModel):
@@ -40,12 +60,12 @@ class EMRSComponents(BaseModel):
     C: float                          # Complaint Score (30%)
     D: float                          # Dispute Score (20%)
     L: float                          # Observed Longevity & History (10%)
-    T_observed: Optional[float] = None # Observed Transaction Reliability (Optional, if in-app verified tx exist)
+    T_observed: Optional[float] = None
 
 
 class ReputationScoreSchema(BaseModel):
-    reputation_score: float            # 0–100 final EMRS
-    grade: str                         # "Excellent" | "Very Good" | "Good" | "Fair" | "Poor"
+    reputation_score: Optional[float]          # 0–100 final EMRS (None jika belum terdaftar)
+    grade: str                         # "Excellent" | "Very Good" | "Good" | "Fair" | "Poor" | "Belum Terdaftar"
     confidence_level: str              # "HIGH" | "MEDIUM" | "LOW"
     confidence_score: float            # 0–100%
     data_sufficiency_status: str       # "SUFFICIENT DATA" | "INSUFFICIENT HISTORY"
@@ -58,6 +78,7 @@ class ReputationScoreSchema(BaseModel):
     registered_at: Optional[datetime] = None
     first_seen_observed: Optional[str] = None
     last_seen_observed: Optional[str] = None
+    observation_history: Optional[ObservationHistorySchema] = None
 
 
 # ─────────────────────────────────────────────────────────────
@@ -65,13 +86,47 @@ class ReputationScoreSchema(BaseModel):
 # ─────────────────────────────────────────────────────────────
 
 class QRISRawAnalysisSchema(BaseModel):
-    point_of_initiation: str           # "Statis (Stiker Meja/Kasir)" | "Dinamis (EDC/Layar)"
-    initiation_type_code: str          # "11" | "12"
-    mcc_code: str                      # e.g. "5812"
-    mcc_category: str                  # e.g. "Restoran / Rumah Makan"
-    nmid_parsed: Dict[str, Any]        # {"country": "Indonesia (ID)", "estimated_reg_year": 2020, ...}
-    currency: str                      # "360 (IDR)"
+    point_of_initiation: str
+    initiation_type_code: str
+    mcc_code: str
+    mcc_category: str
+    nmid_parsed: Dict[str, Any]
+    currency: str
     crc_checksum: Optional[str] = None
+
+
+# ─────────────────────────────────────────────────────────────
+# Current QR Risk Schema (4-Level: NORMAL/CAUTION/WARNING/DANGER)
+# ─────────────────────────────────────────────────────────────
+
+class CurrentQRRiskSchema(BaseModel):
+    risk_level: str                    # "NORMAL" | "CAUTION" | "WARNING" | "DANGER"
+    risk_label: str                    # Human-readable label
+    risk_color: str                    # "green" | "yellow" | "orange" | "red"
+    overall_risk_score: float
+    trust_score: float
+    is_mismatch: bool
+    name_similarity: float
+    match_level: str
+    explanation: str                   # Pesan aman secara hukum untuk user
+    physical_merchant: str
+    digital_merchant: str
+    digital_city: str
+    physical_nmid: str
+    digital_nmid: str
+    physical_acquirer: str
+    digital_acquirer: str
+    physical_tid: str
+    digital_tid: str
+    technical_info: Dict[str, Any]
+    qris_raw_analysis: Optional[QRISRawAnalysisSchema] = None
+
+
+class ScanResponseSchema(BaseModel):
+    session_id: str
+    current_qr_risk: CurrentQRRiskSchema
+    merchant_reputation: ReputationScoreSchema
+    visualization_url: str
 
 
 # ─────────────────────────────────────────────────────────────
@@ -97,38 +152,6 @@ class MerchantSchema(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-# ─────────────────────────────────────────────────────────────
-# Current QR Risk Schema
-# ─────────────────────────────────────────────────────────────
-
-class CurrentQRRiskSchema(BaseModel):
-    risk_level: str
-    overall_risk_score: float
-    trust_score: float
-    is_mismatch: bool
-    name_similarity: float
-    match_level: str
-    explanation: str
-    physical_merchant: str
-    digital_merchant: str
-    digital_city: str
-    physical_nmid: str
-    digital_nmid: str
-    physical_acquirer: str
-    digital_acquirer: str
-    physical_tid: str
-    digital_tid: str
-    technical_info: Dict[str, Any]
-    qris_raw_analysis: Optional[QRISRawAnalysisSchema] = None
-
-
-class ScanResponseSchema(BaseModel):
-    session_id: str
-    current_qr_risk: CurrentQRRiskSchema
-    merchant_reputation: ReputationScoreSchema
-    visualization_url: str
 
 
 # ─────────────────────────────────────────────────────────────
@@ -187,5 +210,3 @@ class TokenResponseSchema(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponseSchema
-
-

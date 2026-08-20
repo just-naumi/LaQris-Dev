@@ -295,16 +295,103 @@
 
         .status-subnote {
             font-size: 0.84rem;
-            line-height: 1.5;
-            padding: 10px 14px;
-            border-radius: 12px;
-            margin-top: 6px;
+            line-height: 1.55;
+            padding: 12px 16px;
+            border-radius: 14px;
+            margin-top: 8px;
+            border: 1px solid;
         }
 
-        .status-subnote-danger {
-            background: #fff1f2;
-            color: #be123c;
-            border: 1px solid #fecdd3;
+        /* 4-Level Status Colors */
+        .risk-normal .status-circle  { background: #dcfce7; color: #16a34a; }
+        .risk-normal .status-headline { color: #15803d; }
+        .risk-normal .status-subnote  { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+
+        .risk-caution .status-circle  { background: #fef9c3; color: #ca8a04; }
+        .risk-caution .status-headline { color: #854d0e; }
+        .risk-caution .status-subnote  { background: #fefce8; color: #713f12; border-color: #fde68a; }
+
+        .risk-warning .status-circle  { background: #ffedd5; color: #ea580c; }
+        .risk-warning .status-headline { color: #9a3412; }
+        .risk-warning .status-subnote  { background: #fff7ed; color: #7c2d12; border-color: #fed7aa; }
+
+        .risk-danger .status-circle  { background: #fee2e2; color: #e11d48; }
+        .risk-danger .status-headline { color: #9f1239; }
+        .risk-danger .status-subnote  { background: #fff1f2; color: #881337; border-color: #fecdd3; }
+
+        /* Observation History Card */
+        .obs-card {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 18px;
+            padding: 16px;
+            margin-bottom: 18px;
+        }
+        .obs-title {
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: #0369a1;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .obs-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .obs-stat {
+            background: #ffffff;
+            border: 1px solid #e0f2fe;
+            border-radius: 12px;
+            padding: 10px 12px;
+            text-align: center;
+        }
+        .obs-stat-val {
+            font-size: 1.3rem;
+            font-weight: 900;
+            color: #0369a1;
+            line-height: 1;
+        }
+        .obs-stat-label {
+            font-size: 0.7rem;
+            color: #64748b;
+            margin-top: 3px;
+            font-weight: 600;
+        }
+        .obs-match-bar {
+            margin-top: 8px;
+        }
+        .obs-match-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.76rem;
+            color: #475569;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .obs-bar-track {
+            height: 8px;
+            background: #fee2e2;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .obs-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #16a34a, #22c55e);
+            border-radius: 8px;
+            transition: width 0.7s cubic-bezier(0.16,1,0.3,1);
+        }
+        .obs-meta-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 8px;
+            flex-wrap: wrap;
+            gap: 4px;
         }
 
         /* Receipt Card */
@@ -799,18 +886,18 @@
             <!-- Verification Result Screen -->
             <div id="resultContent" class="d-none">
 
-                <!-- Status Headline (Summary Card) -->
-                <div class="status-center">
-                    <div id="statusIcon" class="status-circle status-circle-danger">
-                        <span>⚠</span>
+                <!-- Status Headline (4-Level Risk) -->
+                <div id="statusCenter" class="status-center">
+                    <div id="statusIcon" class="status-circle">
+                        <span id="statusEmoji">⬤</span>
                     </div>
-                    <div id="statusTitle" class="status-headline">Indikasi Identitas Tidak Sesuai</div>
-                    <div class="trust-score-badge" id="trustScoreBadge">Trust Score: — / 100</div>
-                    <div id="statusNote" class="status-subnote status-subnote-danger">
+                    <div id="statusTitle" class="status-headline">—</div>
+                    <div class="trust-score-badge" id="trustScoreBadge">Menganalisis...</div>
+                    <div id="statusNote" class="status-subnote">
                         Memeriksa identitas stiker QRIS...
                     </div>
 
-                    <!-- Action Buttons: Feedback & Toggle Detail -->
+                    <!-- Action Buttons -->
                     <div style="margin-top: 10px;">
                         <button id="btnFeedbackMain" class="btn-feedback-main" onclick="openFeedbackModal()">
                             <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -877,11 +964,70 @@
                         </div>
                     </div>
 
+                    <!-- LaQris Observation History Card (Real Data from DB) -->
+                    <div class="obs-card" id="obsHistoryCard">
+                        <div class="obs-title">
+                            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            </svg>
+                            LaQris Observation History
+                        </div>
+                        <div class="obs-grid">
+                            <div class="obs-stat">
+                                <div class="obs-stat-val" id="obsTotalObs">—</div>
+                                <div class="obs-stat-label">Total Observasi</div>
+                            </div>
+                            <div class="obs-stat">
+                                <div class="obs-stat-val" id="obsUniqueObs">—</div>
+                                <div class="obs-stat-label">Observer Unik</div>
+                            </div>
+                            <div class="obs-stat">
+                                <div class="obs-stat-val" id="obsMatchCount" style="color:#16a34a">—</div>
+                                <div class="obs-stat-label">Identity Match</div>
+                            </div>
+                            <div class="obs-stat">
+                                <div class="obs-stat-val" id="obsMismatchCount" style="color:#e11d48">—</div>
+                                <div class="obs-stat-label">Identity Mismatch</div>
+                            </div>
+                        </div>
+                        <div class="obs-match-bar">
+                            <div class="obs-match-label">
+                                <span>Identity Match Rate</span>
+                                <span id="obsMatchRate">—%</span>
+                            </div>
+                            <div class="obs-bar-track">
+                                <div class="obs-bar-fill" id="obsMatchBarFill" style="width:0%"></div>
+                            </div>
+                        </div>
+                        <div class="obs-meta-row">
+                            <span id="obsFirstSeen">—</span>
+                            <span>→</span>
+                            <span id="obsLastSeen">—</span>
+                        </div>
+                        <div style="display:flex;gap:12px;margin-top:10px;">
+                            <div style="flex:1;background:#fff;border:1px solid #e0f2fe;border-radius:10px;padding:8px;text-align:center;">
+                                <div style="font-size:1.1rem;font-weight:800;color:#0369a1" id="obsFeedback">—</div>
+                                <div style="font-size:0.7rem;color:#64748b;font-weight:600">Verified Feedback</div>
+                            </div>
+                            <div style="flex:1;background:#fff;border:1px solid #fee2e2;border-radius:10px;padding:8px;text-align:center;">
+                                <div style="font-size:1.1rem;font-weight:800;color:#dc2626" id="obsComplaints">—</div>
+                                <div style="font-size:0.7rem;color:#64748b;font-weight:600">Complaints</div>
+                            </div>
+                            <div style="flex:1;background:#fff;border:1px solid #fde68a;border-radius:10px;padding:8px;text-align:center;">
+                                <div style="font-size:1.1rem;font-weight:800;color:#d97706" id="obsDisputes">—</div>
+                                <div style="font-size:0.7rem;color:#64748b;font-weight:600">Disputes</div>
+                            </div>
+                        </div>
+                        <div id="obsNoData" class="d-none" style="text-align:center;color:#64748b;font-size:0.82rem;padding:14px 0;">
+                            Merchant ini belum pernah diobservasi di LaQris.
+                        </div>
+                    </div>
+
                     <!-- EMRS Reputation Card -->
                     <div class="emrs-card">
                         <div class="emrs-header">
                             <div>
-                                <div class="emrs-title">Reputasi Toko (EMRS)</div>
+                                <div class="emrs-title">Reputasi Merchant (EMRS)</div>
                                 <div style="font-size: 0.76rem; color: #64748b; margin-top: 2px;" id="emrsSubhead">
                                     Berdasarkan data observasi terverifikasi</div>
                             </div>
@@ -1131,31 +1277,29 @@
         function renderVerificationResult(data) {
             const qr = data.current_qr_risk || {};
             const rep = data.merchant_reputation || {};
+            const obs = rep.observation_history || {};
 
             if (data.visualization_url) {
                 document.getElementById('visImage').src = data.visualization_url + '?t=' + Date.now();
             }
 
+            // ── Trust Score Badge ─────────────────────────────────────────────
             const trust = qr.trust_score ?? 0;
             document.getElementById('trustScoreBadge').textContent = `Trust Score: ${trust.toFixed(0)} / 100`;
 
-            const iconBox = document.getElementById('statusIcon');
-            const titleBox = document.getElementById('statusTitle');
-            const noteBox = document.getElementById('statusNote');
-            if (qr.is_mismatch || qr.risk_level === 'HIGH_RISK') {
-                iconBox.className = 'status-circle status-circle-danger';
-                iconBox.innerHTML = '<span>⚠</span>';
-                titleBox.textContent = 'DANGER';
-                noteBox.className = 'status-subnote status-subnote-danger';
-                noteBox.textContent = qr.explanation || 'Identitas stiker toko tidak sesuai dengan rekening penerima digital.';
-            } else {
-                iconBox.className = 'status-circle status-circle-safe';
-                iconBox.innerHTML = '<span>✓</span>';
-                titleBox.textContent = 'NORMAL';
-                noteBox.className = 'status-subnote';
-                noteBox.textContent = qr.explanation || 'Identitas stiker fisik cocok dengan penerima QR Code digital.';
-            }
+            // ── 4-Level Risk Status ───────────────────────────────────────────
+            const riskLevel = (qr.risk_level || 'CAUTION').toUpperCase();
+            const riskEmojis = { NORMAL: '✓', CAUTION: '⚡', WARNING: '⚠', DANGER: '🚨' };
+            const riskTitles = { NORMAL: 'NORMAL', CAUTION: 'CAUTION', WARNING: 'WARNING', DANGER: 'DANGER' };
+            const riskClasses = { NORMAL: 'risk-normal', CAUTION: 'risk-caution', WARNING: 'risk-warning', DANGER: 'risk-danger' };
 
+            const statusCenter = document.getElementById('statusCenter');
+            statusCenter.className = 'status-center ' + (riskClasses[riskLevel] || 'risk-caution');
+            document.getElementById('statusEmoji').textContent = riskEmojis[riskLevel] || '?';
+            document.getElementById('statusTitle').textContent = riskTitles[riskLevel] || riskLevel;
+            document.getElementById('statusNote').textContent = qr.explanation || '—';
+
+            // ── Identity Comparison ──────────────────────────────────────────
             document.getElementById('valPhysName').textContent = qr.physical_merchant || 'Tidak terbaca';
             document.getElementById('valDigName').textContent = qr.digital_merchant || 'Tidak ditemukan';
             document.getElementById('valMatchLevel').textContent = `${qr.name_similarity ?? 0}% (${qr.match_level || '—'})`;
@@ -1165,6 +1309,38 @@
             document.getElementById('valAcquirer').textContent = qr.digital_acquirer || 'Tidak ditemukan';
             document.getElementById('valTid').textContent = qr.digital_tid || 'Tidak ditemukan';
 
+            // ── LaQris Observation History ────────────────────────────────────
+            const totalObs = obs.total_observations ?? 0;
+            if (totalObs === 0) {
+                document.getElementById('obsNoData').classList.remove('d-none');
+                document.getElementById('obsTotalObs').textContent = '0';
+                document.getElementById('obsUniqueObs').textContent = '0';
+                document.getElementById('obsMatchCount').textContent = '0';
+                document.getElementById('obsMismatchCount').textContent = '0';
+                document.getElementById('obsMatchRate').textContent = '0%';
+                document.getElementById('obsMatchBarFill').style.width = '0%';
+                document.getElementById('obsFirstSeen').textContent = 'Belum ada data';
+                document.getElementById('obsLastSeen').textContent = '—';
+                document.getElementById('obsFeedback').textContent = '0';
+                document.getElementById('obsComplaints').textContent = '0';
+                document.getElementById('obsDisputes').textContent = '0';
+            } else {
+                document.getElementById('obsNoData').classList.add('d-none');
+                document.getElementById('obsTotalObs').textContent = totalObs.toLocaleString('id-ID');
+                document.getElementById('obsUniqueObs').textContent = (obs.unique_observers ?? 0).toLocaleString('id-ID');
+                document.getElementById('obsMatchCount').textContent = obs.identity_match ?? 0;
+                document.getElementById('obsMismatchCount').textContent = obs.identity_mismatch ?? 0;
+                const matchRate = obs.identity_match_rate ?? 0;
+                document.getElementById('obsMatchRate').textContent = `${matchRate.toFixed(1)}%`;
+                document.getElementById('obsMatchBarFill').style.width = `${matchRate}%`;
+                document.getElementById('obsFirstSeen').textContent = obs.first_observed ? `Pertama: ${obs.first_observed}` : '—';
+                document.getElementById('obsLastSeen').textContent = obs.last_observed ? `Terakhir: ${obs.last_observed}` : '—';
+                document.getElementById('obsFeedback').textContent = obs.verified_feedback ?? 0;
+                document.getElementById('obsComplaints').textContent = obs.complaints ?? 0;
+                document.getElementById('obsDisputes').textContent = obs.disputes ?? 0;
+            }
+
+            // ── Merchant Reputation (EMRS) ────────────────────────────────────
             const isRegistered = rep.found_in_db === true;
             const score = rep.reputation_score;
             const grade = rep.grade || (isRegistered ? 'Fair' : 'Belum Terdaftar');
@@ -1176,7 +1352,7 @@
                 pill.textContent = 'Belum Terdaftar';
                 pill.style.background = '#f1f5f9';
                 pill.style.color = '#64748b';
-                document.getElementById('emrsSubhead').textContent = 'Merchant belum memiliki riwayat observasi di LaQris';
+                document.getElementById('emrsSubhead').textContent = 'Merchant belum memiliki data reputasi di LaQris';
             } else {
                 pill.style.background = '';
                 pill.style.color = '';
@@ -1185,7 +1361,8 @@
                 else if (score >= 60) pill.classList.add('emrs-good');
                 else if (score >= 40) pill.classList.add('emrs-fair');
                 else pill.classList.add('emrs-poor');
-                document.getElementById('emrsSubhead').textContent = `Berdasarkan ${rep.total_evidence_count ?? 0} observasi terverifikasi`;
+                const confLabel = rep.confidence_level || 'LOW';
+                document.getElementById('emrsSubhead').textContent = `Confidence: ${confLabel} · ${rep.total_evidence_count ?? 0} total evidence`;
             }
 
             const setComp = (id, val) => {
@@ -1204,10 +1381,11 @@
             setComp('L', comps.L);
 
             const repStatus = isRegistered
-                ? `${grade} (Tingkat Kepercayaan Data: ${rep.confidence_level || 'MED'})`
+                ? `${grade} (Confidence: ${rep.confidence_level || 'LOW'})`
                 : 'Belum ada laporan atau sengketa sebelumnya.';
             document.getElementById('valReputation').textContent = repStatus;
 
+            // ── EMVCo Analysis ────────────────────────────────────────────────
             const qAnalysis = qr.qris_raw_analysis || {};
             document.getElementById('valQrInitiation').textContent = qAnalysis.point_of_initiation || 'Statis';
             document.getElementById('valQrMcc').textContent = qAnalysis.mcc_category || qAnalysis.mcc_code || 'Retail / Perdagangan';

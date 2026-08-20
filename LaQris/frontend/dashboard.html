@@ -556,13 +556,20 @@
             const risk = (item.risk_level || '').toUpperCase();
             const score = typeof item.trust_score === 'number' ? item.trust_score : 100;
 
-            if (status === 'MISMATCH' || risk === 'HIGH_RISK' || risk === 'CRITICAL' || risk === 'DANGER' || score < 40) {
+            // 4-Level system from new engine (direct map first)
+            if (risk === 'DANGER') return 'DANGER';
+            if (risk === 'WARNING') return 'WARNING';
+            if (risk === 'CAUTION') return 'CAUTION';
+            if (risk === 'NORMAL') return 'NORMAL';
+
+            // Fallback for legacy risk_level values
+            if (status === 'MISMATCH' || risk === 'HIGH_RISK' || risk === 'CRITICAL' || score < 40) {
                 return 'DANGER';
             }
-            if (risk === 'ELEVATED_RISK' || risk === 'WARNING' || (score >= 40 && score < 70)) {
+            if (risk === 'ELEVATED_RISK' || risk === 'MODERATE_RISK' || (score >= 40 && score < 70)) {
                 return 'WARNING';
             }
-            if (risk === 'MODERATE_RISK' || risk === 'UNCERTAIN' || risk === 'CAUTION' || (score >= 70 && score < 85)) {
+            if (risk === 'UNCERTAIN' || (score >= 70 && score < 85)) {
                 return 'CAUTION';
             }
             return 'NORMAL';

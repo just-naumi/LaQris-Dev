@@ -28,6 +28,7 @@ from transformers import TrOCRProcessor, VisionEncoderDecoderModel, ViTImageProc
 # Impor koneksi database dan tabel dari file lokal
 from database import SessionLocal
 from models import Merchant, Report, Dispute, VerificationSession
+from sqlalchemy import func
 
 # Abaikan pesan warning yang tidak kritis agar terminal tetap bersih
 warnings.filterwarnings("ignore")
@@ -113,6 +114,9 @@ DISPUTE_PENALTY = {
     "verified": 30,    # Sengketa terbukti valid: minus 30 poin
     "unverified": 10   # Sengketa dalam proses: minus 10 poin
 }
+
+# Threshold minimum observasi untuk dianggap "cukup data" (bukan CAUTION)
+OBSERVATION_THRESHOLD = 10
 
 
 # =============================================================================
@@ -640,13 +644,184 @@ def calculate_emrs(merchant: Merchant, reports: list, disputes: list) -> dict:
 
 
 # =============================================================================
+# FUNGSI 9B: Ambil LaQris Observation History per NMID (get_observation_history_by_nmid)
+# =============================================================================
+def get_observation_history_by_nmid(nmid: str, merchant: Merchant = None, reports: list = None, disputes: list = None) -> dict:
+    """
+    Mengambil LaQris Observation History berdasarkan data real dari tabel verification_sessions.
+    Ini adalah rekam jejak observasi QRIS — BUKAN histori transaksi.
+    """
+    db = SessionLocal()
+    try:
+        # Query semua sesi scan yang NMID-nya cocok (digital atau fisik)
+        sessions = db.query(VerificationSession).filter(
+            VerificationSession.nmid == nmid
+        ).all()
+
+        total_obs = len(sessions)
+        unique_obs = len(set(s.user_id for s in sessions if s.user_id))
+        identity_match = sum(1 for s in sessions if s.status == "MATCH")
+        identity_mismatch = sum(1 for s in sessions if s.status == "MISMATCH")
+        physical_anomaly = sum(1 for s in sessions if s.risk_level in ["DANGER", "WARNING", "HIGH_RISK", "MODERATE_RISK"])
+
+        identity_match_rate = round((identity_match / total_obs * 100.0), 1) if total_obs > 0 else 0.0
+
+        first_obs = None
+        last_obs = None
+        if sessions:
+            dates = [s.scanned_at for s in sessions if s.scanned_at]
+            if dates:
+                first_obs = min(dates).strftime("%d %b %Y")
+                last_obs = max(dates).strftime("%d %b %Y")
+
+        # Hitung complaint rate berdasarkan evidence
+        verified_reports_count = len([r for r in (reports or []) if r.evidence_level >= 2]) if reports else 0
+        total_reports_count = len(reports) if reports else 0
+        total_disputes_count = len(disputes) if disputes else 0
+
+        complaint_rate = None
+        if total_obs > 0 and total_reports_count > 0:
+            complaint_rate = round((verified_reports_count / total_obs * 100.0), 2)
+
+        return {
+            "total_observations": total_obs,
+            "unique_observers": unique_obs,
+            "first_observed": first_obs,
+            "last_observed": last_obs,
+            "identity_match": identity_match,
+            "identity_mismatch": identity_mismatch,
+            "physical_anomaly": physical_anomaly,
+            "identity_match_rate": identity_match_rate,
+            "complaint_rate": complaint_rate,
+            "verified_feedback": verified_reports_count,
+            "complaints": total_reports_count,
+            "disputes": total_disputes_count
+        }
+    finally:
+        db.close()
+
+
+# =============================================================================
+# FUNGSI 9C: 4-Level QR Risk Classifier (classify_qr_risk)
+# =============================================================================
+def classify_qr_risk(
+    is_nmid_mismatch: bool,
+    is_mismatch: bool,
+    match_level: str,
+    name_similarity: float,
+    is_text_unreadable: bool,
+    current_qr_risk_score: float,
+    total_observations: int,
+    complaint_rate,
+    verified_complaints: int
+) -> tuple:
+    """
+    Mengklasifikasikan risiko QR ke dalam 4 level:
+    🔴 DANGER   — Indikasi kuat ketidaksesuaian / stiker ditimpa
+    🟠 WARNING  — Ada ketidaksesuaian atau laporan, perlu waspada
+    🟡 CAUTION  — Identitas OK tapi data LaQris terbatas
+    🟢 NORMAL   — Tidak ditemukan indikasi mencurigakan
+    """
+
+    # ── 🔴 DANGER: Kondisi Paling Berbahaya ──────────────────────────
+    if is_nmid_mismatch:
+        return (
+            "DANGER",
+            "🔴 DANGER",
+            "red",
+            "QRIS menunjukkan indikasi kuat pemalsuan stiker. NMID pada stiker fisik BERBEDA "
+            "dengan NMID di dalam QR Code digital. Pembayaran sebaiknya dibatalkan sampai "
+            "penerima dapat dikonfirmasi langsung."
+        )
+
+    if is_mismatch and verified_complaints >= 3:
+        return (
+            "DANGER",
+            "🔴 DANGER",
+            "red",
+            "QRIS menunjukkan indikasi kuat ketidaksesuaian identitas merchant. Terdapat "
+            "beberapa laporan terverifikasi dari pengguna LaQris lain. "
+            "Pembayaran sebaiknya dibatalkan sampai penerima dapat dikonfirmasi."
+        )
+
+    if is_mismatch and match_level == "COMPLETELY_DIFFERENT" and not is_text_unreadable:
+        return (
+            "DANGER",
+            "🔴 DANGER",
+            "red",
+            "QRIS menunjukkan indikasi kuat ketidaksesuaian dengan identitas merchant yang "
+            "terlihat. Nama penerima digital sangat berbeda dari nama fisik toko. "
+            "Pembayaran sebaiknya dibatalkan sampai penerima dapat dikonfirmasi."
+        )
+
+    # ── 🟠 WARNING: Perlu Waspada ────────────────────────────────────
+    if is_mismatch or match_level == "UNCERTAIN":
+        return (
+            "WARNING",
+            "🟠 WARNING",
+            "orange",
+            "Terdapat beberapa ketidaksesuaian antara nama merchant fisik dan digital pada QRIS ini. "
+            "Periksa kembali nama penerima di aplikasi pembayaran Anda sebelum melanjutkan transaksi."
+        )
+
+    if complaint_rate is not None and complaint_rate > 15.0:
+        return (
+            "WARNING",
+            "🟠 WARNING",
+            "orange",
+            "Merchant ini memiliki tingkat laporan yang cukup tinggi berdasarkan observasi LaQris. "
+            "Periksa kembali nama penerima sebelum melakukan pembayaran."
+        )
+
+    if match_level == "PROBABLE_MATCH" and name_similarity < 85.0:
+        return (
+            "WARNING",
+            "🟠 WARNING",
+            "orange",
+            "Kemiripan nama merchant fisik dan digital cukup tinggi namun tidak sempurna. "
+            "Pastikan nama penerima di aplikasi pembayaran sesuai dengan nama toko yang Anda kunjungi."
+        )
+
+    # ── 🟡 CAUTION: Data LaQris Terbatas ─────────────────────────────
+    if is_text_unreadable:
+        return (
+            "CAUTION",
+            "🟡 CAUTION",
+            "yellow",
+            "Teks fisik pada stiker QRIS tidak dapat terbaca dengan jelas. Pastikan nama "
+            "toko di aplikasi pembayaran Anda sesuai dengan nama merchant yang terlihat sebelum "
+            "melanjutkan transaksi."
+        )
+
+    if total_observations < OBSERVATION_THRESHOLD:
+        return (
+            "CAUTION",
+            "🟡 CAUTION",
+            "yellow",
+            f"Identitas QRIS sesuai, tetapi histori merchant di LaQris masih terbatas "
+            f"({total_observations} observasi). Reputasi merchant belum dapat dinilai secara "
+            "kuat. Tetap berhati-hati dan pastikan nama penerima sesuai."
+        )
+
+    # ── 🟢 NORMAL: Tidak Ditemukan Indikasi Mencurigakan ─────────────
+    return (
+        "NORMAL",
+        "🟢 NORMAL",
+        "green",
+        "Tidak ditemukan indikasi mencurigakan pada QRIS ini. Identitas merchant fisik dan "
+        "digital sesuai berdasarkan pemeriksaan LaQris. (Bukan jaminan 100% aman — "
+        "selalu pastikan nama penerima di aplikasi pembayaran Anda.)"
+    )
+
+
+# =============================================================================
 # FUNGSI 10: Query Reputasi Merchant dari SQLite (query_merchant_reputation)
 # =============================================================================
 def query_merchant_reputation(nmid_digital, nmid_physical, merchant_name_dig, merchant_name_phys) -> dict:
     """
     Fungsi ini mencari data merchant di database SQLite berdasarkan NMID / Nama Toko.
     Jika merchant BELUM TERDAFTAR, fungsi mengembalikan nilai 'Belum Terdaftar' (found_in_db: False)
-    tanpa memberikan skor palsu 50/100.
+    tanpa memberikan skor palsu 50/100. Observation history diambil dari verification_sessions real.
     """
     db = SessionLocal()
     try:
@@ -664,12 +839,23 @@ def query_merchant_reputation(nmid_digital, nmid_physical, merchant_name_dig, me
             m = db.query(Merchant).filter(Merchant.merchant_name.ilike(f"%{merchant_name_phys}%")).first()
 
         if m:
-            # Merchant terdaftar -> hitung EMRS berdasarkan laporan dan sengketa di DB
             reports = db.query(Report).filter(Report.merchant_id == m.id).all()
             disputes = db.query(Dispute).filter(Dispute.merchant_id == m.id).all()
-            return calculate_emrs(m, reports, disputes)
+            result = calculate_emrs(m, reports, disputes)
+            # Tambahkan observation history dari verification_sessions real
+            result["observation_history"] = get_observation_history_by_nmid(m.nmid, reports, disputes)
+            return result
         else:
-            # Merchant BELUM TERDAFTAR di database LaQris
+            # Merchant belum terdaftar — cek apakah ada di verification_sessions
+            lookup_nmid = nmid_digital if (nmid_digital and nmid_digital != "Tidak ditemukan") else nmid_physical
+            obs_history = get_observation_history_by_nmid(lookup_nmid or "") if lookup_nmid else {
+                "total_observations": 0, "unique_observers": 0,
+                "first_observed": None, "last_observed": None,
+                "identity_match": 0, "identity_mismatch": 0,
+                "physical_anomaly": 0, "identity_match_rate": 0.0,
+                "complaint_rate": None, "verified_feedback": 0,
+                "complaints": 0, "disputes": 0
+            }
             return {
                 "reputation_score": None,
                 "grade": "Belum Terdaftar",
@@ -680,11 +866,12 @@ def query_merchant_reputation(nmid_digital, nmid_physical, merchant_name_dig, me
                 "evidence_quality": "INSUFFICIENT",
                 "total_evidence_count": 0,
                 "found_in_db": False,
-                "nmid": nmid_digital if nmid_digital != "Tidak ditemukan" else nmid_physical,
+                "nmid": lookup_nmid,
                 "merchant_name": merchant_name_dig if merchant_name_dig != "Tidak ditemukan" else merchant_name_phys,
                 "registered_at": None,
                 "first_seen_observed": None,
-                "last_seen_observed": None
+                "last_seen_observed": None,
+                "observation_history": obs_history
             }
     finally:
         db.close()
@@ -943,26 +1130,29 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
     current_qr_risk_score = round((0.70 * identity_risk) + (0.30 * technical_risk), 1)
     current_trust_score = round(100.0 - current_qr_risk_score, 1)
 
-    # ── Gambar Banner Visual Status Fraud/Safe pada Foto ──────────────────────
-    if is_mismatch:
-        banner_color = (0, 0, 238)  # Merah jika Mismatch/Fraud
-        banner_text = " [!] PERINGATAN: STIKER DITIMPA / FRAUD "
+    # ── Gambar Banner Visual Status 4-Level pada Foto ──────────────────────────
+    # (Banner dibuat sebelum risk classification agar koordinat QR box ada)
+    if is_nmid_mismatch or (is_mismatch and not is_text_unreadable):
+        banner_color = (0, 0, 200)      # 🔴 Merah — DANGER
+        banner_text = " [!] DANGER: IDENTITAS QRIS TERINDIKASI TIDAK SESUAI "
+    elif is_mismatch or match_level == "UNCERTAIN":
+        banner_color = (0, 100, 220)    # 🟠 Oranye — WARNING
+        banner_text = " [!] WARNING: PERIKSA KEMBALI IDENTITAS MERCHANT "
     elif is_text_unreadable:
-        banner_color = (0, 140, 255)  # Oranye jika Teks Buram/Tidak Terbaca
-        banner_text = " [?] TEKS FISIK BURAM: PERIKSA NAMA DIGITAL "
+        banner_color = (0, 165, 220)    # 🟡 Kuning-Oranye — CAUTION
+        banner_text = " [?] CAUTION: TEKS FISIK TIDAK TERBACA "
     else:
-        banner_color = (34, 139, 34)  # Hijau jika Aman
-        banner_text = " [v] VERIFIKASI BERHASIL: QRIS AMAN "
+        banner_color = (34, 139, 34)    # 🟢 Hijau — NORMAL
+        banner_text = " [v] NORMAL: Tidak Ditemukan Indikasi Mencurigakan "
 
-    # Draw top banner strip
     cv2.rectangle(gambar_vis, (0, 0), (lebar_foto, 42), banner_color, -1)
-    cv2.putText(gambar_vis, banner_text, (10, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.70, (255, 255, 255), 2)
+    cv2.putText(gambar_vis, banner_text, (10, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
 
     # Sorotan khusus pada kotak QR Code (Highlight Box)
     if target_qr_box is not None:
         qx1, qy1, qx2, qy2 = target_qr_box
-        border_col = (0, 0, 255) if is_mismatch else ((0, 140, 255) if is_text_unreadable else (0, 200, 0))
-        tag_label = "TERINDIKASI DITIMPA" if is_mismatch else ("TEKS FISIK BURAM" if is_text_unreadable else "QR CODES MATCHED (AMAN)")
+        border_col = (0, 0, 200) if is_nmid_mismatch or is_mismatch else ((0, 165, 220) if is_text_unreadable else (34, 139, 34))
+        tag_label = "TERINDIKASI MISMATCH" if (is_nmid_mismatch or is_mismatch) else ("TEKS BURAM" if is_text_unreadable else "IDENTITAS COCOK")
         cv2.rectangle(gambar_vis, (qx1 - 4, qy1 - 4), (qx2 + 4, qy2 + 4), border_col, 4)
         cv2.rectangle(gambar_vis, (qx1 - 4, max(42, qy1 - 28)), (qx2 + 4, qy1 - 4), border_col, -1)
         cv2.putText(gambar_vis, tag_label, (qx1 + 4, max(58, qy1 - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (255, 255, 255), 2)
@@ -973,25 +1163,25 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
     path_vis = os.path.join(folder_static, f"vis_{filename_base}.jpg")
     cv2.imwrite(path_vis, gambar_vis)
 
-    # Penentuan Tingkat Risiko & Kalimat Penjelasan untuk Pengguna
-    if is_nmid_mismatch:
-        risk_level = "HIGH_RISK"
-        explanation = f"PERINGATAN KRITIS: NMID Fisik pada stiker ('{phys_nmid}') BERBEDA dengan NMID Digital QRIS ('{dig_nmid}'). Stiker 100% TERINDIKASI DITIMPA/PALSU!"
-    elif is_mismatch:
-        risk_level = "HIGH_RISK"
-        explanation = f"PERINGATAN: Identitas stiker fisik ('{phys_name}') TIDAK COCOK dengan penerima QRIS digital ('{dig_name}'). Terindikasi stiker ditimpa/palsu!"
-    elif is_text_unreadable:
-        risk_level = "MODERATE_RISK"
-        explanation = f"PERHATIAN: Teks fisik stiker buram / tidak terbaca. Pastikan nama toko di ponsel Anda ('{dig_name}') sesuai dengan nama toko fisik sebelum bayar."
-    elif current_qr_risk_score >= 50.0:
-        risk_level = "ELEVATED_RISK"
-        explanation = f"HATI-HATI: Kemiripan nama '{name_similarity}%'. Periksa kembali nama toko sebelum melakukan transaksi."
-    elif current_qr_risk_score >= 25.0:
-        risk_level = "MODERATE_RISK"
-        explanation = "Indikasi minor pergeseran identitas. Disarankan verifikasi ulang nominal pembayaran."
-    else:
-        risk_level = "SAFE"
-        explanation = "Stiker QRIS terverifikasi aman. Identitas fisik dan digital cocok."
+    # 4B. Ambil data observasi real dari verification_sessions untuk merchant ini
+    nmid_for_obs = dig_nmid if (dig_nmid and dig_nmid != "Tidak ditemukan") else phys_nmid
+    obs_history_pre = get_observation_history_by_nmid(nmid_for_obs or "")
+    total_obs_pre = obs_history_pre.get("total_observations", 0)
+    complaint_rate_pre = obs_history_pre.get("complaint_rate", None)
+    verified_complaints_pre = obs_history_pre.get("verified_feedback", 0)
+
+    # Penentuan 4-Level Risiko menggunakan classify_qr_risk()
+    risk_level, risk_label, risk_color, explanation = classify_qr_risk(
+        is_nmid_mismatch=is_nmid_mismatch,
+        is_mismatch=is_mismatch,
+        match_level=match_level,
+        name_similarity=name_similarity,
+        is_text_unreadable=is_text_unreadable,
+        current_qr_risk_score=current_qr_risk_score,
+        total_observations=total_obs_pre,
+        complaint_rate=complaint_rate_pre,
+        verified_complaints=verified_complaints_pre
+    )
 
     # 5. Query Reputasi Merchant EMRS
     merchant_reputation = query_merchant_reputation(dig_nmid, phys_nmid, dig_name, phys_name)
@@ -1023,6 +1213,8 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
         "session_id": session_id,
         "current_qr_risk": {
             "risk_level": risk_level,
+            "risk_label": risk_label,
+            "risk_color": risk_color,
             "overall_risk_score": current_qr_risk_score,
             "trust_score": current_trust_score,
             "is_mismatch": is_mismatch,

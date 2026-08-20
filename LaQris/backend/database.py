@@ -231,10 +231,68 @@ def init_db():
             role="PENGGUNA"
         )
         db.add_all([u1, u2])
+        db.commit()
+
+        # ─────────────────────────────────────────────────────────
+        # Seed LaQris Observation History (VerificationSession)
+        # Data observasi QRIS dari pengguna — bukan histori transaksi
+        # ─────────────────────────────────────────────────────────
+
+        # Merchant 1: BUDI PRIBADI — 25 obs, 22 mismatch (DANGER), 3 match
+        budi_users = ["USR-001928", "USR-002045", "USR-334512", "USR-209811", "USR-778231"]
+        budi_obs = [(("MISMATCH", "DANGER", "TOKO BERKAH JAYA"))] * 22 + [(("MATCH", "CAUTION", "BUDI PRIBADI"))] * 3
+        for i, (status, risk, phys) in enumerate(budi_obs):
+            db.add(models.VerificationSession(
+                session_id=f"SEED-BUDI-{i+1:03d}",
+                user_id=budi_users[i % len(budi_users)],
+                nmid="ID1024309405321",
+                digital_name="BUDI PRIBADI",
+                physical_name=phys,
+                status=status,
+                trust_score=5.0 if status == "MISMATCH" else 65.0,
+                risk_level=risk,
+                reputation_score=12.5,
+                scanned_at=now - timedelta(days=i * 3 + 1)
+            ))
+
+        # Merchant 2: 082 PUSK PUNGGING — 127 obs, 124 match, 3 mismatch
+        pusk_users = ["USR-001928", "USR-002045", "USR-112233", "USR-445566", "USR-778899",
+                      "USR-334512", "USR-209811", "USR-778231", "USR-001111", "USR-002222"]
+        for i in range(127):
+            is_match = i < 124
+            db.add(models.VerificationSession(
+                session_id=f"SEED-PUSK-{i+1:04d}",
+                user_id=pusk_users[i % len(pusk_users)],
+                nmid="ID2023269910873",
+                digital_name="082 PUSK PUNGGING",
+                physical_name="082 PUSK PUNGGING",
+                status="MATCH" if is_match else "MISMATCH",
+                trust_score=98.0 if is_match else 45.0,
+                risk_level="NORMAL",
+                reputation_score=91.0,
+                scanned_at=now - timedelta(days=730 - i * 5)
+            ))
+
+        # Merchant 3: ES COKLAT AJA 26 QR — 64 obs, 59 match, 5 mismatch
+        coklat_users = ["USR-001928", "USR-002045", "USR-334512", "USR-209811", "USR-778231"]
+        for i in range(64):
+            is_match = i < 59
+            db.add(models.VerificationSession(
+                session_id=f"SEED-COKLAT-{i+1:04d}",
+                user_id=coklat_users[i % len(coklat_users)],
+                nmid="ID1023286077558",
+                digital_name="ES COKLAT AJA 26 QR",
+                physical_name="ES COKLAT AJA 26 QR",
+                status="MATCH" if is_match else "MISMATCH",
+                trust_score=96.0 if is_match else 50.0,
+                risk_level="NORMAL",
+                reputation_score=88.0,
+                scanned_at=now - timedelta(days=1200 - i * 18)
+            ))
 
         db.commit()
 
-        print("[OK] Auto-seeding database EMRS berhasil diselesaikan!")
+        print("[OK] Auto-seeding database EMRS + Observation History berhasil diselesaikan!")
     finally:
         db.close()
 
