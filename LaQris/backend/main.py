@@ -245,6 +245,21 @@ def serve_frontend_index():
     return {"message": "LaQris API backend is running. Frontend index.html not found."}
 
 
+@app.get("/scan")
+@app.get("/scan.html")
+def serve_frontend_scan():
+    scan_path = os.path.join(FOLDER_FRONTEND, "scan.html")
+    if os.path.exists(scan_path):
+        return FileResponse(
+            scan_path,
+            headers={
+                "Cache-Control": "no-store, no-cache, must-revalidate",
+                "Pragma": "no-cache"
+            }
+        )
+    return {"message": "scan.html not found."}
+
+
 if os.path.exists(FOLDER_FRONTEND):
     app.mount("/app", StaticFiles(directory=FOLDER_FRONTEND, html=True), name="frontend")
 

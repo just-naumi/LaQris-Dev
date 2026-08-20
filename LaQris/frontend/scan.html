@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LaQris - Scan &amp; Verifikasi Stiker QRIS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: #ffffff;
+            color: #1e293b;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        .phone-frame {
+            width: 100%;
+            max-width: 100%;
+            background: #ffffff;
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Scan Top Bar */
+        .scan-topbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 18px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #ffffff;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .btn-back {
+            width: 36px;
+            height: 36px;
+            background: #f1f5f9;
+            border: none;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1rem;
+            color: #475569;
+            transition: all 0.2s ease;
+        }
+
+        .btn-back:hover { background: #e2e8f0; color: #0f172a; }
+
+        .scan-topbar-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .phone-body {
+            padding: 20px 18px;
+            flex: 1;
+        }
+
+        /* Scan Option Buttons (Camera + Gallery) */
+        .scan-options {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin-bottom: 4px;
+        }
+
+        .scan-option-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 24px 16px;
+            border-radius: 20px;
+            border: 1.5px solid #e2e8f0;
+            background: #f8fafc;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            gap: 12px;
+        }
+
+        .scan-option-btn:hover {
+            background: #f0f9ff;
+            border-color: #bae6fd;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(2,132,199,0.12);
+        }
+
+        .scan-option-btn:active { transform: scale(0.98); }
+
+        .scan-opt-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .camera-icon  { background: #e0f2fe; color: #0284c7; }
+        .gallery-icon { background: #ede9fe; color: #7c3aed; }
+
+        .scan-opt-title {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .scan-opt-sub {
+            font-size: 0.78rem;
+            color: #64748b;
+            line-height: 1.4;
+        }
+
+        /* Loading Box */
+        .loading-box {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .spinner-custom {
+            width: 48px;
+            height: 48px;
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid #0284c7;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Status Center */
+        .status-center {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .status-circle {
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 14px;
+            font-size: 2.2rem;
+            font-weight: 700;
+        }
+
+        .status-circle-danger { background: #fee2e2; color: #e11d48; }
+        .status-circle-safe   { background: #dcfce7; color: #16a34a; }
+
+        .status-headline {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 6px;
+        }
+
+        .trust-score-badge {
+            display: inline-block;
+            background: #f1f5f9;
+            color: #334155;
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 4px 14px;
+            border-radius: 20px;
+            margin-bottom: 8px;
+        }
+
+        .status-subnote {
+            font-size: 0.84rem;
+            line-height: 1.5;
+            padding: 10px 14px;
+            border-radius: 12px;
+            margin-top: 6px;
+        }
+
+        .status-subnote-danger { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
+
+        /* Receipt Card */
+        .receipt-card {
+            background: #ffffff;
+            border: 1px solid #f1f5f9;
+            border-radius: 18px;
+            padding: 10px 0;
+            margin-bottom: 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        }
+
+        .receipt-section-title {
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #94a3b8;
+            padding: 8px 16px 6px;
+        }
+
+        .receipt-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 12px 16px;
+            border-bottom: 1px solid #f8fafc;
+            gap: 12px;
+        }
+
+        .receipt-row:last-child { border-bottom: none; }
+
+        .receipt-label {
+            font-size: 0.86rem;
+            font-weight: 500;
+            color: #64748b;
+            flex: 1;
+            margin: 0;
+        }
+
+        .receipt-val {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: #0f172a;
+            text-align: right;
+            flex: 1.3;
+            margin: 0;
+            word-break: break-word;
+        }
+
+        .val-danger { color: #e11d48; }
+        .val-safe   { color: #16a34a; }
+        .val-blue   { color: #0284c7; }
+
+        /* EMRS Card */
+        .emrs-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            padding: 16px;
+            margin-bottom: 18px;
+        }
+
+        .emrs-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+
+        .emrs-title {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .emrs-score-pill {
+            font-size: 0.88rem;
+            font-weight: 800;
+            padding: 6px 14px;
+            border-radius: 20px;
+            text-align: center;
+        }
+
+        .emrs-excellent { background: #dcfce7; color: #15803d; }
+        .emrs-good      { background: #dbeafe; color: #1d4ed8; }
+        .emrs-fair      { background: #fef9c3; color: #a16207; }
+        .emrs-poor      { background: #fee2e2; color: #dc2626; }
+
+        .comp-row {
+            margin-bottom: 12px;
+        }
+
+        .comp-label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+            font-size: 0.84rem;
+        }
+
+        .comp-name { color: #334155; font-weight: 600; }
+        .comp-val  { font-weight: 800; color: #0f172a; font-size: 0.88rem; }
+
+        .comp-bar-track {
+            height: 10px;
+            background: #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .comp-bar-fill {
+            height: 100%;
+            border-radius: 8px;
+            transition: width 0.6s ease;
+        }
+
+        .bar-A { background: linear-gradient(90deg, #6366f1, #4f46e5); }
+        .bar-C { background: linear-gradient(90deg, #f59e0b, #d97706); }
+        .bar-D { background: linear-gradient(90deg, #ef4444, #dc2626); }
+        .bar-L { background: linear-gradient(90deg, #a855f7, #9333ea); }
+
+        /* Image Detection Box */
+        .vis-preview-box {
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 18px;
+            background: #f8fafc;
+            text-align: center;
+        }
+
+        .vis-preview-box img {
+            width: 100%;
+            max-height: 280px;
+            object-fit: contain;
+        }
+
+        /* Action Buttons */
+        .btn-cancel-action {
+            width: 100%;
+            background: #e11d48;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 14px;
+            border-radius: 14px;
+            border: none;
+            cursor: pointer;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 12px rgba(225,29,72,0.25);
+            transition: all 0.2s;
+        }
+        .btn-cancel-action:hover { background: #be123c; }
+
+        .btn-report-action {
+            width: 100%;
+            background: #ffffff;
+            color: #e11d48;
+            font-weight: 700;
+            font-size: 0.9rem;
+            padding: 12px;
+            border-radius: 14px;
+            border: 1.5px solid #fecdd3;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+        }
+        .btn-report-action:hover { background: #fff1f2; }
+
+        .btn-secondary-action {
+            width: 100%;
+            background: #f1f5f9;
+            color: #475569;
+            font-weight: 700;
+            font-size: 0.9rem;
+            padding: 12px;
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-secondary-action:hover { background: #e2e8f0; color: #0f172a; }
+    </style>
+</head>
+<body>
+
+<div class="phone-frame">
+
+    <!-- Scan Top Bar -->
+    <div class="scan-topbar">
+        <button class="btn-back" onclick="location.href='index.html'">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+            </svg>
+        </button>
+        <span class="scan-topbar-title">Scan Stiker QRIS</span>
+    </div>
+
+    <div class="phone-body">
+
+        <!-- Hidden File Inputs -->
+        <input type="file" id="fileInputCamera"  class="d-none" accept="image/*" capture="environment" onchange="processQrImage(event)">
+        <input type="file" id="fileInputGallery" class="d-none" accept="image/*" onchange="processQrImage(event)">
+
+        <!-- Upload Action Buttons -->
+        <div id="uploadBox" class="scan-options">
+
+            <!-- Buka Kamera -->
+            <div class="scan-option-btn" onclick="document.getElementById('fileInputCamera').click()">
+                <div class="scan-opt-icon camera-icon">
+                    <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/>
+                    </svg>
+                </div>
+                <div class="scan-opt-title">Buka Kamera</div>
+                <div class="scan-opt-sub">Foto langsung stiker QRIS pakai kamera</div>
+            </div>
+
+            <!-- Pilih dari Galeri -->
+            <div class="scan-option-btn" onclick="document.getElementById('fileInputGallery').click()">
+                <div class="scan-opt-icon gallery-icon">
+                    <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/>
+                    </svg>
+                </div>
+                <div class="scan-opt-title">Pilih dari Galeri</div>
+                <div class="scan-opt-sub">Upload dari gambar/foto tersimpan</div>
+            </div>
+
+        </div>
+
+        <!-- Loading Box -->
+        <div id="loadingBox" class="loading-box d-none">
+            <div class="spinner-custom"></div>
+            <div class="fw-semibold text-dark mt-3" style="font-size: 0.92rem;">Memeriksa Keaslian QRIS...</div>
+            <div class="text-secondary small mt-1">Dual YOLO + TrOCR &amp; EMVCo Validation</div>
+        </div>
+
+        <!-- Verification Result Screen -->
+        <div id="resultContent" class="d-none">
+
+            <!-- Status Headline -->
+            <div class="status-center">
+                <div id="statusIcon" class="status-circle status-circle-danger">
+                    <span>⚠</span>
+                </div>
+                <div id="statusTitle" class="status-headline">Indikasi Identitas Tidak Sesuai</div>
+                <div class="trust-score-badge" id="trustScoreBadge">Trust Score: — / 100</div>
+                <div id="statusNote" class="status-subnote status-subnote-danger">
+                    Memeriksa identitas stiker QRIS...
+                </div>
+            </div>
+
+            <!-- Visual Detection Box -->
+            <div class="vis-preview-box">
+                <img id="visImage" src="" alt="Visual Deteksi YOLO">
+            </div>
+
+            <!-- Receipt: Perbandingan Identitas -->
+            <div class="receipt-card">
+                <div class="receipt-section-title">Perbandingan Identitas</div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Merchant Terlihat (Fisik)</span>
+                    <span id="valPhysName" class="receipt-val val-danger">—</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Penerima QRIS (Digital)</span>
+                    <span id="valDigName" class="receipt-val val-blue">—</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Kesesuaian Identitas</span>
+                    <span id="valMatchLevel" class="receipt-val text-secondary">—</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">NMID Fisik</span>
+                    <span id="valPhysNmid" class="receipt-val" style="font-family:monospace;font-size:0.8rem">—</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">NMID Digital</span>
+                    <span id="valDigNmid" class="receipt-val" style="font-family:monospace;font-size:0.8rem">—</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Kota Merchant</span>
+                    <span id="valDigCity" class="receipt-val">—</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Acquirer Bank</span>
+                    <span id="valAcquirer" class="receipt-val">—</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Terminal ID</span>
+                    <span id="valTid" class="receipt-val">—</span>
+                </div>
+            </div>
+
+            <!-- EMRS Reputation Card -->
+            <div class="emrs-card">
+                <div class="emrs-header">
+                    <div>
+                        <div class="emrs-title">Reputasi Toko (EMRS)</div>
+                        <div style="font-size: 0.76rem; color: #64748b; margin-top: 2px;" id="emrsSubhead">Berdasarkan data observasi terverifikasi</div>
+                    </div>
+                    <div class="emrs-score-pill emrs-fair" id="emrsScorePill">— / 100</div>
+                </div>
+
+                <!-- 1. Kesesuaian QRIS (A) -->
+                <div class="comp-row">
+                    <div class="comp-label-row">
+                        <span class="comp-name">Kesesuaian Identitas QRIS</span>
+                        <span class="comp-val" id="compA">—</span>
+                    </div>
+                    <div class="comp-bar-track"><div class="comp-bar-fill bar-A" id="barA" style="width:0%"></div></div>
+                </div>
+
+                <!-- 2. Rekam Laporan (C) -->
+                <div class="comp-row">
+                    <div class="comp-label-row">
+                        <span class="comp-name">Rekam Laporan Masalah</span>
+                        <span class="comp-val" id="compC">—</span>
+                    </div>
+                    <div class="comp-bar-track"><div class="comp-bar-fill bar-C" id="barC" style="width:0%"></div></div>
+                </div>
+
+                <!-- 3. Bebas Sengketa (D) -->
+                <div class="comp-row">
+                    <div class="comp-label-row">
+                        <span class="comp-name">Rekam Bebas Sengketa</span>
+                        <span class="comp-val" id="compD">—</span>
+                    </div>
+                    <div class="comp-bar-track"><div class="comp-bar-fill bar-D" id="barD" style="width:0%"></div></div>
+                </div>
+
+                <!-- 4. Keaktifan Toko (L) -->
+                <div class="comp-row">
+                    <div class="comp-label-row">
+                        <span class="comp-name">Riwayat Keaktifan Toko</span>
+                        <span class="comp-val" id="compL">—</span>
+                    </div>
+                    <div class="comp-bar-track"><div class="comp-bar-fill bar-L" id="barL" style="width:0%"></div></div>
+                </div>
+
+                <div class="receipt-row" style="padding: 10px 0 0; border: none; margin-top: 4px;">
+                    <span class="receipt-label">Status Histori</span>
+                    <span id="valReputation" class="receipt-val text-dark">—</span>
+                </div>
+            </div>
+
+            <!-- Detail Analisis Payload QRIS (EMVCo) -->
+            <div class="receipt-card">
+                <div class="receipt-section-title">Informasi QRIS (EMVCo)</div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Tipe Stiker</span>
+                    <span id="valQrInitiation" class="receipt-val val-blue">—</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Kategori Usaha</span>
+                    <span id="valQrMcc" class="receipt-val">—</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Tahun Registrasi</span>
+                    <span id="valQrRegYear" class="receipt-val">—</span>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <button id="btnCancel" class="btn-cancel-action" onclick="cancelPayment()" style="display:none">
+                Batalkan Pembayaran
+            </button>
+            <button class="btn-report-action" id="btnReport" onclick="openReportModal()" style="display:none">
+                🚩 Laporkan Masalah
+            </button>
+            <button class="btn-secondary-action" onclick="resetScanner()">
+                Scan Stiker Lain
+            </button>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal: Laporkan Masalah -->
+<div class="modal fade" id="reportModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:20px; border:none; padding:4px;">
+            <div class="modal-body p-3">
+                <h6 class="fw-bold mb-3">🚩 Laporkan Masalah QRIS</h6>
+                <div class="mb-2">
+                    <label class="form-label" style="font-size:0.82rem; font-weight:600;">Kategori</label>
+                    <select class="form-select form-select-sm" id="fbCategory">
+                        <option value="QRIS Replacement">QRIS Replacement (Stiker Ditimpa)</option>
+                        <option value="Merchant Mismatch">Merchant Mismatch</option>
+                        <option value="Additional Fee">Additional Fee (Biaya Tambahan)</option>
+                        <option value="General Complaint">General Complaint</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="font-size:0.82rem; font-weight:600;">Tingkat Keparahan</label>
+                    <select class="form-select form-select-sm" id="fbSeverity">
+                        <option value="CRITICAL">CRITICAL</option>
+                        <option value="HIGH">HIGH</option>
+                        <option value="MEDIUM" selected>MEDIUM</option>
+                        <option value="LOW">LOW</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="font-size:0.82rem; font-weight:600;">Deskripsi</label>
+                    <textarea class="form-control form-control-sm" id="fbDesc" rows="2" placeholder="Ceritakan apa yang terjadi..."></textarea>
+                </div>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="fbHasEvidence">
+                        <label class="form-check-label" style="font-size:0.82rem;" for="fbHasEvidence">
+                            Saya punya bukti transaksi <span class="text-muted">(Evidence Level 2, bobot 2×)</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-light flex-fill" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-sm btn-danger flex-fill" onclick="submitReport()">Kirim Laporan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let currentNmid = null;
+
+// ── File Upload Scan ────────────────────────────────────────────────────────
+async function processQrImage(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    showLoading();
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+        const res = await fetch('/api/scan', { method: 'POST', body: formData });
+        const data = await res.json();
+        renderResult(data);
+    } catch (e) {
+        console.error(e);
+        alert('Terjadi kesalahan saat memproses gambar QRIS.');
+        resetScanner();
+    }
+}
+
+// ── Show Loading ────────────────────────────────────────────────────────────
+function showLoading() {
+    document.getElementById('uploadBox').classList.add('d-none');
+    document.getElementById('loadingBox').classList.remove('d-none');
+    document.getElementById('resultContent').classList.add('d-none');
+}
+
+// ── Render Result ────────────────────────────────────────────────────────────
+function renderResult(data) {
+    document.getElementById('loadingBox').classList.add('d-none');
+    document.getElementById('resultContent').classList.remove('d-none');
+
+    const qr  = data.current_qr_risk    || {};
+    const rep = data.merchant_reputation || {};
+
+    currentNmid = qr.digital_nmid || rep.nmid || null;
+
+    if (data.visualization_url) {
+        document.getElementById('visImage').src = data.visualization_url + '?t=' + Date.now();
+    }
+
+    const trust = qr.trust_score ?? 0;
+    document.getElementById('trustScoreBadge').textContent = `Trust Score: ${trust.toFixed(0)} / 100`;
+
+    const iconBox  = document.getElementById('statusIcon');
+    const titleBox = document.getElementById('statusTitle');
+    const noteBox  = document.getElementById('statusNote');
+    const btnCancel = document.getElementById('btnCancel');
+
+    if (qr.is_mismatch || qr.risk_level === 'HIGH_RISK') {
+        iconBox.className = 'status-circle status-circle-danger';
+        iconBox.innerHTML = '<span>⚠</span>';
+        titleBox.textContent = 'Indikasi Identitas Tidak Sesuai';
+        noteBox.className = 'status-subnote status-subnote-danger';
+        noteBox.textContent = qr.explanation || 'Identitas stiker toko tidak sesuai dengan rekening penerima digital.';
+        btnCancel.style.display = 'block';
+    } else {
+        iconBox.className = 'status-circle status-circle-safe';
+        iconBox.innerHTML = '<span>✓</span>';
+        titleBox.textContent = 'Verifikasi Berhasil (Aman)';
+        noteBox.className = 'status-subnote';
+        noteBox.textContent = qr.explanation || 'Identitas stiker fisik cocok dengan penerima QR Code digital.';
+        btnCancel.style.display = 'none';
+    }
+
+    // ── Identitas Fisik vs Digital ──────────────────────────────────────────
+    document.getElementById('valPhysName').textContent   = qr.physical_merchant || 'Tidak terbaca';
+    document.getElementById('valDigName').textContent    = qr.digital_merchant  || 'Tidak ditemukan';
+    document.getElementById('valMatchLevel').textContent = `${qr.name_similarity ?? 0}% (${qr.match_level || '—'})`;
+    document.getElementById('valPhysNmid').textContent   = qr.physical_nmid     || 'Tidak terbaca';
+    document.getElementById('valDigNmid').textContent    = qr.digital_nmid      || 'Tidak ditemukan';
+    document.getElementById('valDigCity').textContent    = qr.digital_city      || 'Tidak ditemukan';
+    document.getElementById('valAcquirer').textContent   = qr.digital_acquirer  || 'Tidak ditemukan';
+    document.getElementById('valTid').textContent        = qr.digital_tid       || 'Tidak ditemukan';
+
+    // ── EMRS Reputation ─────────────────────────────────────────────────────
+    const isRegistered = rep.found_in_db === true;
+    const score = rep.reputation_score;
+    const grade = rep.grade || (isRegistered ? 'Fair' : 'Belum Terdaftar');
+    const comps = rep.components || {};
+
+    const pill = document.getElementById('emrsScorePill');
+    pill.className = 'emrs-score-pill';
+    if (!isRegistered || score === null || score === undefined) {
+        pill.textContent = 'Belum Terdaftar';
+        pill.style.background = '#f1f5f9';
+        pill.style.color = '#64748b';
+        document.getElementById('emrsSubhead').textContent = 'Merchant belum memiliki riwayat observasi di LaQris';
+    } else {
+        pill.style.background = '';
+        pill.style.color = '';
+        pill.textContent = `${score.toFixed(0)} / 100  ${grade}`;
+        if (score >= 80)      pill.classList.add('emrs-excellent');
+        else if (score >= 60) pill.classList.add('emrs-good');
+        else if (score >= 40) pill.classList.add('emrs-fair');
+        else                  pill.classList.add('emrs-poor');
+        document.getElementById('emrsSubhead').textContent = `Berdasarkan ${rep.total_evidence_count ?? 0} observasi terverifikasi`;
+    }
+
+    const setComp = (id, val) => {
+        if (!isRegistered) {
+            document.getElementById(`comp${id}`).textContent = 'N/A';
+            document.getElementById(`bar${id}`).style.width = '0%';
+        } else {
+            const v = val ?? 0;
+            document.getElementById(`comp${id}`).textContent = `${v.toFixed(0)} / 100`;
+            document.getElementById(`bar${id}`).style.width = `${v}%`;
+        }
+    };
+    setComp('A', comps.A);
+    setComp('C', comps.C);
+    setComp('D', comps.D);
+    setComp('L', comps.L);
+
+    const repStatus = isRegistered
+        ? `${grade} (Tingkat Kepercayaan Data: ${rep.confidence_level || 'MED'})`
+        : 'Belum ada laporan atau sengketa sebelumnya.';
+    document.getElementById('valReputation').textContent = repStatus;
+
+    // ── Raw QRIS Payload Analysis (EMVCo) ──────────────────────────────────
+    const qAnalysis = qr.qris_raw_analysis || {};
+    document.getElementById('valQrInitiation').textContent = qAnalysis.point_of_initiation || 'Statis';
+    document.getElementById('valQrMcc').textContent        = qAnalysis.mcc_category || qAnalysis.mcc_code || 'Retail / Perdagangan';
+    const estYear = qAnalysis.nmid_parsed?.estimated_reg_year;
+    document.getElementById('valQrRegYear').textContent    = estYear ? `~${estYear}` : '—';
+
+    document.getElementById('btnReport').style.display = rep.found_in_db ? 'block' : 'none';
+}
+
+// ── Reset Scanner ────────────────────────────────────────────────────────────
+function resetScanner() {
+    document.getElementById('fileInputCamera').value = '';
+    document.getElementById('fileInputGallery').value = '';
+    document.getElementById('uploadBox').classList.remove('d-none');
+    document.getElementById('loadingBox').classList.add('d-none');
+    document.getElementById('resultContent').classList.add('d-none');
+    currentNmid = null;
+}
+
+// ── Cancel Payment ───────────────────────────────────────────────────────────
+function cancelPayment() {
+    alert('❌ TRANSAKSI DIBATALKAN\n\nAnda berhasil membatalkan pembayaran. Terhindar dari potensi penipuan stiker QRIS ditimpa.');
+}
+
+// ── Report Modal ─────────────────────────────────────────────────────────────
+function openReportModal() {
+    new bootstrap.Modal(document.getElementById('reportModal')).show();
+}
+
+async function submitReport() {
+    if (!currentNmid) return;
+    const payload = {
+        nmid: currentNmid,
+        category: document.getElementById('fbCategory').value,
+        severity: document.getElementById('fbSeverity').value,
+        description: document.getElementById('fbDesc').value || null,
+        has_evidence: document.getElementById('fbHasEvidence').checked
+    };
+    try {
+        const res = await fetch('/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        bootstrap.Modal.getInstance(document.getElementById('reportModal')).hide();
+        if (res.ok) {
+            alert(`✅ Laporan terkirim!\nEvidence Level: ${payload.has_evidence ? '2 (Verified)' : '1 (Unverified)'}\nEMRS baru: ${result.new_reputation_score?.toFixed(1) ?? '—'} / 100`);
+        } else {
+            alert('Gagal: ' + (result.detail || 'Error'));
+        }
+    } catch (e) {
+        alert('Gagal mengirim laporan: ' + e.message);
+    }
+}
+</script>
+</body>
+</html>
