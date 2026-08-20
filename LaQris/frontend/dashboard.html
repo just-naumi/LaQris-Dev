@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LaQris - Dashboard Pengguna</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: #ffffff;
+            color: #1e293b;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        .phone-frame {
+            width: 100%;
+            max-width: 100%;
+            background: #ffffff;
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Topbar: Nama Pengguna (Kiri) | LaQris (Kanan) ──────────────────── */
+        .dash-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            background: #ffffff;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .user-greeting {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .avatar-circle {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.05rem;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+        }
+
+        .user-name-text {
+            font-size: 1.02rem;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.01em;
+            line-height: 1.2;
+        }
+
+        .user-role-badge {
+            font-size: 0.72rem;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .dash-brand {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .dash-brand-name {
+            font-size: 1.2rem;
+            font-weight: 900;
+            color: #0f172a;
+            letter-spacing: -0.03em;
+        }
+
+        .phone-body {
+            padding: 24px 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Hero Banner */
+        .dash-hero-card {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border-radius: 22px;
+            padding: 24px;
+            color: #ffffff;
+            margin-bottom: 24px;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dash-hero-card::after {
+            content: '';
+            position: absolute;
+            right: -20px;
+            bottom: -20px;
+            width: 130px;
+            height: 130px;
+            background: rgba(2, 132, 199, 0.22);
+            border-radius: 50%;
+            filter: blur(25px);
+        }
+
+        .hero-welcome-sub {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #38bdf8;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .hero-welcome-title {
+            font-size: 1.45rem;
+            font-weight: 800;
+            margin-bottom: 14px;
+            line-height: 1.25;
+        }
+
+        .user-id-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #e2e8f0;
+            font-family: monospace;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 8px #22c55e;
+        }
+
+        /* Action Grid */
+        .section-title {
+            font-size: 0.92rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 14px;
+            letter-spacing: -0.01em;
+        }
+
+        .btn-scan-main {
+            background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 1.05rem;
+            padding: 18px 24px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 10px 28px rgba(2, 132, 199, 0.3);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            margin-bottom: 24px;
+        }
+
+        .btn-scan-main:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 32px rgba(2, 132, 199, 0.38);
+        }
+
+        /* ── Scan History List ────────────────────────────────────────────── */
+        .history-section {
+            margin-bottom: 24px;
+        }
+
+        .history-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+
+        .history-title-text {
+            font-size: 0.92rem;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.01em;
+        }
+
+        .history-count-badge {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #0284c7;
+            background: #e0f2fe;
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .history-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: #f8fafc;
+            border: 1.5px solid #f1f5f9;
+            transition: all 0.2s ease;
+        }
+
+        .history-item:hover {
+            background: #ffffff;
+            border-color: #cbd5e1;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+        }
+
+        .history-icon-box {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .icon-normal {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .icon-caution {
+            background: #fef9c3;
+            color: #ca8a04;
+        }
+
+        .icon-warning {
+            background: #ffedd5;
+            color: #ea580c;
+        }
+
+        .icon-danger {
+            background: #ffe4e6;
+            color: #e11d48;
+        }
+
+        .history-info {
+            flex: 1;
+            margin: 0 12px;
+            overflow: hidden;
+        }
+
+        .history-merchant-name {
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: #0f172a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 2px;
+        }
+
+        .history-nmid {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-family: monospace;
+            font-weight: 600;
+        }
+
+        .history-status-badge {
+            font-size: 0.68rem;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            flex-shrink: 0;
+        }
+
+        .badge-normal {
+            background: #f0fdf4;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
+        }
+
+        .badge-caution {
+            background: #fefce8;
+            color: #a16207;
+            border: 1px solid #fef08a;
+        }
+
+        .badge-warning {
+            background: #fff7ed;
+            color: #c2410c;
+            border: 1px solid #fed7aa;
+        }
+
+        .badge-danger {
+            background: #fff1f2;
+            color: #be123c;
+            border: 1px solid #fecdd3;
+        }
+
+        .history-empty {
+            text-align: center;
+            padding: 24px;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            background: #f8fafc;
+            border-radius: 16px;
+            border: 1px dashed #e2e8f0;
+        }
+
+        .btn-logout {
+            width: 100%;
+            background: #f8fafc;
+            color: #e11d48;
+            font-weight: 700;
+            font-size: 0.9rem;
+            padding: 14px;
+            border-radius: 16px;
+            border: 1.5px solid #ffe4e6;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-logout:hover {
+            background: #fff1f2;
+            border-color: #fecdd3;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="phone-frame">
+
+        <!-- Topbar: Nama Pengguna (Kiri) | LaQris (Kanan) -->
+        <div class="dash-topbar">
+            <div class="user-greeting">
+                <div class="avatar-circle" id="userAvatar">U</div>
+                <div>
+                    <div class="user-name-text" id="userNameDisplay">Pengguna</div>
+                    <div class="user-role-badge" id="userRoleDisplay">Akun Terverifikasi</div>
+                </div>
+            </div>
+            <div class="dash-brand">
+                <span class="dash-brand-name">LaQris</span>
+            </div>
+        </div>
+
+        <!-- Body -->
+        <div class="phone-body">
+
+            <!-- Hero Welcome Card -->
+            <div class="dash-hero-card">
+                <div class="hero-welcome-sub">Selamat Datang</div>
+                <div class="hero-welcome-title" id="welcomeTitle">Halo, Pengguna!</div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="section-title">Layanan Keamanan QRIS</div>
+
+            <button class="btn-scan-main" onclick="location.href='select_scan.html'">
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+                </svg>
+                Scan &amp; Verifikasi QRIS
+            </button>
+
+            <!-- Real Scan History List Section -->
+            <div class="history-section">
+                <div class="history-header">
+                    <div class="history-title-text">Riwayat Scan Terakhir</div>
+                    <span class="history-count-badge">5 Terakhir</span>
+                </div>
+
+                <div class="history-list" id="historyListContainer">
+                    <div class="history-empty">Memuat riwayat scan...</div>
+                </div>
+            </div>
+
+            <!-- Logout Button -->
+            <button class="btn-logout" onclick="handleLogout()">
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l3 3m0 0l-3 3m3-3H2.25" />
+                </svg>
+                Keluar dari Akun
+            </button>
+
+        </div>
+
+    </div>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const rawUser = localStorage.getItem('laqris_user') || sessionStorage.getItem('laqris_user');
+            if (!rawUser) {
+                location.href = 'login.html';
+                return;
+            }
+
+            try {
+                const user = JSON.parse(rawUser);
+                const displayName = user.username || user.full_name || 'Pengguna';
+
+                const nameEl = document.getElementById('userNameDisplay');
+                const titleEl = document.getElementById('welcomeTitle');
+                const avatarEl = document.getElementById('userAvatar');
+                const roleEl = document.getElementById('userRoleDisplay');
+
+                if (nameEl) nameEl.textContent = displayName;
+                if (titleEl) titleEl.textContent = `Halo, ${displayName}!`;
+                if (avatarEl) avatarEl.textContent = displayName.charAt(0).toUpperCase();
+                if (roleEl) roleEl.textContent = `Status: ${user.status || 'ACTIVE'}`;
+
+                // Muat riwayat scan real dari database
+                loadScanHistory();
+            } catch (e) {
+                console.error("Error loading user profile:", e);
+            }
+        });
+
+        async function loadScanHistory() {
+            const container = document.getElementById('historyListContainer');
+            if (!container) return;
+
+            try {
+                const res = await fetch('/api/scans/history?limit=5');
+                if (!res.ok) throw new Error('Gagal memuat riwayat');
+
+                const data = await res.json();
+                const scans = data.scans || [];
+
+                if (scans.length === 0) {
+                    container.innerHTML = `<div class="history-empty">Belum ada riwayat scan QRIS.</div>`;
+                    return;
+                }
+
+                container.innerHTML = scans.map(item => {
+                    const statusVal = getStatusLevel(item);
+                    
+                    let iconClass = 'icon-normal';
+                    let badgeClass = 'badge-normal';
+                    let iconSvg = '';
+
+                    if (statusVal === 'DANGER') {
+                        iconClass = 'icon-danger';
+                        badgeClass = 'badge-danger';
+                        iconSvg = `
+                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                            </svg>
+                        `;
+                    } else if (statusVal === 'WARNING') {
+                        iconClass = 'icon-warning';
+                        badgeClass = 'badge-warning';
+                        iconSvg = `
+                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                            </svg>
+                        `;
+                    } else if (statusVal === 'CAUTION') {
+                        iconClass = 'icon-caution';
+                        badgeClass = 'badge-caution';
+                        iconSvg = `
+                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                            </svg>
+                        `;
+                    } else {
+                        iconClass = 'icon-normal';
+                        badgeClass = 'badge-normal';
+                        iconSvg = `
+                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        `;
+                    }
+
+                    return `
+                        <div class="history-item">
+                            <div class="history-icon-box ${iconClass}">
+                                ${iconSvg}
+                            </div>
+                            <div class="history-info">
+                                <div class="history-merchant-name">${escapeHtml(item.merchant_name)}</div>
+                                <div class="history-nmid">NMID: ${escapeHtml(item.nmid)}</div>
+                            </div>
+                            <div class="history-status-badge ${badgeClass}">
+                                ${statusVal}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error("Gagal memuat history scan:", err);
+                container.innerHTML = `<div class="history-empty">Gagal memuat riwayat scan.</div>`;
+            }
+        }
+
+        function getStatusLevel(item) {
+            const status = (item.status || '').toUpperCase();
+            const risk = (item.risk_level || '').toUpperCase();
+            const score = typeof item.trust_score === 'number' ? item.trust_score : 100;
+
+            if (status === 'MISMATCH' || risk === 'HIGH_RISK' || risk === 'CRITICAL' || risk === 'DANGER' || score < 40) {
+                return 'DANGER';
+            }
+            if (risk === 'ELEVATED_RISK' || risk === 'WARNING' || (score >= 40 && score < 70)) {
+                return 'WARNING';
+            }
+            if (risk === 'MODERATE_RISK' || risk === 'UNCERTAIN' || risk === 'CAUTION' || (score >= 70 && score < 85)) {
+                return 'CAUTION';
+            }
+            return 'NORMAL';
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return String(text)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('laqris_user');
+            localStorage.removeItem('laqris_access_token');
+            sessionStorage.removeItem('laqris_user');
+            sessionStorage.removeItem('laqris_access_token');
+            location.href = 'login.html';
+        }
+    </script>
+</body>
+
+</html>

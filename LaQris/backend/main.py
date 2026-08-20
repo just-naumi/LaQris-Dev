@@ -228,12 +228,44 @@ def seed_database_endpoint():
     return {"message": "Database SQLite berhasil di-reset dan di-seed ulang dengan skema EMRS v2!"}
 
 
+@app.get("/api/scans/history")
+def get_recent_scans_history(limit: int = 5, db: Session = Depends(get_db)):
+    """Mengambil 5 riwayat scan QRIS teraktual dari database SQLite."""
+    sessions = (
+        db.query(VerificationSession)
+        .order_by(VerificationSession.scanned_at.desc())
+        .limit(limit)
+        .all()
+    )
+    
+    results = []
+    for s in sessions:
+        merchant_name = s.digital_name or s.physical_name or "Merchant QRIS"
+        results.append({
+            "session_id": s.session_id,
+            "merchant_name": merchant_name,
+            "nmid": s.nmid or "ID-PENDING",
+            "status": s.status,
+            "risk_level": s.risk_level,
+            "trust_score": s.trust_score,
+            "scanned_at": s.scanned_at.strftime("%d %b %Y %H:%M") if s.scanned_at else "Baru saja"
+        })
+    return {"scans": results}
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # User Authentication API Endpoints
 # ─────────────────────────────────────────────────────────────────────────────
 
+import secrets
+import random
+
 def _hash_password(raw_password: str) -> str:
     return hashlib.sha256(raw_password.encode('utf-8')).hexdigest()
+
+
+def _generate_user_id() -> str:
+    return f"USR-{random.randint(100000, 999999)}"
 
 
 @app.post("/api/register")
@@ -243,22 +275,37 @@ def register_user(payload: schemas.UserRegisterSchema, db: Session = Depends(get
     if existing:
         raise HTTPException(status_code=400, detail="Email ini sudah terdaftar. Silakan login.")
 
+    user_id = _generate_user_id()
+    while db.query(User).filter(User.user_id == user_id).first():
+        user_id = _generate_user_id()
+
     user = User(
-        full_name=payload.full_name,
+        user_id=user_id,
+        username=payload.username,
+        full_name=payload.full_name or payload.username,
         email=payload.email,
         phone=payload.phone,
         role=payload.role,
+        status="ACTIVE",
         password_hash=_hash_password(payload.password)
     )
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    token = f"laqris_token_{secrets.token_hex(16)}"
+
     return {
-        "message": "Registrasi berhasil! Silakan login ke akun Anda.",
+        "message": "Registrasi berhasil!",
+        "access_token": token,
+        "token_type": "bearer",
         "user": {
             "id": user.id,
-            "full_name": user.full_name,
+            "user_id": user.user_id,
+            "username": user.username,
             "email": user.email,
+            "status": user.status,
+            "full_name": user.full_name,
             "role": user.role
         }
     }
@@ -271,12 +318,19 @@ def login_user(payload: schemas.UserLoginSchema, db: Session = Depends(get_db)):
     if not user or user.password_hash != _hash_password(payload.password):
         raise HTTPException(status_code=401, detail="Email atau password yang Anda masukkan salah.")
 
+    token = f"laqris_token_{secrets.token_hex(16)}"
+
     return {
         "message": "Login berhasil!",
+        "access_token": token,
+        "token_type": "bearer",
         "user": {
             "id": user.id,
-            "full_name": user.full_name,
+            "user_id": user.user_id,
+            "username": user.username,
             "email": user.email,
+            "status": user.status,
+            "full_name": user.full_name,
             "phone": user.phone,
             "role": user.role
         }
@@ -300,6 +354,22 @@ def serve_frontend_index():
             }
         )
     return {"message": "LaQris API backend is running. Frontend index.html not found."}
+
+
+@app.get("/dashboard")
+@app.get("/dashboard.html")
+def serve_frontend_dashboard():
+    dash_path = os.path.join(FOLDER_FRONTEND, "dashboard.html")
+    if os.path.exists(dash_path):
+        return FileResponse(
+            dash_path,
+            headers={
+                "Cache-Control": "no-store, no-cache, must-revalidate",
+                "Pragma": "no-cache"
+            }
+        )
+    return {"message": "dashboard.html not found."}
+
 
 
 @app.get("/scan")

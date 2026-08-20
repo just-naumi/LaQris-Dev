@@ -31,7 +31,18 @@ def init_db():
     dengan skema EMRS (Evidence-Based Merchant Reputation Score).
     """
     import models
+    from sqlalchemy import inspect
+
     models.Base.metadata.create_all(bind=engine)
+
+    # Auto-migrate/rebuild if 'users' table is from old schema
+    inspector = inspect(engine)
+    if "users" in inspector.get_table_names():
+        cols = [c["name"] for c in inspector.get_columns("users")]
+        if "user_id" not in cols:
+            print("[LOG] Skema tabel 'users' lama terdeteksi. Mereset & memperbarui tabel SQLite...")
+            models.Base.metadata.drop_all(bind=engine)
+            models.Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
     try:
@@ -195,6 +206,32 @@ def init_db():
             description="Nominal QR berbeda tipis dari harga kasir — ternyata promo.",
             is_verified=True, evidence_level=1, created_at=now - timedelta(days=120)
         ))
+
+        # Seed User Accounts Awal (yantoalim & demo)
+        import hashlib
+        def _hash(p: str) -> str:
+            return hashlib.sha256(p.encode('utf-8')).hexdigest()
+
+        u1 = models.User(
+            user_id="USR-001928",
+            username="yantoalim",
+            full_name="Yanto Alim",
+            email="yanto@gmail.com",
+            password_hash=_hash("password123"),
+            status="ACTIVE",
+            role="PENGGUNA"
+        )
+        u2 = models.User(
+            user_id="USR-002045",
+            username="demouser",
+            full_name="Pengguna Demo",
+            email="user@gmail.com",
+            password_hash=_hash("password123"),
+            status="ACTIVE",
+            role="PENGGUNA"
+        )
+        db.add_all([u1, u2])
+
         db.commit()
 
         print("[OK] Auto-seeding database EMRS berhasil diselesaikan!")

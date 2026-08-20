@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>LaQris - Hasil Verifikasi QRIS</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         * {
@@ -62,7 +64,10 @@
             transition: all 0.2s ease;
         }
 
-        .btn-back:hover { background: #e2e8f0; color: #0f172a; }
+        .btn-back:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
 
         .scan-topbar-title {
             font-size: 1.05rem;
@@ -139,7 +144,8 @@
             margin-bottom: 0;
         }
 
-        .timeline-step.active, .timeline-step.completed {
+        .timeline-step.active,
+        .timeline-step.completed {
             opacity: 1;
             transform: translateY(0);
         }
@@ -179,12 +185,25 @@
         }
 
         @keyframes pulse-ring {
-            0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
-            70% { box-shadow: 0 0 0 8px rgba(37, 99, 235, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+            0% {
+                box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+            }
         }
 
-        @keyframes spin-node { to { transform: rotate(360deg); } }
+        @keyframes spin-node {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
         .node-spinner-svg {
             animation: spin-node 0.9s linear infinite;
         }
@@ -231,6 +250,7 @@
         .status-center {
             text-align: center;
             margin-bottom: 24px;
+            padding-top: 70px;
         }
 
         .status-circle {
@@ -245,11 +265,18 @@
             font-weight: 700;
         }
 
-        .status-circle-danger { background: #fee2e2; color: #e11d48; }
-        .status-circle-safe   { background: #dcfce7; color: #16a34a; }
+        .status-circle-danger {
+            background: #fee2e2;
+            color: #e11d48;
+        }
+
+        .status-circle-safe {
+            background: #dcfce7;
+            color: #16a34a;
+        }
 
         .status-headline {
-            font-size: 1.15rem;
+            font-size: 3.35rem;
             font-weight: 800;
             color: #0f172a;
             margin-bottom: 6px;
@@ -261,8 +288,8 @@
             color: #334155;
             font-size: 0.8rem;
             font-weight: 700;
-            padding: 4px 14px;
-            border-radius: 20px;
+            padding: 10px 14px;
+            border-radius: 15px;
             margin-bottom: 8px;
         }
 
@@ -274,7 +301,11 @@
             margin-top: 6px;
         }
 
-        .status-subnote-danger { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
+        .status-subnote-danger {
+            background: #fff1f2;
+            color: #be123c;
+            border: 1px solid #fecdd3;
+        }
 
         /* Receipt Card */
         .receipt-card {
@@ -283,7 +314,7 @@
             border-radius: 18px;
             padding: 10px 0;
             margin-bottom: 18px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
         }
 
         .receipt-section-title {
@@ -304,7 +335,9 @@
             gap: 12px;
         }
 
-        .receipt-row:last-child { border-bottom: none; }
+        .receipt-row:last-child {
+            border-bottom: none;
+        }
 
         .receipt-label {
             font-size: 0.86rem;
@@ -324,9 +357,17 @@
             word-break: break-word;
         }
 
-        .val-danger { color: #e11d48; }
-        .val-safe   { color: #16a34a; }
-        .val-blue   { color: #0284c7; }
+        .val-danger {
+            color: #e11d48;
+        }
+
+        .val-safe {
+            color: #16a34a;
+        }
+
+        .val-blue {
+            color: #0284c7;
+        }
 
         /* EMRS Card */
         .emrs-card {
@@ -357,20 +398,46 @@
             border-radius: 20px;
         }
 
-        .emrs-excellent { background: #dcfce7; color: #15803d; }
-        .emrs-good      { background: #e0f2fe; color: #0369a1; }
-        .emrs-fair      { background: #fef9c3; color: #a16207; }
-        .emrs-poor      { background: #fee2e2; color: #b91c1c; }
+        .emrs-excellent {
+            background: #dcfce7;
+            color: #15803d;
+        }
 
-        .comp-row { margin-bottom: 10px; }
+        .emrs-good {
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+
+        .emrs-fair {
+            background: #fef9c3;
+            color: #a16207;
+        }
+
+        .emrs-poor {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .comp-row {
+            margin-bottom: 10px;
+        }
+
         .comp-label-row {
             display: flex;
             justify-content: space-between;
             font-size: 0.78rem;
             margin-bottom: 4px;
         }
-        .comp-name { color: #64748b; font-weight: 500; }
-        .comp-val  { font-weight: 700; color: #1e293b; }
+
+        .comp-name {
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .comp-val {
+            font-weight: 700;
+            color: #1e293b;
+        }
 
         .comp-bar-track {
             height: 6px;
@@ -385,10 +452,21 @@
             transition: width 0.6s ease;
         }
 
-        .bar-A { background: #0284c7; }
-        .bar-C { background: #e11d48; }
-        .bar-D { background: #16a34a; }
-        .bar-L { background: #8b5cf6; }
+        .bar-A {
+            background: #0284c7;
+        }
+
+        .bar-C {
+            background: #e11d48;
+        }
+
+        .bar-D {
+            background: #16a34a;
+        }
+
+        .bar-L {
+            background: #8b5cf6;
+        }
 
         .vis-preview-box {
             border-radius: 16px;
@@ -416,10 +494,13 @@
             border: none;
             cursor: pointer;
             margin-bottom: 10px;
-            box-shadow: 0 4px 12px rgba(225,29,72,0.25);
+            box-shadow: 0 4px 12px rgba(225, 29, 72, 0.25);
             transition: all 0.2s;
         }
-        .btn-cancel-action:hover { background: #be123c; }
+
+        .btn-cancel-action:hover {
+            background: #be123c;
+        }
 
         .btn-secondary-action {
             width: 100%;
@@ -433,425 +514,769 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-        .btn-secondary-action:hover { background: #e2e8f0; color: #0f172a; }
+
+        .btn-secondary-action:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        /* Summary Result Action Buttons */
+        .btn-feedback-main {
+            width: 100%;
+            background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 14px 20px;
+            border-radius: 16px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 6px 18px rgba(2, 132, 199, 0.28);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 18px;
+            margin-bottom: 12px;
+        }
+
+        .btn-feedback-main:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 22px rgba(2, 132, 199, 0.35);
+        }
+
+        .btn-toggle-detail {
+            width: 100%;
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 700;
+            font-size: 0.88rem;
+            padding: 12px 18px;
+            border-radius: 14px;
+            border: 1.5px dashed #cbd5e1;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-toggle-detail:hover {
+            background: #f1f5f9;
+            color: #0f172a;
+            border-color: #94a3b8;
+        }
+
+        .detailed-info-box {
+            margin-top: 22px;
+            animation: fadeIn 0.35s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Custom Modal Overlay */
+        .modal-backdrop-custom {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-card-custom {
+            background: #ffffff;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 440px;
+            padding: 22px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
+            animation: popUp 0.25s ease;
+        }
+
+        @keyframes popUp {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal-header-custom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            border-bottom: 1px solid #f1f5f9;
+            padding-bottom: 12px;
+        }
+
+        .modal-header-custom h5 {
+            margin: 0;
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .btn-close-custom {
+            background: #f1f5f9;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #64748b;
+            font-weight: 700;
+        }
+
+        .form-label-custom {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #475569;
+            margin-top: 10px;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .form-control-custom {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            font-size: 0.88rem;
+            color: #0f172a;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-control-custom:focus {
+            border-color: #0284c7;
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+        }
+
+        .form-check-custom {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 14px;
+            font-size: 0.82rem;
+            color: #475569;
+        }
+
+        .modal-footer-custom {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-modal-cancel {
+            flex: 1;
+            padding: 11px;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 700;
+            font-size: 0.88rem;
+            cursor: pointer;
+        }
+
+        .btn-modal-submit {
+            flex: 1.5;
+            padding: 11px;
+            border-radius: 12px;
+            border: none;
+            background: #0284c7;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 0.88rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+        }
     </style>
 </head>
+
 <body>
 
-<div class="phone-frame">
+    <div class="phone-frame">
 
-    <!-- Scan Top Bar -->
-    <div class="scan-topbar">
-        <button class="btn-back" onclick="location.href='select_scan.html'">
-            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
-            </svg>
-        </button>
-        <span class="scan-topbar-title">Verifikasi QRIS</span>
-    </div>
-
-    <div class="phone-body">
-
-        <!-- Animated Step Timeline Loading Screen -->
-        <div id="loadingTimelineBox" class="loading-timeline-wrapper d-none">
-            <div class="timeline-header">
-                <div class="timeline-main-title">Memverifikasi Stiker</div>
-                <p class="timeline-main-sub">Model AI sedang menganalisis fisik &amp; digital QRIS Anda</p>
-            </div>
-
-            <div class="timeline-container">
-                <div class="timeline-line-progress" id="timelineLineProgress"></div>
-
-                <!-- Step 1 -->
-                <div class="timeline-step" id="step1">
-                    <div class="timeline-node" id="node1">1</div>
-                    <div class="timeline-content">
-                        <div class="timeline-title">Foto Diterima</div>
-                        <div class="timeline-desc">Memuat foto stiker QRIS dari perangkat Anda...</div>
-                    </div>
-                </div>
-
-                <!-- Step 2 -->
-                <div class="timeline-step" id="step2">
-                    <div class="timeline-node" id="node2">2</div>
-                    <div class="timeline-content">
-                        <div class="timeline-title">Deteksi Area AI (YOLO)</div>
-                        <div class="timeline-desc">Mendeteksi posisi QR Code &amp; memotong area teks merchant...</div>
-                    </div>
-                </div>
-
-                <!-- Step 3 -->
-                <div class="timeline-step" id="step3">
-                    <div class="timeline-node" id="node3">3</div>
-                    <div class="timeline-content">
-                        <div class="timeline-title">Pembacaan Teks Fisik (TrOCR)</div>
-                        <div class="timeline-desc">Membaca tulisan nama toko &amp; nomor NMID stiker fisik...</div>
-                    </div>
-                </div>
-
-                <!-- Step 4 -->
-                <div class="timeline-step" id="step4">
-                    <div class="timeline-node" id="node4">4</div>
-                    <div class="timeline-content">
-                        <div class="timeline-title">Verifikasi EMVCo &amp; EMRS</div>
-                        <div class="timeline-desc">Mencocokkan identitas digital &amp; menghitung skor reputasi toko...</div>
-                    </div>
-                </div>
-
-                <!-- Step 5 -->
-                <div class="timeline-step" id="step5">
-                    <div class="timeline-node" id="node5">5</div>
-                    <div class="timeline-content">
-                        <div class="timeline-title">Analisis Selesai</div>
-                        <div class="timeline-desc">Menyiapkan laporan keaslian &amp; proteksi transaksi!</div>
-                    </div>
-                </div>
-            </div>
+        <!-- Scan Top Bar -->
+        <div class="scan-topbar">
+            <button class="btn-back" onclick="location.href='select_scan.html'">
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+            </button>
+            <span class="scan-topbar-title">Verifikasi QRIS</span>
         </div>
 
-        <!-- Verification Result Screen -->
-        <div id="resultContent" class="d-none">
+        <div class="phone-body">
 
-            <!-- Status Headline -->
-            <div class="status-center">
-                <div id="statusIcon" class="status-circle status-circle-danger">
-                    <span>⚠</span>
+            <!-- Animated Step Timeline Loading Screen -->
+            <div id="loadingTimelineBox" class="loading-timeline-wrapper d-none">
+                <div class="timeline-header">
+                    <div class="timeline-main-title">Memverifikasi Stiker</div>
+                    <p class="timeline-main-sub">Model AI sedang menganalisis fisik &amp; digital QRIS Anda</p>
                 </div>
-                <div id="statusTitle" class="status-headline">Indikasi Identitas Tidak Sesuai</div>
-                <div class="trust-score-badge" id="trustScoreBadge">Trust Score: — / 100</div>
-                <div id="statusNote" class="status-subnote status-subnote-danger">
-                    Memeriksa identitas stiker QRIS...
+
+                <div class="timeline-container">
+                    <div class="timeline-line-progress" id="timelineLineProgress"></div>
+
+                    <!-- Step 1 -->
+                    <div class="timeline-step" id="step1">
+                        <div class="timeline-node" id="node1">1</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">Foto Diterima</div>
+                            <div class="timeline-desc">Memuat foto stiker QRIS dari perangkat Anda...</div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="timeline-step" id="step2">
+                        <div class="timeline-node" id="node2">2</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">Deteksi Area AI (YOLO)</div>
+                            <div class="timeline-desc">Mendeteksi posisi QR Code &amp; memotong area teks merchant...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="timeline-step" id="step3">
+                        <div class="timeline-node" id="node3">3</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">Pembacaan Teks Fisik (TrOCR)</div>
+                            <div class="timeline-desc">Membaca tulisan nama toko &amp; nomor NMID stiker fisik...</div>
+                        </div>
+                    </div>
+
+                    <!-- Step 4 -->
+                    <div class="timeline-step" id="step4">
+                        <div class="timeline-node" id="node4">4</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">Verifikasi EMVCo &amp; EMRS</div>
+                            <div class="timeline-desc">Mencocokkan identitas digital &amp; menghitung skor reputasi
+                                toko...</div>
+                        </div>
+                    </div>
+
+                    <!-- Step 5 -->
+                    <div class="timeline-step" id="step5">
+                        <div class="timeline-node" id="node5">5</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">Analisis Selesai</div>
+                            <div class="timeline-desc">Menyiapkan laporan keaslian &amp; proteksi transaksi!</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Visual Detection Box -->
-            <div class="vis-preview-box">
-                <img id="visImage" src="" alt="Visual Deteksi YOLO">
+            <!-- Verification Result Screen -->
+            <div id="resultContent" class="d-none">
+
+                <!-- Status Headline (Summary Card) -->
+                <div class="status-center">
+                    <div id="statusIcon" class="status-circle status-circle-danger">
+                        <span>⚠</span>
+                    </div>
+                    <div id="statusTitle" class="status-headline">Indikasi Identitas Tidak Sesuai</div>
+                    <div class="trust-score-badge" id="trustScoreBadge">Trust Score: — / 100</div>
+                    <div id="statusNote" class="status-subnote status-subnote-danger">
+                        Memeriksa identitas stiker QRIS...
+                    </div>
+
+                    <!-- Action Buttons: Feedback & Toggle Detail -->
+                    <div style="margin-top: 10px;">
+                        <button id="btnFeedbackMain" class="btn-feedback-main" onclick="openFeedbackModal()">
+                            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M7.5 8.25h9m-9 3.001h6m-6 3h3m6 6l-3-3H4.5A2.25 2.25 0 012.25 15V6A2.25 2.25 0 014.5 3.75h15A2.25 2.25 0 0121.75 6v9a2.25 2.25 0 01-2.25 2.25H16.5l-4.5 4.5z" />
+                            </svg>
+                            Berikan Feedback
+                        </button>
+                        <button id="btnToggleDetail" class="btn-toggle-detail" onclick="toggleDetailedInfo()">
+                            <span id="toggleDetailText">Lihat Detail Verifikasi</span>
+                            <svg id="toggleDetailArrow" width="16" height="16" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2.5" style="transition: transform 0.3s ease;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Detailed Info Box (Hidden Collapsible Section) -->
+                <div id="detailedInfoBox" class="detailed-info-box d-none">
+
+                    <!-- Visual Detection Box -->
+                    <div class="vis-preview-box">
+                        <img id="visImage" src="" alt="Visual Deteksi YOLO">
+                    </div>
+
+                    <!-- Receipt: Perbandingan Identitas -->
+                    <div class="receipt-card">
+                        <div class="receipt-section-title">Perbandingan Identitas</div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">Merchant Terlihat (Fisik)</span>
+                            <span id="valPhysName" class="receipt-val val-danger">—</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">Penerima QRIS (Digital)</span>
+                            <span id="valDigName" class="receipt-val val-blue">—</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">Kesesuaian Identitas</span>
+                            <span id="valMatchLevel" class="receipt-val text-secondary">—</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">NMID Fisik</span>
+                            <span id="valPhysNmid" class="receipt-val"
+                                style="font-family:monospace;font-size:0.8rem">—</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">NMID Digital</span>
+                            <span id="valDigNmid" class="receipt-val"
+                                style="font-family:monospace;font-size:0.8rem">—</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">Kota Merchant</span>
+                            <span id="valDigCity" class="receipt-val">—</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">Acquirer Bank</span>
+                            <span id="valAcquirer" class="receipt-val">—</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">Terminal ID</span>
+                            <span id="valTid" class="receipt-val">—</span>
+                        </div>
+                    </div>
+
+                    <!-- EMRS Reputation Card -->
+                    <div class="emrs-card">
+                        <div class="emrs-header">
+                            <div>
+                                <div class="emrs-title">Reputasi Toko (EMRS)</div>
+                                <div style="font-size: 0.76rem; color: #64748b; margin-top: 2px;" id="emrsSubhead">
+                                    Berdasarkan data observasi terverifikasi</div>
+                            </div>
+                            <div class="emrs-score-pill emrs-fair" id="emrsScorePill">— / 100</div>
+                        </div>
+
+                        <div class="comp-row">
+                            <div class="comp-label-row">
+                                <span class="comp-name">Kesesuaian Identitas QRIS</span>
+                                <span class="comp-val" id="compA">—</span>
+                            </div>
+                            <div class="comp-bar-track">
+                                <div class="comp-bar-fill bar-A" id="barA" style="width:0%"></div>
+                            </div>
+                        </div>
+
+                        <div class="comp-row">
+                            <div class="comp-label-row">
+                                <span class="comp-name">Rekam Laporan Masalah</span>
+                                <span class="comp-val" id="compC">—</span>
+                            </div>
+                            <div class="comp-bar-track">
+                                <div class="comp-bar-fill bar-C" id="barC" style="width:0%"></div>
+                            </div>
+                        </div>
+
+                        <div class="comp-row">
+                            <div class="comp-label-row">
+                                <span class="comp-name">Rekam Bebas Sengketa</span>
+                                <span class="comp-val" id="compD">—</span>
+                            </div>
+                            <div class="comp-bar-track">
+                                <div class="comp-bar-fill bar-D" id="barD" style="width:0%"></div>
+                            </div>
+                        </div>
+
+                        <div class="comp-row">
+                            <div class="comp-label-row">
+                                <span class="comp-name">Riwayat Keaktifan Toko</span>
+                                <span class="comp-val" id="compL">—</span>
+                            </div>
+                            <div class="comp-bar-track">
+                                <div class="comp-bar-fill bar-L" id="barL" style="width:0%"></div>
+                            </div>
+                        </div>
+
+                        <div class="receipt-row" style="padding: 10px 0 0; border: none; margin-top: 4px;">
+                            <span class="receipt-label">Status Histori</span>
+                            <span id="valReputation" class="receipt-val text-dark">—</span>
+                        </div>
+                    </div>
+
+                    <!-- Detail Analisis Payload QRIS (EMVCo) -->
+                    <div class="receipt-card">
+                        <div class="receipt-section-title">Informasi QRIS (EMVCo)</div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">Tipe Stiker</span>
+                            <span id="valQrInitiation" class="receipt-val val-blue">—</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">Kategori Usaha</span>
+                            <span id="valQrMcc" class="receipt-val">—</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">Tahun Registrasi</span>
+                            <span id="valQrRegYear" class="receipt-val">—</span>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
-            <!-- Receipt: Perbandingan Identitas -->
-            <div class="receipt-card">
-                <div class="receipt-section-title">Perbandingan Identitas</div>
-                <div class="receipt-row">
-                    <span class="receipt-label">Merchant Terlihat (Fisik)</span>
-                    <span id="valPhysName" class="receipt-val val-danger">—</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">Penerima QRIS (Digital)</span>
-                    <span id="valDigName" class="receipt-val val-blue">—</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">Kesesuaian Identitas</span>
-                    <span id="valMatchLevel" class="receipt-val text-secondary">—</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">NMID Fisik</span>
-                    <span id="valPhysNmid" class="receipt-val" style="font-family:monospace;font-size:0.8rem">—</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">NMID Digital</span>
-                    <span id="valDigNmid" class="receipt-val" style="font-family:monospace;font-size:0.8rem">—</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">Kota Merchant</span>
-                    <span id="valDigCity" class="receipt-val">—</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">Acquirer Bank</span>
-                    <span id="valAcquirer" class="receipt-val">—</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">Terminal ID</span>
-                    <span id="valTid" class="receipt-val">—</span>
-                </div>
-            </div>
-
-            <!-- EMRS Reputation Card -->
-            <div class="emrs-card">
-                <div class="emrs-header">
-                    <div>
-                        <div class="emrs-title">Reputasi Toko (EMRS)</div>
-                        <div style="font-size: 0.76rem; color: #64748b; margin-top: 2px;" id="emrsSubhead">Berdasarkan data observasi terverifikasi</div>
-                    </div>
-                    <div class="emrs-score-pill emrs-fair" id="emrsScorePill">— / 100</div>
-                </div>
-
-                <div class="comp-row">
-                    <div class="comp-label-row">
-                        <span class="comp-name">Kesesuaian Identitas QRIS</span>
-                        <span class="comp-val" id="compA">—</span>
-                    </div>
-                    <div class="comp-bar-track"><div class="comp-bar-fill bar-A" id="barA" style="width:0%"></div></div>
-                </div>
-
-                <div class="comp-row">
-                    <div class="comp-label-row">
-                        <span class="comp-name">Rekam Laporan Masalah</span>
-                        <span class="comp-val" id="compC">—</span>
-                    </div>
-                    <div class="comp-bar-track"><div class="comp-bar-fill bar-C" id="barC" style="width:0%"></div></div>
-                </div>
-
-                <div class="comp-row">
-                    <div class="comp-label-row">
-                        <span class="comp-name">Rekam Bebas Sengketa</span>
-                        <span class="comp-val" id="compD">—</span>
-                    </div>
-                    <div class="comp-bar-track"><div class="comp-bar-fill bar-D" id="barD" style="width:0%"></div></div>
-                </div>
-
-                <div class="comp-row">
-                    <div class="comp-label-row">
-                        <span class="comp-name">Riwayat Keaktifan Toko</span>
-                        <span class="comp-val" id="compL">—</span>
-                    </div>
-                    <div class="comp-bar-track"><div class="comp-bar-fill bar-L" id="barL" style="width:0%"></div></div>
-                </div>
-
-                <div class="receipt-row" style="padding: 10px 0 0; border: none; margin-top: 4px;">
-                    <span class="receipt-label">Status Histori</span>
-                    <span id="valReputation" class="receipt-val text-dark">—</span>
-                </div>
-            </div>
-
-            <!-- Detail Analisis Payload QRIS (EMVCo) -->
-            <div class="receipt-card">
-                <div class="receipt-section-title">Informasi QRIS (EMVCo)</div>
-                <div class="receipt-row">
-                    <span class="receipt-label">Tipe Stiker</span>
-                    <span id="valQrInitiation" class="receipt-val val-blue">—</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">Kategori Usaha</span>
-                    <span id="valQrMcc" class="receipt-val">—</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">Tahun Registrasi</span>
-                    <span id="valQrRegYear" class="receipt-val">—</span>
-                </div>
-            </div>
-
-            <!-- Action Buttons -->
-            <button id="btnCancel" class="btn-cancel-action" onclick="cancelPayment()" style="display:none">
-                Batalkan Pembayaran
-            </button>
-
-            <button class="btn-secondary-action mb-2" onclick="location.href='select_scan.html'">
-                Scan Stiker Lain
-            </button>
         </div>
 
     </div>
 
-</div>
+    <!-- Feedback Modal -->
+    <div id="feedbackModal" class="modal-backdrop-custom d-none">
+        <div class="modal-card-custom">
+            <div class="modal-header-custom">
+                <h5>Berikan Feedback Toko</h5>
+                <button class="btn-close-custom" onclick="closeFeedbackModal()">✕</button>
+            </div>
+            <div class="modal-body-custom">
+                <label class="form-label-custom">Kategori Laporan</label>
+                <select id="fbCategory" class="form-control-custom">
+                    <option value="Merchant Mismatch">Ketidaksesuaian Nama Merchant</option>
+                    <option value="QRIS Replacement">Indikasi Stiker Ditimpa (Palsu)</option>
+                    <option value="Additional Fee">Biaya Tambahan Tidak Sah</option>
+                    <option value="General Complaint">Laporan Umum</option>
+                </select>
 
-<script>
-window.addEventListener('DOMContentLoaded', async () => {
-    const pendingFile = sessionStorage.getItem('laqris_pending_file');
-    const existingResult = sessionStorage.getItem('laqris_scan_result');
+                <label class="form-label-custom">Tingkat Keparahan (Severity)</label>
+                <select id="fbSeverity" class="form-control-custom">
+                    <option value="LOW">Rendah (Info)</option>
+                    <option value="MEDIUM" selected>Sedang (Peringatan)</option>
+                    <option value="HIGH">Tinggi (Berbahaya)</option>
+                    <option value="CRITICAL">Kritis (Penipuan)</option>
+                </select>
 
-    if (pendingFile) {
-        sessionStorage.removeItem('laqris_pending_file');
-        await startScanWithTimeline(pendingFile);
-    } else if (existingResult) {
-        try {
-            renderVerificationResult(JSON.parse(existingResult));
-            document.getElementById('resultContent').classList.remove('d-none');
-        } catch (e) {
-            location.href = 'select_scan.html';
-        }
-    } else {
-        location.href = 'select_scan.html';
-    }
-});
+                <label class="form-label-custom">Catatan / Deskripsi</label>
+                <textarea id="fbDescription" class="form-control-custom" rows="3"
+                    placeholder="Jelaskan detail kendala yang Anda alami..."></textarea>
 
-async function startScanWithTimeline(base64Data) {
-    document.getElementById('loadingTimelineBox').classList.remove('d-none');
-    document.getElementById('resultContent').classList.add('d-none');
+                <label class="form-label-custom">Nomor Referensi Transaksi (Opsional)</label>
+                <input type="text" id="fbTxRef" class="form-control-custom" placeholder="Contoh: TRX-9920183">
 
-    // Convert Base64 Data URL to Blob
-    const fetchRes = await fetch(base64Data);
-    const blob = await fetchRes.blob();
-    const filename = sessionStorage.getItem('laqris_pending_filename') || 'scan.jpg';
-    const formData = new FormData();
-    formData.append('file', blob, filename);
+                <div class="form-check-custom">
+                    <input type="checkbox" id="fbHasEvidence">
+                    <label for="fbHasEvidence">Saya memiliki bukti transaksi resmi (Evidence Level 2)</label>
+                </div>
+            </div>
+            <div class="modal-footer-custom">
+                <button class="btn-modal-cancel" onclick="closeFeedbackModal()">Batal</button>
+                <button class="btn-modal-submit" onclick="submitFeedbackForm()">Kirim Feedback</button>
+            </div>
+        </div>
+    </div>
 
-    // Step 1 Active
-    setStepState(1, 'active');
+    <script>
+        window.addEventListener('DOMContentLoaded', async () => {
+            const pendingFile = sessionStorage.getItem('laqris_pending_file');
+            const existingResult = sessionStorage.getItem('laqris_scan_result');
 
-    // Start API Request in parallel
-    const apiPromise = fetch('/api/scan', { method: 'POST', body: formData });
-
-    // Step 2 Active
-    await delay(350);
-    setStepState(1, 'completed');
-    setStepState(2, 'active');
-
-    // Step 3 Active
-    await delay(450);
-    setStepState(2, 'completed');
-    setStepState(3, 'active');
-
-    let apiRes, data;
-    try {
-        apiRes = await apiPromise;
-        data = await apiRes.json();
-    } catch (err) {
-        alert('Terjadi kesalahan koneksi jaringan: ' + err.message);
-        location.href = 'select_scan.html';
-        return;
-    }
-
-    // Step 4 Active
-    setStepState(3, 'completed');
-    setStepState(4, 'active');
-    await delay(350);
-
-    // Step 5 Completed
-    setStepState(4, 'completed');
-    setStepState(5, 'completed');
-    await delay(300);
-
-    if (apiRes.ok) {
-        sessionStorage.setItem('laqris_scan_result', JSON.stringify(data));
-        renderVerificationResult(data);
-        document.getElementById('loadingTimelineBox').classList.add('d-none');
-        document.getElementById('resultContent').classList.remove('d-none');
-    } else {
-        alert('Gagal memproses gambar: ' + (data.detail || 'Terjadi kesalahan'));
-        location.href = 'select_scan.html';
-    }
-}
-
-function setStepState(stepNum, state) {
-    const stepEl = document.getElementById(`step${stepNum}`);
-    const nodeEl = document.getElementById(`node${stepNum}`);
-
-    if (stepEl) {
-        if (state === 'active') {
-            stepEl.className = 'timeline-step active';
-            if (nodeEl) {
-                nodeEl.innerHTML = `<svg class="node-spinner-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12" stroke-linecap="round"></circle></svg>`;
+            if (pendingFile) {
+                sessionStorage.removeItem('laqris_pending_file');
+                await startScanWithTimeline(pendingFile);
+            } else if (existingResult) {
+                try {
+                    renderVerificationResult(JSON.parse(existingResult));
+                    document.getElementById('resultContent').classList.remove('d-none');
+                } catch (e) {
+                    location.href = 'select_scan.html';
+                }
+            } else {
+                location.href = 'select_scan.html';
             }
-        } else if (state === 'completed') {
-            stepEl.className = 'timeline-step completed';
-            if (nodeEl) {
-                nodeEl.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+        });
+
+        async function startScanWithTimeline(base64Data) {
+            document.getElementById('loadingTimelineBox').classList.remove('d-none');
+            document.getElementById('resultContent').classList.add('d-none');
+
+            // Convert Base64 Data URL to Blob
+            const fetchRes = await fetch(base64Data);
+            const blob = await fetchRes.blob();
+            const filename = sessionStorage.getItem('laqris_pending_filename') || 'scan.jpg';
+            const formData = new FormData();
+            formData.append('file', blob, filename);
+
+            // Step 1 Active
+            setStepState(1, 'active');
+
+            // Start API Request in parallel
+            const apiPromise = fetch('/api/scan', { method: 'POST', body: formData });
+
+            // Step 2 Active
+            await delay(350);
+            setStepState(1, 'completed');
+            setStepState(2, 'active');
+
+            // Step 3 Active
+            await delay(450);
+            setStepState(2, 'completed');
+            setStepState(3, 'active');
+
+            let apiRes, data;
+            try {
+                apiRes = await apiPromise;
+                data = await apiRes.json();
+            } catch (err) {
+                alert('Terjadi kesalahan koneksi jaringan: ' + err.message);
+                location.href = 'select_scan.html';
+                return;
+            }
+
+            // Step 4 Active
+            setStepState(3, 'completed');
+            setStepState(4, 'active');
+            await delay(350);
+
+            // Step 5 Completed
+            setStepState(4, 'completed');
+            setStepState(5, 'completed');
+            await delay(300);
+
+            if (apiRes.ok) {
+                sessionStorage.setItem('laqris_scan_result', JSON.stringify(data));
+                try {
+                    renderVerificationResult(data);
+                } catch (renderErr) {
+                    console.error("Render verification error:", renderErr);
+                }
+                document.getElementById('loadingTimelineBox').classList.add('d-none');
+                document.getElementById('resultContent').classList.remove('d-none');
+            } else {
+                alert('Gagal memproses gambar: ' + (data.detail || 'Terjadi kesalahan'));
+                location.href = 'select_scan.html';
             }
         }
-    }
-    updateLineProgress(stepNum);
-}
 
-function updateLineProgress(activeStepNum) {
-    const activeNode = document.getElementById(`node${activeStepNum}`);
-    const container  = document.querySelector('.timeline-container');
-    const lineEl     = document.getElementById('timelineLineProgress');
+        function setStepState(stepNum, state) {
+            const stepEl = document.getElementById(`step${stepNum}`);
+            const nodeEl = document.getElementById(`node${stepNum}`);
 
-    if (activeNode && container && lineEl) {
-        const containerRect = container.getBoundingClientRect();
-        const nodeRect      = activeNode.getBoundingClientRect();
-        const heightPx      = (nodeRect.top + (nodeRect.height / 2)) - containerRect.top;
-        lineEl.style.height = `${Math.max(0, heightPx)}px`;
-    }
-}
-
-function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-function renderVerificationResult(data) {
-    const qr  = data.current_qr_risk || {};
-    const rep = data.merchant_reputation || {};
-
-    if (data.visualization_url) {
-        document.getElementById('visImage').src = data.visualization_url + '?t=' + Date.now();
-    }
-
-    const trust = qr.trust_score ?? 0;
-    document.getElementById('trustScoreBadge').textContent = `Trust Score: ${trust.toFixed(0)} / 100`;
-
-    const iconBox  = document.getElementById('statusIcon');
-    const titleBox = document.getElementById('statusTitle');
-    const noteBox  = document.getElementById('statusNote');
-    const btnCancel = document.getElementById('btnCancel');
-
-    if (qr.is_mismatch || qr.risk_level === 'HIGH_RISK') {
-        iconBox.className = 'status-circle status-circle-danger';
-        iconBox.innerHTML = '<span>⚠</span>';
-        titleBox.textContent = 'Indikasi Identitas Tidak Sesuai';
-        noteBox.className = 'status-subnote status-subnote-danger';
-        noteBox.textContent = qr.explanation || 'Identitas stiker toko tidak sesuai dengan rekening penerima digital.';
-        btnCancel.style.display = 'block';
-    } else {
-        iconBox.className = 'status-circle status-circle-safe';
-        iconBox.innerHTML = '<span>✓</span>';
-        titleBox.textContent = 'Verifikasi Berhasil (Aman)';
-        noteBox.className = 'status-subnote';
-        noteBox.textContent = qr.explanation || 'Identitas stiker fisik cocok dengan penerima QR Code digital.';
-        btnCancel.style.display = 'none';
-    }
-
-    document.getElementById('valPhysName').textContent   = qr.physical_merchant || 'Tidak terbaca';
-    document.getElementById('valDigName').textContent    = qr.digital_merchant  || 'Tidak ditemukan';
-    document.getElementById('valMatchLevel').textContent = `${qr.name_similarity ?? 0}% (${qr.match_level || '—'})`;
-    document.getElementById('valPhysNmid').textContent   = qr.physical_nmid     || 'Tidak terbaca';
-    document.getElementById('valDigNmid').textContent    = qr.digital_nmid      || 'Tidak ditemukan';
-    document.getElementById('valDigCity').textContent    = qr.digital_city      || 'Tidak ditemukan';
-    document.getElementById('valAcquirer').textContent   = qr.digital_acquirer  || 'Tidak ditemukan';
-    document.getElementById('valTid').textContent        = qr.digital_tid       || 'Tidak ditemukan';
-
-    const isRegistered = rep.found_in_db === true;
-    const score = rep.reputation_score;
-    const grade = rep.grade || (isRegistered ? 'Fair' : 'Belum Terdaftar');
-    const comps = rep.components || {};
-
-    const pill = document.getElementById('emrsScorePill');
-    pill.className = 'emrs-score-pill';
-    if (!isRegistered || score === null || score === undefined) {
-        pill.textContent = 'Belum Terdaftar';
-        pill.style.background = '#f1f5f9';
-        pill.style.color = '#64748b';
-        document.getElementById('emrsSubhead').textContent = 'Merchant belum memiliki riwayat observasi di LaQris';
-    } else {
-        pill.style.background = '';
-        pill.style.color = '';
-        pill.textContent = `${score.toFixed(0)} / 100  ${grade}`;
-        if (score >= 80)      pill.classList.add('emrs-excellent');
-        else if (score >= 60) pill.classList.add('emrs-good');
-        else if (score >= 40) pill.classList.add('emrs-fair');
-        else                  pill.classList.add('emrs-poor');
-        document.getElementById('emrsSubhead').textContent = `Berdasarkan ${rep.total_evidence_count ?? 0} observasi terverifikasi`;
-    }
-
-    const setComp = (id, val) => {
-        if (!isRegistered) {
-            document.getElementById(`comp${id}`).textContent = 'N/A';
-            document.getElementById(`bar${id}`).style.width = '0%';
-        } else {
-            const v = val ?? 0;
-            document.getElementById(`comp${id}`).textContent = `${v.toFixed(0)} / 100`;
-            document.getElementById(`bar${id}`).style.width = `${v}%`;
+            if (stepEl) {
+                if (state === 'active') {
+                    stepEl.className = 'timeline-step active';
+                    if (nodeEl) {
+                        nodeEl.innerHTML = `<svg class="node-spinner-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12" stroke-linecap="round"></circle></svg>`;
+                    }
+                } else if (state === 'completed') {
+                    stepEl.className = 'timeline-step completed';
+                    if (nodeEl) {
+                        nodeEl.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                    }
+                }
+            }
+            updateLineProgress(stepNum);
         }
-    };
-    setComp('A', comps.A);
-    setComp('C', comps.C);
-    setComp('D', comps.D);
-    setComp('L', comps.L);
 
-    const repStatus = isRegistered
-        ? `${grade} (Tingkat Kepercayaan Data: ${rep.confidence_level || 'MED'})`
-        : 'Belum ada laporan atau sengketa sebelumnya.';
-    document.getElementById('valReputation').textContent = repStatus;
+        function updateLineProgress(activeStepNum) {
+            const activeNode = document.getElementById(`node${activeStepNum}`);
+            const container = document.querySelector('.timeline-container');
+            const lineEl = document.getElementById('timelineLineProgress');
 
-    const qAnalysis = qr.qris_raw_analysis || {};
-    document.getElementById('valQrInitiation').textContent = qAnalysis.point_of_initiation || 'Statis';
-    document.getElementById('valQrMcc').textContent        = qAnalysis.mcc_category || qAnalysis.mcc_code || 'Retail / Perdagangan';
-    const estYear = qAnalysis.nmid_parsed?.estimated_reg_year;
-    document.getElementById('valQrRegYear').textContent    = estYear ? `~${estYear}` : '—';
-}
+            if (activeNode && container && lineEl) {
+                const containerRect = container.getBoundingClientRect();
+                const nodeRect = activeNode.getBoundingClientRect();
+                const heightPx = (nodeRect.top + (nodeRect.height / 2)) - containerRect.top;
+                lineEl.style.height = `${Math.max(0, heightPx)}px`;
+            }
+        }
 
-function cancelPayment() {
-    alert('❌ TRANSAKSI DIBATALKAN\n\nAnda berhasil membatalkan pembayaran. Terhindar dari potensi penipuan stiker QRIS ditimpa.');
-}
-</script>
+        function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+        function renderVerificationResult(data) {
+            const qr = data.current_qr_risk || {};
+            const rep = data.merchant_reputation || {};
+
+            if (data.visualization_url) {
+                document.getElementById('visImage').src = data.visualization_url + '?t=' + Date.now();
+            }
+
+            const trust = qr.trust_score ?? 0;
+            document.getElementById('trustScoreBadge').textContent = `Trust Score: ${trust.toFixed(0)} / 100`;
+
+            const iconBox = document.getElementById('statusIcon');
+            const titleBox = document.getElementById('statusTitle');
+            const noteBox = document.getElementById('statusNote');
+            if (qr.is_mismatch || qr.risk_level === 'HIGH_RISK') {
+                iconBox.className = 'status-circle status-circle-danger';
+                iconBox.innerHTML = '<span>⚠</span>';
+                titleBox.textContent = 'DANGER';
+                noteBox.className = 'status-subnote status-subnote-danger';
+                noteBox.textContent = qr.explanation || 'Identitas stiker toko tidak sesuai dengan rekening penerima digital.';
+            } else {
+                iconBox.className = 'status-circle status-circle-safe';
+                iconBox.innerHTML = '<span>✓</span>';
+                titleBox.textContent = 'NORMAL';
+                noteBox.className = 'status-subnote';
+                noteBox.textContent = qr.explanation || 'Identitas stiker fisik cocok dengan penerima QR Code digital.';
+            }
+
+            document.getElementById('valPhysName').textContent = qr.physical_merchant || 'Tidak terbaca';
+            document.getElementById('valDigName').textContent = qr.digital_merchant || 'Tidak ditemukan';
+            document.getElementById('valMatchLevel').textContent = `${qr.name_similarity ?? 0}% (${qr.match_level || '—'})`;
+            document.getElementById('valPhysNmid').textContent = qr.physical_nmid || 'Tidak terbaca';
+            document.getElementById('valDigNmid').textContent = qr.digital_nmid || 'Tidak ditemukan';
+            document.getElementById('valDigCity').textContent = qr.digital_city || 'Tidak ditemukan';
+            document.getElementById('valAcquirer').textContent = qr.digital_acquirer || 'Tidak ditemukan';
+            document.getElementById('valTid').textContent = qr.digital_tid || 'Tidak ditemukan';
+
+            const isRegistered = rep.found_in_db === true;
+            const score = rep.reputation_score;
+            const grade = rep.grade || (isRegistered ? 'Fair' : 'Belum Terdaftar');
+            const comps = rep.components || {};
+
+            const pill = document.getElementById('emrsScorePill');
+            pill.className = 'emrs-score-pill';
+            if (!isRegistered || score === null || score === undefined) {
+                pill.textContent = 'Belum Terdaftar';
+                pill.style.background = '#f1f5f9';
+                pill.style.color = '#64748b';
+                document.getElementById('emrsSubhead').textContent = 'Merchant belum memiliki riwayat observasi di LaQris';
+            } else {
+                pill.style.background = '';
+                pill.style.color = '';
+                pill.textContent = `${score.toFixed(0)} / 100  ${grade}`;
+                if (score >= 80) pill.classList.add('emrs-excellent');
+                else if (score >= 60) pill.classList.add('emrs-good');
+                else if (score >= 40) pill.classList.add('emrs-fair');
+                else pill.classList.add('emrs-poor');
+                document.getElementById('emrsSubhead').textContent = `Berdasarkan ${rep.total_evidence_count ?? 0} observasi terverifikasi`;
+            }
+
+            const setComp = (id, val) => {
+                if (!isRegistered) {
+                    document.getElementById(`comp${id}`).textContent = 'N/A';
+                    document.getElementById(`bar${id}`).style.width = '0%';
+                } else {
+                    const v = val ?? 0;
+                    document.getElementById(`comp${id}`).textContent = `${v.toFixed(0)} / 100`;
+                    document.getElementById(`bar${id}`).style.width = `${v}%`;
+                }
+            };
+            setComp('A', comps.A);
+            setComp('C', comps.C);
+            setComp('D', comps.D);
+            setComp('L', comps.L);
+
+            const repStatus = isRegistered
+                ? `${grade} (Tingkat Kepercayaan Data: ${rep.confidence_level || 'MED'})`
+                : 'Belum ada laporan atau sengketa sebelumnya.';
+            document.getElementById('valReputation').textContent = repStatus;
+
+            const qAnalysis = qr.qris_raw_analysis || {};
+            document.getElementById('valQrInitiation').textContent = qAnalysis.point_of_initiation || 'Statis';
+            document.getElementById('valQrMcc').textContent = qAnalysis.mcc_category || qAnalysis.mcc_code || 'Retail / Perdagangan';
+            const estYear = qAnalysis.nmid_parsed?.estimated_reg_year;
+            document.getElementById('valQrRegYear').textContent = estYear ? `~${estYear}` : '—';
+
+            // Store NMID for Feedback
+            currentNmid = qr.digital_nmid || qr.physical_nmid || rep.nmid || '';
+        }
+
+        let currentNmid = '';
+
+        function toggleDetailedInfo() {
+            const box = document.getElementById('detailedInfoBox');
+            const textEl = document.getElementById('toggleDetailText');
+            const arrowEl = document.getElementById('toggleDetailArrow');
+
+            if (box.classList.contains('d-none')) {
+                box.classList.remove('d-none');
+                textEl.textContent = 'Sembunyikan Detail Verifikasi';
+                arrowEl.style.transform = 'rotate(180deg)';
+                box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                box.classList.add('d-none');
+                textEl.textContent = 'Lihat Detail Verifikasi';
+                arrowEl.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function openFeedbackModal() {
+            document.getElementById('feedbackModal').classList.remove('d-none');
+        }
+
+        function closeFeedbackModal() {
+            document.getElementById('feedbackModal').classList.add('d-none');
+        }
+
+        async function submitFeedbackForm() {
+            if (!currentNmid) {
+                alert('NMID Merchant tidak terdeteksi untuk submit feedback.');
+                return;
+            }
+            const category = document.getElementById('fbCategory').value;
+            const severity = document.getElementById('fbSeverity').value;
+            const description = document.getElementById('fbDescription').value;
+            const transaction_ref = document.getElementById('fbTxRef').value || null;
+            const has_evidence = document.getElementById('fbHasEvidence').checked;
+
+            try {
+                const res = await fetch('/api/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        nmid: currentNmid,
+                        category,
+                        severity,
+                        description,
+                        transaction_ref,
+                        has_evidence
+                    })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert('✅ Feedback Berhasil Disubmit!\n\n' + (data.message || 'Terima kasih atas laporan Anda. EMRS toko telah diperbarui.'));
+                    closeFeedbackModal();
+                    document.getElementById('fbDescription').value = '';
+                    document.getElementById('fbTxRef').value = '';
+                } else {
+                    alert('⚠️ Gagal mengirim feedback: ' + (data.detail || data.message || 'Terjadi kesalahan'));
+                }
+            } catch (e) {
+                alert('Terjadi kesalahan koneksi jaringan: ' + e.message);
+            }
+        }
+
+        function cancelPayment() {
+            alert('❌ TRANSAKSI DIBATALKAN\n\nAnda berhasil membatalkan pembayaran. Terhindar dari potensi penipuan stiker QRIS ditimpa.');
+        }
+    </script>
 </body>
+
 </html>

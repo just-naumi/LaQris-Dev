@@ -206,11 +206,10 @@
 
         <!-- Registration Form -->
         <form id="regForm" onsubmit="handleRegister(event)">
-            <input type="hidden" id="selectedRole" value="PENGGUNA">
 
             <div class="form-group">
-                <label class="form-label">Nama Lengkap</label>
-                <input type="text" id="regFullName" class="form-control-custom" placeholder="Contoh: Budi Santoso" required>
+                <label class="form-label">Username</label>
+                <input type="text" id="regUsername" class="form-control-custom" placeholder="Contoh: budi_santoso" required>
             </div>
 
             <div class="form-group">
@@ -249,10 +248,8 @@ async function handleRegister(e) {
     errBox.style.display = 'none';
     succBox.style.display = 'none';
 
-    const fullName = document.getElementById('regFullName').value.trim();
+    const username = document.getElementById('regUsername').value.trim();
     const email    = document.getElementById('regEmail').value.trim();
-    const phoneEl  = document.getElementById('regPhone');
-    const phone    = phoneEl ? phoneEl.value.trim() : null;
     const password = document.getElementById('regPassword').value;
     const confirm  = document.getElementById('regConfirmPassword').value;
 
@@ -271,10 +268,8 @@ async function handleRegister(e) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                full_name: fullName,
+                username: username,
                 email: email,
-                phone: phone || null,
-                role: 'PENGGUNA',
                 password: password
             })
         });
@@ -282,22 +277,30 @@ async function handleRegister(e) {
         const data = await res.json();
 
         if (res.ok) {
-            succBox.textContent = '🎉 Pendaftaran Berhasil! Mengalihkan ke halaman login...';
+            succBox.textContent = '🎉 Pendaftaran Berhasil! Mengalihkan ke Dashboard...';
             succBox.style.display = 'block';
+            if (data.access_token) {
+                localStorage.setItem('laqris_access_token', data.access_token);
+                sessionStorage.setItem('laqris_access_token', data.access_token);
+            }
+            if (data.user) {
+                localStorage.setItem('laqris_user', JSON.stringify(data.user));
+                sessionStorage.setItem('laqris_user', JSON.stringify(data.user));
+            }
             setTimeout(() => {
-                location.href = 'login.html';
-            }, 1200);
+                location.href = 'dashboard.html';
+            }, 800);
         } else {
             errBox.textContent = data.detail || 'Gagal mendaftar akun.';
             errBox.style.display = 'block';
             btn.disabled = false;
-            btn.textContent = 'Daftar Akun LaQris';
+            btn.textContent = 'Daftar Akun';
         }
     } catch (err) {
         errBox.textContent = 'Terjadi kesalahan jaringan: ' + err.message;
         errBox.style.display = 'block';
         btn.disabled = false;
-        btn.textContent = 'Daftar Akun LaQris';
+        btn.textContent = 'Daftar Akun';
     }
 }
 </script>

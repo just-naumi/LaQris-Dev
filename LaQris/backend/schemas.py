@@ -156,11 +156,12 @@ class FeedbackResponseSchema(BaseModel):
 # ─────────────────────────────────────────────────────────────
 
 class UserRegisterSchema(BaseModel):
-    full_name: str
+    username: str
     email: str
+    password: str
+    full_name: Optional[str] = None
     phone: Optional[str] = None
     role: str = "PENGGUNA"  # "PENGGUNA" | "MERCHANT"
-    password: str
 
 
 class UserLoginSchema(BaseModel):
@@ -170,12 +171,21 @@ class UserLoginSchema(BaseModel):
 
 class UserResponseSchema(BaseModel):
     id: int
-    full_name: str
+    user_id: str
+    username: str
     email: str
-    phone: Optional[str] = None
+    status: str
+    full_name: Optional[str] = None
     role: str
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class TokenResponseSchema(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponseSchema
+
 

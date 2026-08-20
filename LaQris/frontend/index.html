@@ -272,6 +272,20 @@
 
     </div>
 
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const rawUser = localStorage.getItem('laqris_user');
+            if (rawUser) {
+                try {
+                    const user = JSON.parse(rawUser);
+                    const authNav = document.getElementById('authNavBtns');
+                    if (authNav) {
+                        authNav.innerHTML = `<button class="btn-register" onclick="location.href='dashboard.html'">Dashboard</button>`;
+                    }
+                } catch (e) {}
+            }
+        });
+    </script>
 </body>
 
 </html>

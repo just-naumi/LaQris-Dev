@@ -258,12 +258,19 @@ async function handleLogin(e) {
         const data = await res.json();
 
         if (res.ok) {
-            succBox.textContent = `👋 Selamat datang kembali, ${data.user?.full_name || 'Pengguna'}!`;
+            succBox.textContent = `👋 Selamat datang kembali, ${data.user?.username || data.user?.full_name || 'Pengguna'}!`;
             succBox.style.display = 'block';
-            localStorage.setItem('laqris_user', JSON.stringify(data.user));
+            if (data.access_token) {
+                localStorage.setItem('laqris_access_token', data.access_token);
+                sessionStorage.setItem('laqris_access_token', data.access_token);
+            }
+            if (data.user) {
+                localStorage.setItem('laqris_user', JSON.stringify(data.user));
+                sessionStorage.setItem('laqris_user', JSON.stringify(data.user));
+            }
             setTimeout(() => {
-                location.href = 'index.html';
-            }, 1000);
+                location.href = 'dashboard.html';
+            }, 800);
         } else {
             errBox.textContent = data.detail || 'Email atau password salah.';
             errBox.style.display = 'block';
