@@ -80,7 +80,7 @@ export default function QrisResultPage({ type }: { type: ResultType }) {
 
   return (
     <main className="h-dvh overflow-hidden bg-slate-100 py-0 sm:py-4 flex items-center justify-center font-sans antialiased">
-      <div className="w-full max-w-[620px] h-full sm:h-[calc(100dvh-2rem)] bg-white sm:rounded-[32px] shadow-xl overflow-hidden flex flex-col relative border-0 sm:border border-slate-200 text-slate-900">
+      <div className="w-full max-w-[390px] h-full sm:h-[min(844px,calc(100dvh-2rem))] bg-white sm:rounded-[44px] shadow-2xl overflow-hidden flex flex-col relative border-0 sm:border-[8px] border-neutral-800 text-slate-900">
         <header className="px-7 py-5 border-b border-slate-100 flex items-center justify-between shrink-0">
           <Link href="/dashboard" className="text-xl font-black tracking-tight">LàQris.</Link>
           <Link href="/dashboard" className="text-sm font-bold text-slate-500 hover:text-slate-900">Kembali</Link>
