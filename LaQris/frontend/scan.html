@@ -130,8 +130,9 @@
         .timeline-step {
             position: relative;
             margin-bottom: 26px;
-            opacity: 0.35;
-            transition: opacity 0.4s ease;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .timeline-step:last-child {
@@ -140,6 +141,7 @@
 
         .timeline-step.active, .timeline-step.completed {
             opacity: 1;
+            transform: translateY(0);
         }
 
         .timeline-node {
@@ -150,20 +152,21 @@
             height: 25px;
             border-radius: 50%;
             background: #ffffff;
-            border: 3px solid #cbd5e1;
+            border: 2px solid #cbd5e1;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 0.72rem;
             font-weight: 800;
-            color: transparent;
+            color: #94a3b8;
             transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             z-index: 2;
         }
 
         .timeline-step.active .timeline-node {
             border-color: #2563eb;
-            background: #eff6ff;
+            background: #ffffff;
+            color: #2563eb;
             box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.18);
             animation: pulse-ring 1.5s infinite;
         }
@@ -181,18 +184,47 @@
             100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
         }
 
+        @keyframes spin-node { to { transform: rotate(360deg); } }
+        .node-spinner-svg {
+            animation: spin-node 0.9s linear infinite;
+        }
+
         .timeline-title {
             font-size: 0.95rem;
-            font-weight: 800;
-            color: #0f172a;
+            font-weight: 700;
+            color: #94a3b8;
             line-height: 1.3;
+            transition: all 0.3s ease;
         }
 
         .timeline-desc {
             font-size: 0.8rem;
-            color: #64748b;
+            color: #94a3b8;
             margin-top: 3px;
             line-height: 1.45;
+            transition: all 0.3s ease;
+        }
+
+        /* Active Highlighted Text (Electric Blue) */
+        .timeline-step.active .timeline-title {
+            color: #2563eb;
+            font-weight: 900;
+            font-size: 0.98rem;
+        }
+
+        .timeline-step.active .timeline-desc {
+            color: #3b82f6;
+            font-weight: 600;
+        }
+
+        /* Completed Text (Dark Slate / Grey) */
+        .timeline-step.completed .timeline-title {
+            color: #0f172a;
+            font-weight: 800;
+        }
+
+        .timeline-step.completed .timeline-desc {
+            color: #64748b;
         }
 
         /* ── Status Center ────────────────────────────────────────── */
@@ -432,7 +464,7 @@
 
                 <!-- Step 1 -->
                 <div class="timeline-step" id="step1">
-                    <div class="timeline-node" id="node1">✓</div>
+                    <div class="timeline-node" id="node1">1</div>
                     <div class="timeline-content">
                         <div class="timeline-title">Foto Diterima</div>
                         <div class="timeline-desc">Memuat foto stiker QRIS dari perangkat Anda...</div>
@@ -441,7 +473,7 @@
 
                 <!-- Step 2 -->
                 <div class="timeline-step" id="step2">
-                    <div class="timeline-node" id="node2">✓</div>
+                    <div class="timeline-node" id="node2">2</div>
                     <div class="timeline-content">
                         <div class="timeline-title">Deteksi Area AI (YOLO)</div>
                         <div class="timeline-desc">Mendeteksi posisi QR Code &amp; memotong area teks merchant...</div>
@@ -450,7 +482,7 @@
 
                 <!-- Step 3 -->
                 <div class="timeline-step" id="step3">
-                    <div class="timeline-node" id="node3">✓</div>
+                    <div class="timeline-node" id="node3">3</div>
                     <div class="timeline-content">
                         <div class="timeline-title">Pembacaan Teks Fisik (TrOCR)</div>
                         <div class="timeline-desc">Membaca tulisan nama toko &amp; nomor NMID stiker fisik...</div>
@@ -459,7 +491,7 @@
 
                 <!-- Step 4 -->
                 <div class="timeline-step" id="step4">
-                    <div class="timeline-node" id="node4">✓</div>
+                    <div class="timeline-node" id="node4">4</div>
                     <div class="timeline-content">
                         <div class="timeline-title">Verifikasi EMVCo &amp; EMRS</div>
                         <div class="timeline-desc">Mencocokkan identitas digital &amp; menghitung skor reputasi toko...</div>
@@ -468,7 +500,7 @@
 
                 <!-- Step 5 -->
                 <div class="timeline-step" id="step5">
-                    <div class="timeline-node" id="node5">✓</div>
+                    <div class="timeline-node" id="node5">5</div>
                     <div class="timeline-content">
                         <div class="timeline-title">Analisis Selesai</div>
                         <div class="timeline-desc">Menyiapkan laporan keaslian &amp; proteksi transaksi!</div>
@@ -693,11 +725,19 @@ async function startScanWithTimeline(base64Data) {
 
 function setStepState(stepNum, state) {
     const stepEl = document.getElementById(`step${stepNum}`);
+    const nodeEl = document.getElementById(`node${stepNum}`);
+
     if (stepEl) {
         if (state === 'active') {
             stepEl.className = 'timeline-step active';
+            if (nodeEl) {
+                nodeEl.innerHTML = `<svg class="node-spinner-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12" stroke-linecap="round"></circle></svg>`;
+            }
         } else if (state === 'completed') {
             stepEl.className = 'timeline-step completed';
+            if (nodeEl) {
+                nodeEl.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+            }
         }
     }
     updateLineProgress(stepNum);
