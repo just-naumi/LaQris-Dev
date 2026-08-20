@@ -33,3 +33,12 @@ html {
   background: oklch(var(--p) / 0.4);
   border-radius: 999px;
 }
+
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}

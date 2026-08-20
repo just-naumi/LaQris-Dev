@@ -32,7 +32,7 @@ export default function ReportPage() {
           <span className="w-12" aria-hidden="true" />
         </header>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+        <div className="scrollbar-hidden flex-1 overflow-y-auto px-6 py-5 space-y-4">
           {submitted ? (
             <section className="min-h-full flex flex-col items-center justify-center text-center space-y-4">
               <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 text-2xl">

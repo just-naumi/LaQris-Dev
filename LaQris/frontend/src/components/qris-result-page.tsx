@@ -86,7 +86,7 @@ export default function QrisResultPage({ type }: { type: ResultType }) {
           <Link href="/dashboard" className="text-xs font-bold text-neutral-500 hover:text-neutral-900">Kembali</Link>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3.5">
+        <div className="scrollbar-hidden flex-1 overflow-y-auto px-6 py-4 space-y-3.5">
           <section className={`${config.soft} ${config.border} rounded-3xl border p-5 text-center`}>
             <div className={`mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm ${config.accent}`}>
               {type === "aman" ? (
