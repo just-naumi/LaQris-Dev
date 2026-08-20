@@ -669,23 +669,44 @@ def query_merchant_reputation(nmid_digital, nmid_physical, merchant_name_dig, me
             disputes = db.query(Dispute).filter(Dispute.merchant_id == m.id).all()
             return calculate_emrs(m, reports, disputes)
         else:
-            # Merchant BELUM TERDAFTAR di database LaQris
-            return {
-                "reputation_score": None,
-                "grade": "Belum Terdaftar",
-                "confidence_level": "LOW",
-                "confidence_score": 0.0,
-                "data_sufficiency_status": "INSUFFICIENT HISTORY",
-                "components": {"A": 0.0, "C": 0.0, "D": 0.0, "L": 0.0, "T_observed": None},
-                "evidence_quality": "INSUFFICIENT",
-                "total_evidence_count": 0,
-                "found_in_db": False,
-                "nmid": nmid_digital if nmid_digital != "Tidak ditemukan" else nmid_physical,
-                "merchant_name": merchant_name_dig if merchant_name_dig != "Tidak ditemukan" else merchant_name_phys,
-                "registered_at": None,
-                "first_seen_observed": None,
-                "last_seen_observed": None
-            }
+            # AUTO-REGISTER NEW MERCHANT
+            valid_nmid = nmid_digital if nmid_digital and nmid_digital != "Tidak ditemukan" else (nmid_physical if nmid_physical and nmid_physical != "Tidak terbaca" else None)
+            valid_name = merchant_name_dig if merchant_name_dig and merchant_name_dig != "Tidak ditemukan" else (merchant_name_phys if merchant_name_phys and merchant_name_phys != "Tidak terbaca" else None)
+            
+            if valid_nmid and valid_name:
+                m = Merchant(
+                    nmid=valid_nmid,
+                    merchant_name=valid_name,
+                    registered_at=datetime.utcnow(),
+                    verified_transactions=0,
+                    successful_transactions=0,
+                    failed_transactions=0,
+                    identity_match_count=0,
+                    identity_mismatch_count=0,
+                    critical_mismatch_count=0
+                )
+                db.add(m)
+                db.commit()
+                db.refresh(m)
+                return calculate_emrs(m, [], [])
+            else:
+                # Merchant BELUM TERDAFTAR di database LaQris dan data tidak cukup untuk register
+                return {
+                    "reputation_score": None,
+                    "grade": "Belum Terdaftar",
+                    "confidence_level": "LOW",
+                    "confidence_score": 0.0,
+                    "data_sufficiency_status": "INSUFFICIENT HISTORY",
+                    "components": {"A": 0.0, "C": 0.0, "D": 0.0, "L": 0.0, "T_observed": None},
+                    "evidence_quality": "INSUFFICIENT",
+                    "total_evidence_count": 0,
+                    "found_in_db": False,
+                    "nmid": nmid_digital if nmid_digital != "Tidak ditemukan" else nmid_physical,
+                    "merchant_name": merchant_name_dig if merchant_name_dig != "Tidak ditemukan" else merchant_name_phys,
+                    "registered_at": None,
+                    "first_seen_observed": None,
+                    "last_seen_observed": None
+                }
     finally:
         db.close()
 
@@ -693,7 +714,7 @@ def query_merchant_reputation(nmid_digital, nmid_physical, merchant_name_dig, me
 # =============================================================================
 # FUNGSI 11: Pipeline Utama Verifikasi QRIS (process_qris_verification)
 # =============================================================================
-def process_qris_verification(gambar_input, filename_base="scan"):
+def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
     """
     Ini adalah FUNGSI UTAMA yang memproses foto stiker QRIS dari pengguna:
     1. Menjalankan deteksi QR Code & OCR dengan AI

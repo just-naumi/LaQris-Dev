@@ -102,6 +102,7 @@ class VerificationSession(Base):
     trust_score = Column(Float, default=0.0)
     risk_level = Column(String, default="LOW")
     reputation_score = Column(Float, default=50.0)   # EMRS score saat scan
+    user_id = Column(String, nullable=True)          # ID pengguna yang melakukan scan
 
 
 class User(Base):

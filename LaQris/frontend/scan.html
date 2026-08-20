@@ -1031,6 +1031,15 @@
             const filename = sessionStorage.getItem('laqris_pending_filename') || 'scan.jpg';
             const formData = new FormData();
             formData.append('file', blob, filename);
+            const rawUser = localStorage.getItem('laqris_user') || sessionStorage.getItem('laqris_user');
+            if (rawUser) {
+                try {
+                    const user = JSON.parse(rawUser);
+                    if (user.user_id) {
+                        formData.append('user_id', user.user_id);
+                    }
+                } catch(e){}
+            }
 
             // Step 1 Active
             setStepState(1, 'active');

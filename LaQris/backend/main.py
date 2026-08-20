@@ -76,6 +76,7 @@ def health_check():
 async def scan_qris_endpoint(
     file: Optional[UploadFile] = File(None),
     sample_name: Optional[str] = Form(None),
+    user_id: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
     """
@@ -111,7 +112,7 @@ async def scan_qris_endpoint(
     if gambar_input is None:
         raise HTTPException(status_code=400, detail="Upload foto QRIS atau pilih sampel gambar.")
 
-    hasil = process_qris_verification(gambar_input, filename_base=filename_base)
+    hasil = process_qris_verification(gambar_input, filename_base=filename_base, user_id=user_id)
     return hasil
 
 
@@ -229,10 +230,14 @@ def seed_database_endpoint():
 
 
 @app.get("/api/scans/history")
-def get_recent_scans_history(limit: int = 5, db: Session = Depends(get_db)):
-    """Mengambil 5 riwayat scan QRIS teraktual dari database SQLite."""
+def get_recent_scans_history(limit: int = 5, user_id: Optional[str] = None, db: Session = Depends(get_db)):
+    """Mengambil riwayat scan QRIS teraktual dari database SQLite."""
+    query = db.query(VerificationSession)
+    if user_id:
+        query = query.filter(VerificationSession.user_id == user_id)
+        
     sessions = (
-        db.query(VerificationSession)
+        query
         .order_by(VerificationSession.scanned_at.desc())
         .limit(limit)
         .all()
