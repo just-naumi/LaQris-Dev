@@ -131,7 +131,7 @@ export default function BahayaResultPage() {
         {/* FOOTER ACTION BUTTON */}
         <div className="p-6 border-t border-base-200 bg-base-100 relative z-10">
           <Link
-            href="/dashboard"
+            href="/report"
             className="w-full py-3.5 px-6 rounded-full border border-rose-600 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-all duration-200 active:scale-[0.98] shadow-md flex items-center justify-center"
           >
             Lanjut Laporan
