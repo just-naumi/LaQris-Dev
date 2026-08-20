@@ -202,14 +202,45 @@ def normalisasi_teks(teks_mentah):
 # =============================================================================
 def scan_qr_code_digital(gambar_input):
     """
-    Fungsi ini membaca mentah teks QR Code dari gambar menggunakan library PyZBar.
+    Fungsi dekoder QR Code serbaguna dengan multi-metode (PyZBar + OpenCV QRCodeDetector + Enhancement)
     Mengembalikan string teks mentah QRIS (misal: "0002010102115144...")
     """
-    hasil_scan = pyzbar.decode(gambar_input)
-    if not hasil_scan:
+    if gambar_input is None or gambar_input.size == 0:
         return None
-    # Dekode bytes menjadi string UTF-8
-    return hasil_scan[0].data.decode('utf-8')
+
+    # Metode 1: PyZBar Langsung
+    try:
+        hasil_scan = pyzbar.decode(gambar_input)
+        if hasil_scan:
+            return hasil_scan[0].data.decode('utf-8')
+    except Exception:
+        pass
+
+    # Metode 2: OpenCV QRCodeDetector
+    try:
+        detector = cv2.QRCodeDetector()
+        val, pts, _ = detector.detectAndDecode(gambar_input)
+        if val and len(val) > 10:
+            return val
+    except Exception:
+        pass
+
+    # Metode 3: Preprocessing Gambar (Grayscale + Thresholding) + PyZBar
+    try:
+        gray = cv2.cvtColor(gambar_input, cv2.COLOR_BGR2GRAY) if len(gambar_input.shape) == 3 else gambar_input
+        gray_enhanced = cv2.equalizeHist(gray)
+        hasil_scan = pyzbar.decode(gray_enhanced)
+        if hasil_scan:
+            return hasil_scan[0].data.decode('utf-8')
+
+        _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        hasil_scan = pyzbar.decode(thresh)
+        if hasil_scan:
+            return hasil_scan[0].data.decode('utf-8')
+    except Exception:
+        pass
+
+    return None
 
 
 # =============================================================================
@@ -670,25 +701,44 @@ def process_qris_verification(gambar_input, filename_base="scan"):
     gambar_vis = gambar_input.copy()
     tinggi_foto, lebar_foto = gambar_input.shape[:2]
 
-    # 1. Dekode QR Code Digital
-    teks_qr_mentah = scan_qr_code_digital(gambar_input)
+    # 1. Dekode QR Code Digital HANYA dari Potongan Kotak Barcode (Targeted Bounding Box Crop)
+    teks_qr_mentah = None
+    calon_kotak_qr = []
+
+    # Ambil lokasi kotak QR Code dari YOLO Barcode
+    for box in res_barcode.boxes:
+        cls_id = int(box.cls[0].item())
+        if cls_id == 0:
+            calon_kotak_qr.append(box.xyxy[0].tolist())
+
+    # Ambil lokasi kotak QR Code dari YOLO OCR
+    for box in res_ocr.boxes:
+        cls_id = int(box.cls[0].item())
+        nama_kelas = model_ocr.names[cls_id]
+        label_std = PEMETAAN_LABEL_ROBOFLOW.get(nama_kelas.lower().strip(), nama_kelas.lower().strip())
+        if label_std == "qrcode":
+            calon_kotak_qr.append(box.xyxy[0].tolist())
+
+    # Dekode HANYA pada potongan gambar kotak QR Code
+    for (bx1, by1, bx2, by2) in calon_kotak_qr:
+        px1 = max(0, int(bx1) - 10)
+        py1 = max(0, int(by1) - 10)
+        px2 = min(lebar_foto, int(bx2) + 10)
+        py2 = min(tinggi_foto, int(by2) + 10)
+        potongan_qr = gambar_input[py1:py2, px1:px2]
+        teks_qr_mentah = scan_qr_code_digital(potongan_qr)
+        if teks_qr_mentah:
+            break
+
+    # Fallback terakhir jika potongan kotak miring/gagal
     if not teks_qr_mentah:
-        # Jika scan full gagal, coba potong lokasi kotak QR hasil deteksi YOLO Barcode
-        for box in res_barcode.boxes:
-            cls_id = int(box.cls[0].item())
-            if cls_id == 0:
-                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-                potongan = gambar_input[max(0, y1):min(tinggi_foto, y2), max(0, x1):min(lebar_foto, x2)]
-                teks_qr_mentah = scan_qr_code_digital(potongan)
-                if teks_qr_mentah:
-                    break
+        teks_qr_mentah = scan_qr_code_digital(gambar_input)
 
     # 2. Parse payload EMVCo QRIS digital
     tech_info, dig_name, dig_city, dig_nmid, dig_acq, dig_tid, qris_analysis = validate_and_parse_emvco_qr(teks_qr_mentah)
 
-    # 3. Ekstraksi teks fisik dari stiker menggunakan YOLO OCR + TrOCR
+    # 3. Ekstraksi teks fisik HANYA dari Potongan Kotak YOLO OCR
     phys_name, phys_nmid, phys_acq, phys_tid = "", "", "", ""
-    target_nmid_box = None
     target_qr_box = None
 
     for box in res_ocr.boxes:
@@ -697,21 +747,20 @@ def process_qris_verification(gambar_input, filename_base="scan"):
         label_std = PEMETAAN_LABEL_ROBOFLOW.get(nama_kelas.lower().strip(), nama_kelas.lower().strip())
         x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
         
-        # Potong area gambar teks fisik
-        potongan = gambar_input[max(0, y1):min(tinggi_foto, y2), max(0, x1):min(lebar_foto, x2)]
+        if label_std == "qrcode":
+            target_qr_box = (x1, y1, x2, y2)
+            continue  # QR Code tidak perlu di-OCR karakter
+
+        # Potong HANYA area persis kotak label (Tight Crop)
+        potongan_teks = gambar_input[max(0, y1):min(tinggi_foto, y2), max(0, x1):min(lebar_foto, x2)]
         
-        # Jalankan pembacaan karakter AI TrOCR
-        teks_ocr = ocr_trocr(potongan, proc_trocr, model_trocr)
+        # Jalankan TrOCR HANYA pada potongan khusus ini
+        teks_ocr = ocr_trocr(potongan_teks, proc_trocr, model_trocr)
 
         if label_std == "nama_merchant" and not phys_name:
             phys_name = teks_ocr
-        elif label_std == "nmid":
-            target_nmid_box = (x1, y1, x2, y2)
-            if not phys_nmid:
-                # Bersihkan artefak awalan teks "NMID :"
-                phys_nmid = re.sub(r'^(NMID\s*:?\s*)', '', teks_ocr, flags=re.IGNORECASE).strip()
-        elif label_std == "qrcode":
-            target_qr_box = (x1, y1, x2, y2)
+        elif label_std == "nmid" and not phys_nmid:
+            phys_nmid = re.sub(r'^(NMID\s*:?\s*)', '', teks_ocr, flags=re.IGNORECASE).strip()
         elif label_std == "acquirer" and not phys_acq:
             phys_acq = teks_ocr
         elif label_std == "tid" and not phys_tid:
@@ -722,26 +771,6 @@ def process_qris_verification(gambar_input, filename_base="scan"):
         cv2.rectangle(gambar_vis, (x1, y1), (x2, y2), warna, 2)
         cv2.putText(gambar_vis, f"{label_std}: {teks_ocr}", (x1, max(15, y1 - 5)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45, warna, 1)
-
-    # ── Fallback Cerdas: Jika Nama Merchant Fisik Belum Terdeteksi ───────────
-    if not phys_name:
-        ref_box = target_nmid_box or target_qr_box
-        if ref_box is not None:
-            rx1, ry1, rx2, ry2 = ref_box
-            # Potong area persis di atas NMID / QR Code (tempat Nama Merchant berada)
-            h_crop = max(45, int((ry2 - ry1) * 0.8))
-            top_y1 = max(0, ry1 - h_crop)
-            top_y2 = max(10, ry1 + 5)
-            crop_nama = gambar_input[top_y1:top_y2, max(0, rx1 - 30):min(lebar_foto, rx2 + 30)]
-            
-            if crop_nama is not None and crop_nama.size > 0:
-                teks_fallback = ocr_trocr(crop_nama, proc_trocr, model_trocr)
-                if teks_fallback and len(teks_fallback) >= 3:
-                    phys_name = teks_fallback
-                    # Visualisasikan kotak fallback
-                    cv2.rectangle(gambar_vis, (max(0, rx1 - 30), top_y1), (min(lebar_foto, rx2 + 30), top_y2), (0, 215, 255), 2)
-                    cv2.putText(gambar_vis, f"nama_merchant (fallback): {phys_name}", (max(0, rx1 - 30), max(15, top_y1 - 5)),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 215, 255), 1)
 
     # 4. Pencocokan Identitas & Kalkulasi Risiko QR Saat Ini
     name_similarity, match_level, identity_risk = calculate_identity_similarity(phys_name, dig_name)
