@@ -664,8 +664,8 @@ def process_qris_verification(gambar_input, filename_base="scan"):
     session_id = str(uuid.uuid4())[:8]
 
     # Predict dengan YOLO
-    res_barcode = model_barcode.predict(gambar_input, conf=0.25, verbose=False)[0]
-    res_ocr = model_ocr.predict(gambar_input, conf=0.30, verbose=False)[0]
+    res_barcode = model_barcode.predict(gambar_input, conf=0.20, verbose=False)[0]
+    res_ocr = model_ocr.predict(gambar_input, conf=0.15, verbose=False)[0]
 
     gambar_vis = gambar_input.copy()
     tinggi_foto, lebar_foto = gambar_input.shape[:2]
@@ -688,6 +688,9 @@ def process_qris_verification(gambar_input, filename_base="scan"):
 
     # 3. Ekstraksi teks fisik dari stiker menggunakan YOLO OCR + TrOCR
     phys_name, phys_nmid, phys_acq, phys_tid = "", "", "", ""
+    target_nmid_box = None
+    target_qr_box = None
+
     for box in res_ocr.boxes:
         cls_id = int(box.cls[0].item())
         nama_kelas = model_ocr.names[cls_id]
@@ -702,9 +705,13 @@ def process_qris_verification(gambar_input, filename_base="scan"):
 
         if label_std == "nama_merchant" and not phys_name:
             phys_name = teks_ocr
-        elif label_std == "nmid" and not phys_nmid:
-            # Bersihkan artefak awalan teks "NMID :"
-            phys_nmid = re.sub(r'^(NMID\s*:?\s*)', '', teks_ocr, flags=re.IGNORECASE).strip()
+        elif label_std == "nmid":
+            target_nmid_box = (x1, y1, x2, y2)
+            if not phys_nmid:
+                # Bersihkan artefak awalan teks "NMID :"
+                phys_nmid = re.sub(r'^(NMID\s*:?\s*)', '', teks_ocr, flags=re.IGNORECASE).strip()
+        elif label_std == "qrcode":
+            target_qr_box = (x1, y1, x2, y2)
         elif label_std == "acquirer" and not phys_acq:
             phys_acq = teks_ocr
         elif label_std == "tid" and not phys_tid:
@@ -716,11 +723,25 @@ def process_qris_verification(gambar_input, filename_base="scan"):
         cv2.putText(gambar_vis, f"{label_std}: {teks_ocr}", (x1, max(15, y1 - 5)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45, warna, 1)
 
-    # Simpan gambar visualisasi hasil deteksi ke folder static
-    folder_static = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "vis_output")
-    os.makedirs(folder_static, exist_ok=True)
-    path_vis = os.path.join(folder_static, f"vis_{filename_base}.jpg")
-    cv2.imwrite(path_vis, gambar_vis)
+    # ── Fallback Cerdas: Jika Nama Merchant Fisik Belum Terdeteksi ───────────
+    if not phys_name:
+        ref_box = target_nmid_box or target_qr_box
+        if ref_box is not None:
+            rx1, ry1, rx2, ry2 = ref_box
+            # Potong area persis di atas NMID / QR Code (tempat Nama Merchant berada)
+            h_crop = max(45, int((ry2 - ry1) * 0.8))
+            top_y1 = max(0, ry1 - h_crop)
+            top_y2 = max(10, ry1 + 5)
+            crop_nama = gambar_input[top_y1:top_y2, max(0, rx1 - 30):min(lebar_foto, rx2 + 30)]
+            
+            if crop_nama is not None and crop_nama.size > 0:
+                teks_fallback = ocr_trocr(crop_nama, proc_trocr, model_trocr)
+                if teks_fallback and len(teks_fallback) >= 3:
+                    phys_name = teks_fallback
+                    # Visualisasikan kotak fallback
+                    cv2.rectangle(gambar_vis, (max(0, rx1 - 30), top_y1), (min(lebar_foto, rx2 + 30), top_y2), (0, 215, 255), 2)
+                    cv2.putText(gambar_vis, f"nama_merchant (fallback): {phys_name}", (max(0, rx1 - 30), max(15, top_y1 - 5)),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 215, 255), 1)
 
     # 4. Pencocokan Identitas & Kalkulasi Risiko QR Saat Ini
     name_similarity, match_level, identity_risk = calculate_identity_similarity(phys_name, dig_name)
@@ -729,6 +750,29 @@ def process_qris_verification(gambar_input, filename_base="scan"):
     technical_risk = 0.0 if tech_info.get("is_valid") else 80.0
     current_qr_risk_score = round((0.70 * identity_risk) + (0.30 * technical_risk), 1)
     current_trust_score = round(100.0 - current_qr_risk_score, 1)
+
+    # ── Gambar Banner Visual Status Fraud/Safe pada Foto ──────────────────────
+    banner_color = (0, 0, 238) if is_mismatch else (34, 139, 34)  # Merah jika Mismatch, Hijau jika Aman
+    banner_text = " [!] PERINGATAN: STIKER DITIMPA / FRAUD " if is_mismatch else " [v] VERIFIKASI BERHASIL: QRIS AMAN "
+
+    # Draw top banner strip
+    cv2.rectangle(gambar_vis, (0, 0), (lebar_foto, 42), banner_color, -1)
+    cv2.putText(gambar_vis, banner_text, (10, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.70, (255, 255, 255), 2)
+
+    # Sorotan khusus pada kotak QR Code (Highlight Box)
+    if target_qr_box is not None:
+        qx1, qy1, qx2, qy2 = target_qr_box
+        border_col = (0, 0, 255) if is_mismatch else (0, 200, 0)
+        tag_label = "TERINDIKASI DITIMPA / PALSU" if is_mismatch else "QR CODES MATCHED (AMAN)"
+        cv2.rectangle(gambar_vis, (qx1 - 4, qy1 - 4), (qx2 + 4, qy2 + 4), border_col, 4)
+        cv2.rectangle(gambar_vis, (qx1 - 4, max(42, qy1 - 28)), (qx2 + 4, qy1 - 4), border_col, -1)
+        cv2.putText(gambar_vis, tag_label, (qx1 + 4, max(58, qy1 - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (255, 255, 255), 2)
+
+    # Simpan gambar visualisasi hasil deteksi ke folder static
+    folder_static = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "vis_output")
+    os.makedirs(folder_static, exist_ok=True)
+    path_vis = os.path.join(folder_static, f"vis_{filename_base}.jpg")
+    cv2.imwrite(path_vis, gambar_vis)
 
     # Penentuan Tingkat Risiko & Kalimat Penjelasan untuk Pengguna
     if is_mismatch:
