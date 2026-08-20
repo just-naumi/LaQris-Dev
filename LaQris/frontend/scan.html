@@ -1035,8 +1035,9 @@
             if (rawUser) {
                 try {
                     const user = JSON.parse(rawUser);
-                    if (user.user_id) {
-                        formData.append('user_id', user.user_id);
+                    const uid = user.user_id || user.id || user.email;
+                    if (uid) {
+                        formData.append('user_id', String(uid));
                     }
                 } catch(e){}
             }

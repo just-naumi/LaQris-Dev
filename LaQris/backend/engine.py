@@ -1031,7 +1031,8 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
             status="MISMATCH" if is_mismatch else "MATCH",
             trust_score=current_trust_score,
             risk_level=risk_level,
-            reputation_score=merchant_reputation.get("reputation_score", 50.0)
+            reputation_score=merchant_reputation.get("reputation_score", 50.0),
+            user_id=user_id
         )
         db.add(session_rec)
         db.commit()

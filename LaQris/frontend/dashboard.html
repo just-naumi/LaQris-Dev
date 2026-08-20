@@ -471,8 +471,9 @@
             if (rawUser) {
                 try {
                     const user = JSON.parse(rawUser);
-                    if (user.user_id) {
-                        userIdParam = `&user_id=${user.user_id}`;
+                    const uid = user.user_id || user.id || user.email;
+                    if (uid) {
+                        userIdParam = `&user_id=${encodeURIComponent(uid)}`;
                     }
                 } catch(e){}
             }
