@@ -9,18 +9,27 @@ from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from database import init_db, get_db
-from models import Merchant, Report, VerificationSession
+from database import init_db, get_db, reset_db
+from models import Merchant, Report, Dispute, VerificationSession
 import schemas
-from engine import process_qris_verification
+from engine import (
+    process_qris_verification,
+    submit_feedback_to_db,
+    get_merchant_reputation_by_nmid,
+    calculate_emrs
+)
 
 # Auto-initialize SQLite database on startup
 init_db()
 
 app = FastAPI(
-    title="LaQris POC Tahap 1 — QRIS Fraud Detection & Merchant Reputation API",
-    description="Backend API untuk deteksi stiker QRIS ditimpa, matching identitas fisik vs digital, dan cek reputasi SQLite",
-    version="1.0.0"
+    title="LaQris POC Tahap 2 — QRIS Fraud Detection & Evidence-Based Merchant Reputation",
+    description=(
+        "Backend API untuk deteksi stiker QRIS ditimpa, matching identitas fisik vs digital, "
+        "dan kalkulasi EMRS (Evidence-Based Merchant Reputation Score) berbasis "
+        "T·A·L·C·D dengan time decay dan evidence weighting."
+    ),
+    version="2.0.0"
 )
 
 # Middleware CORS
@@ -42,9 +51,25 @@ os.makedirs(os.path.join(FOLDER_STATIC, "vis_output"), exist_ok=True)
 # Mount static file routes
 app.mount("/static", StaticFiles(directory=FOLDER_STATIC), name="static")
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Health Check
+# ─────────────────────────────────────────────────────────────────────────────
+
 @app.get("/api/health")
 def health_check():
-    return {"status": "ok", "app": "LaQris POC Tahap 1", "database": "SQLite"}
+    return {
+        "status": "ok",
+        "app": "LaQris POC Tahap 2",
+        "version": "2.0.0",
+        "database": "SQLite",
+        "reputation_engine": "EMRS v2 (T·A·L·C·D + Time Decay)"
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Scan Endpoint (Main Pipeline)
+# ─────────────────────────────────────────────────────────────────────────────
 
 @app.post("/api/scan")
 async def scan_qris_endpoint(
@@ -52,6 +77,16 @@ async def scan_qris_endpoint(
     sample_name: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
+    """
+    Main pipeline endpoint.
+    Menerima foto QRIS (upload atau nama sampel), menjalankan:
+    1. Dual YOLO + TrOCR physical extraction
+    2. EMVCo QR payload parsing
+    3. Identity matching
+    4. EMRS reputation scoring (terpisah dari QR risk)
+
+    Returns: { session_id, current_qr_risk, merchant_reputation, visualization_url }
+    """
     folder_project_utama = os.path.abspath(os.path.join(FOLDER_BACKEND, "..", ".."))
     folder_physical_exp = os.path.join(folder_project_utama, "LaQris Physical Identity Extraction")
 
@@ -63,7 +98,6 @@ async def scan_qris_endpoint(
         path_sample = os.path.join(folder_physical_exp, f"{filename_base}.png")
         if not os.path.exists(path_sample):
             path_sample = os.path.join(folder_physical_exp, f"{filename_base}.jpeg")
-        
         if os.path.exists(path_sample):
             gambar_input = cv2.imread(path_sample)
 
@@ -76,64 +110,144 @@ async def scan_qris_endpoint(
     if gambar_input is None:
         raise HTTPException(status_code=400, detail="Upload foto QRIS atau pilih sampel gambar.")
 
-    # Eksekusi AI Pipeline (Dual YOLO + TrOCR + SQLite Reputation)
     hasil = process_qris_verification(gambar_input, filename_base=filename_base)
-
-    # Simpan histori verifikasi ke SQLite
-    session_rec = VerificationSession(
-        session_id=hasil["session_id"],
-        nmid=hasil["digital_nmid"],
-        digital_name=hasil["digital_merchant"],
-        physical_name=hasil["physical_merchant"],
-        status="MISMATCH" if hasil["is_mismatch"] else "MATCH",
-        risk_level=hasil["risk_level"]
-    )
-    db.add(session_rec)
-    db.commit()
-
     return hasil
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Merchant Directory
+# ─────────────────────────────────────────────────────────────────────────────
+
 @app.get("/api/merchants", response_model=List[schemas.MerchantSchema])
 def list_merchants(db: Session = Depends(get_db)):
-    """
-    Mengambil daftar seluruh merchant dan histori reputasinya di database SQLite.
-    """
-    merchants = db.query(Merchant).all()
-    return merchants
+    """Mengambil daftar seluruh merchant beserta laporan & dispute di SQLite."""
+    return db.query(Merchant).all()
 
 
 @app.get("/api/merchants/{nmid}", response_model=schemas.MerchantSchema)
 def get_merchant_detail(nmid: str, db: Session = Depends(get_db)):
-    """
-    Mengambil detail reputasi merchant berdasarkan NMID dari SQLite database.
-    """
+    """Mengambil detail lengkap satu merchant berdasarkan NMID."""
     merchant = db.query(Merchant).filter(Merchant.nmid == nmid).first()
     if not merchant:
-        raise HTTPException(status_code=404, detail=f"Merchant dengan NMID '{nmid}' tidak ditemukan di database SQLite.")
+        raise HTTPException(status_code=404, detail=f"Merchant NMID '{nmid}' tidak ditemukan.")
     return merchant
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# EMRS — Reputation Score Endpoint
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/merchants/{nmid}/reputation", response_model=schemas.ReputationScoreSchema)
+def get_merchant_reputation(nmid: str):
+    """
+    Kalkulasi dan return EMRS (Evidence-Based Merchant Reputation Score)
+    untuk satu merchant.
+    Components: T (Transaction Reliability), A (Authenticity),
+                L (Longevity), C (Complaint), D (Dispute)
+    """
+    rep = get_merchant_reputation_by_nmid(nmid)
+    if not rep.get("found_in_db"):
+        raise HTTPException(status_code=404, detail=f"Merchant NMID '{nmid}' tidak ditemukan.")
+    return rep
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Feedback Submission
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.post("/api/feedback", response_model=schemas.FeedbackResponseSchema)
+def submit_feedback(payload: schemas.FeedbackSubmitSchema):
+    """
+    Menerima feedback/complaint pengguna terhadap merchant.
+
+    Evidence Level:
+    - Level 1 (has_evidence=false): Laporan tanpa bukti → bobot 0.5x
+    - Level 2 (has_evidence=true):  Laporan + bukti transaksi → bobot 1.0x
+
+    Constraint: Satu transaction_ref hanya boleh submit satu feedback.
+    Setelah submit, EMRS merchant otomatis di-recalculate.
+    """
+    result = submit_feedback_to_db(
+        nmid=payload.nmid,
+        category=payload.category,
+        severity=payload.severity,
+        description=payload.description,
+        transaction_ref=payload.transaction_ref,
+        has_evidence=payload.has_evidence
+    )
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["message"])
+    return result
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Disputes
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/merchants/{nmid}/disputes", response_model=List[schemas.DisputeSchema])
+def list_merchant_disputes(nmid: str, db: Session = Depends(get_db)):
+    """Mengambil daftar dispute terverifikasi untuk satu merchant."""
+    merchant = db.query(Merchant).filter(Merchant.nmid == nmid).first()
+    if not merchant:
+        raise HTTPException(status_code=404, detail=f"Merchant NMID '{nmid}' tidak ditemukan.")
+    return db.query(Dispute).filter(Dispute.merchant_id == merchant.id).all()
+
+
+@app.post("/api/merchants/{nmid}/disputes")
+def submit_dispute(nmid: str, description: str = Form(...), evidence_ref: str = Form(None),
+                   severity: str = Form("HIGH"), db: Session = Depends(get_db)):
+    """
+    Submit sengketa transaksi yang terverifikasi.
+    Dispute memiliki bobot lebih besar dari Complaint biasa di EMRS.
+    """
+    merchant = db.query(Merchant).filter(Merchant.nmid == nmid).first()
+    if not merchant:
+        raise HTTPException(status_code=404, detail=f"Merchant NMID '{nmid}' tidak ditemukan.")
+
+    disp = Dispute(
+        merchant_id=merchant.id,
+        description=description,
+        evidence_ref=evidence_ref,
+        severity=severity,
+        is_verified=False  # Admin yang verifikasi
+    )
+    db.add(disp)
+    db.commit()
+    return {"message": "Dispute berhasil disubmit. Akan diverifikasi oleh tim LaQris.", "dispute_id": disp.id}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Database Management
+# ─────────────────────────────────────────────────────────────────────────────
+
 @app.post("/api/seed")
 def seed_database_endpoint():
-    """
-    Endpoint untuk reset & re-seed ulang data reputasi SQLite.
-    """
-    init_db()
-    return {"message": "Database SQLite berhasil di-seed ulang!"}
+    """Reset & re-seed seluruh data reputasi SQLite (termasuk skema EMRS baru)."""
+    reset_db()
+    return {"message": "Database SQLite berhasil di-reset dan di-seed ulang dengan skema EMRS v2!"}
 
 
-# Mount Frontend Single-Page App
+# ─────────────────────────────────────────────────────────────────────────────
+# Frontend SPA Serving
+# ─────────────────────────────────────────────────────────────────────────────
+
 @app.get("/")
 def serve_frontend_index():
     index_path = os.path.join(FOLDER_FRONTEND, "index.html")
     if os.path.exists(index_path):
-        return FileResponse(index_path)
+        return FileResponse(
+            index_path,
+            headers={
+                "Cache-Control": "no-store, no-cache, must-revalidate",
+                "Pragma": "no-cache"
+            }
+        )
     return {"message": "LaQris API backend is running. Frontend index.html not found."}
+
 
 if os.path.exists(FOLDER_FRONTEND):
     app.mount("/app", StaticFiles(directory=FOLDER_FRONTEND, html=True), name="frontend")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=5000, reload=False)
+    uvicorn.run("main:app", host="0.0.0.0", port=5000, reload=False)

@@ -1,6 +1,7 @@
 import os
 import cv2
 import re
+import math
 import difflib
 import uuid
 import numpy as np
@@ -8,11 +9,12 @@ import torch
 from PIL import Image
 from pyzbar import pyzbar
 import warnings
+from datetime import datetime
 from ultralytics import YOLO
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel, ViTImageProcessor, RobertaTokenizer
 
 from database import SessionLocal
-from models import Merchant, Report, VerificationSession
+from models import Merchant, Report, Dispute, VerificationSession
 
 warnings.filterwarnings("ignore")
 
@@ -35,6 +37,21 @@ DAFTAR_NAMA_BANK = {
     "93600811": "OVO"
 }
 
+DAFTAR_MCC = {
+    "5812": "Restoran / Rumah Makan",
+    "5814": "Makanan Cepat Saji (Fast Food)",
+    "5411": "Supermarket / Toko Kelontong",
+    "5311": "Department Store / Toko Serba Ada",
+    "5912": "Apotek / Farmasi",
+    "5999": "Toko Retail / Perdagangan Umum",
+    "4111": "Transportasi & Tiket",
+    "5541": "SPBU / Bahan Bakar",
+    "7299": "Jasa Layanan Konsumen",
+    "8299": "Pendidikan & Kursus",
+    "8699": "Organisasi Sosial / Komunitas",
+    "7999": "Hiburan & Rekreasi"
+}
+
 PEMETAAN_LABEL_ROBOFLOW = {
     "nama merchant": "nama_merchant",
     "national merchant id": "nmid",
@@ -49,18 +66,37 @@ PEMETAAN_LABEL_ROBOFLOW = {
 }
 
 DAFTAR_WARNA_LABEL = [
-    (255, 99, 71),   # 0: Cara Pakai QRIS
-    (255, 165, 0),  # 1: Cek Aplikasi Penyelenggara
-    (30, 144, 255), # 2: Dicetak Oleh
-    (147, 112, 219),# 3: Logo GPN
-    (50, 205, 50),  # 4: Logo dan deskripsi QRIS
-    (0, 215, 255),  # 5: Nama Merchant
-    (238, 130, 238),# 6: National Merchant ID
-    (0, 0, 255),    # 7: QR Code
-    (255, 105, 180),# 8: Slogan
-    (128, 128, 0),  # 9: Terminal ID
-    (0, 255, 255)   # 10: Versi Cetak
+    (255, 99, 71),    # 0: Cara Pakai QRIS
+    (255, 165, 0),    # 1: Cek Aplikasi Penyelenggara
+    (30, 144, 255),   # 2: Dicetak Oleh
+    (147, 112, 219),  # 3: Logo GPN
+    (50, 205, 50),    # 4: Logo dan deskripsi QRIS
+    (0, 215, 255),    # 5: Nama Merchant
+    (238, 130, 238),  # 6: National Merchant ID
+    (0, 0, 255),      # 7: QR Code
+    (255, 105, 180),  # 8: Slogan
+    (128, 128, 0),    # 9: Terminal ID
+    (0, 255, 255)     # 10: Versi Cetak
 ]
+
+# ─── Severity penalty mapping untuk Complaint Score (C) ──────────────────────
+SEVERITY_PENALTY = {
+    "LOW": 2,
+    "MEDIUM": 5,
+    "HIGH": 10,
+    "CRITICAL": 20
+}
+
+# ─── Dispute penalty mapping untuk Dispute Score (D) ─────────────────────────
+DISPUTE_PENALTY = {
+    "verified": 30,
+    "unverified": 10
+}
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# AI Model Loading
+# ═════════════════════════════════════════════════════════════════════════════
 
 def load_ai_models():
     global MODEL_YOLO_BARCODE, MODEL_YOLO_OCR, PROCESSOR_TROCR, MODEL_TROCR
@@ -85,33 +121,37 @@ def load_ai_models():
             image_processor = ViTImageProcessor.from_pretrained(nama_trocr)
             PROCESSOR_TROCR = TrOCRProcessor(image_processor=image_processor, tokenizer=tokenizer)
             MODEL_TROCR = VisionEncoderDecoderModel.from_pretrained(nama_trocr).to(PERANGKAT)
+            MODEL_TROCR.eval()
         except Exception:
             nama_trocr = "microsoft/trocr-base-stage1"
             tokenizer = RobertaTokenizer.from_pretrained(nama_trocr)
             image_processor = ViTImageProcessor.from_pretrained(nama_trocr)
             PROCESSOR_TROCR = TrOCRProcessor(image_processor=image_processor, tokenizer=tokenizer)
             MODEL_TROCR = VisionEncoderDecoderModel.from_pretrained(nama_trocr).to(PERANGKAT)
+            MODEL_TROCR.eval()
 
     return MODEL_YOLO_BARCODE, MODEL_YOLO_OCR, PROCESSOR_TROCR, MODEL_TROCR
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+# Text Normalization
+# ═════════════════════════════════════════════════════════════════════════════
+
 def normalisasi_teks(teks_mentah):
-    """
-    Core Identity Normalization (M3):
-    Membersihkan prefiks formal tanpa menghapus identitas nama utama toko.
-    """
     if not teks_mentah or teks_mentah in ["Tidak terbaca", "Tidak ditemukan"]:
         return ""
     teks_kapital = teks_mentah.upper()
     teks_bersih = re.sub(r'[^A-Z0-9\s]', ' ', teks_kapital)
     daftar_kata = teks_bersih.split()
-    
-    # Prefiks legal / formal yang di-normalize
     sebutan = ["PT", "CV", "UD", "TB", "PD", "PERSERO"]
     daftar_kata_murni = [k for k in daftar_kata if k not in sebutan]
     hasil = " ".join(daftar_kata_murni).strip()
     return hasil if hasil != "" else " ".join(daftar_kata).strip()
 
+
+# ═════════════════════════════════════════════════════════════════════════════
+# QR Code Decoding & Deep EMVCo Analysis
+# ═════════════════════════════════════════════════════════════════════════════
 
 def scan_qr_code_digital(gambar_input):
     hasil_scan = pyzbar.decode(gambar_input)
@@ -120,31 +160,96 @@ def scan_qr_code_digital(gambar_input):
     return hasil_scan[0].data.decode('utf-8')
 
 
-def validate_and_parse_emvco_qr(teks_qr_mentah):
+def parse_emvco_qr_deep_analysis(teks_qr_mentah):
     """
-    Tahap A — QR Payload Validation & EMVCo Structure Parsing (M1)
-    Field 59: Merchant Name, Field 60: Merchant City, Field 51/26: Merchant Account, Field 54: Amount
+    Analisis Mendalam Struktur Payload EMVCo QRIS:
+    Mengekstrak informasi spesifikasi teknis dari tag EMVCo resmi:
+    - Tag 01: Point of Initiation Method ("11" = Statis/Stiker, "12" = Dinamis/EDC)
+    - Tag 52: Merchant Category Code (MCC)
+    - Tag 53: Transaction Currency ("360" = IDR)
+    - Tag 51/26: Merchant Account & NMID Structure
+    - Tag 63: CRC16 Checksum
+    - Estimasi Tahun Registrasi dari NMID
     """
     if not teks_qr_mentah:
-        return {"status": "INVALID_QR", "is_valid": False}, "Tidak ditemukan", "Tidak ditemukan", "Tidak ditemukan", "Tidak ditemukan", "Tidak ditemukan"
+        return None
+
+    initiation_code = "11"
+    initiation_label = "Statis (Stiker Meja/Kasir)"
+    mcc_code = "5999"
+    mcc_category = "Perdagangan Umum / Retail"
+    currency = "360 (IDR)"
+    crc_checksum = None
+
+    indeks, total = 0, len(teks_qr_mentah)
+    while indeks < total:
+        kode_tag = teks_qr_mentah[indeks: indeks + 2]
+        panjang_str = teks_qr_mentah[indeks + 2: indeks + 4]
+        if not panjang_str.isdigit():
+            break
+        size = int(panjang_str)
+        isi = teks_qr_mentah[indeks + 4: indeks + 4 + size]
+
+        if kode_tag == "01":
+            initiation_code = isi
+            initiation_label = "Dinamis (EDC/Layar Digital)" if isi == "12" else "Statis (Stiker Meja/Kasir)"
+        elif kode_tag == "52":
+            mcc_code = isi
+            mcc_category = DAFTAR_MCC.get(isi, f"Kategori MCC ({isi})")
+        elif kode_tag == "53":
+            currency = f"{isi} (IDR)" if isi == "360" else isi
+        elif kode_tag == "63":
+            crc_checksum = isi
+        indeks += 4 + size
+
+    # Parse NMID structure for estimated year & country
+    nmid_match = re.search(r'ID(\d{2})(\d{2})?\d+', teks_qr_mentah)
+    est_year = None
+    if nmid_match:
+        # Coba ekstrak digit indikator tahun registrasi jika sesuai rentang 2019-2026
+        d1 = nmid_match.group(1)
+        d2 = nmid_match.group(2)
+        if d2 and 19 <= int(d2) <= 26:
+            est_year = 2000 + int(d2)
+        elif d1 and 19 <= int(d1) <= 26:
+            est_year = 2000 + int(d1)
+
+    return {
+        "point_of_initiation": initiation_label,
+        "initiation_type_code": initiation_code,
+        "mcc_code": mcc_code,
+        "mcc_category": mcc_category,
+        "currency": currency,
+        "crc_checksum": crc_checksum,
+        "nmid_parsed": {
+            "country": "Indonesia (ID)",
+            "estimated_reg_year": est_year or 2023,
+            "specification": "ASPI National QRIS Specification"
+        }
+    }
+
+
+def validate_and_parse_emvco_qr(teks_qr_mentah):
+    if not teks_qr_mentah:
+        return {"status": "INVALID_QR", "is_valid": False}, "Tidak ditemukan", "Tidak ditemukan", "Tidak ditemukan", "Tidak ditemukan", "Tidak ditemukan", None
 
     nama_dig = "Tidak ditemukan"
     kota_dig = "Tidak ditemukan"
     nmid_dig = "Tidak ditemukan"
     acq_dig = "Tidak ditemukan"
     tid_dig = "Tidak ditemukan"
-    
+
     indeks, total = 0, len(teks_qr_mentah)
     has_format_indicator = False
-    
+
     while indeks < total:
-        kode_tag = teks_qr_mentah[indeks : indeks + 2]
-        panjang_str = teks_qr_mentah[indeks + 2 : indeks + 4]
+        kode_tag = teks_qr_mentah[indeks: indeks + 2]
+        panjang_str = teks_qr_mentah[indeks + 2: indeks + 4]
         if not panjang_str.isdigit():
             break
         size = int(panjang_str)
-        isi = teks_qr_mentah[indeks + 4 : indeks + 4 + size]
-        
+        isi = teks_qr_mentah[indeks + 4: indeks + 4 + size]
+
         if kode_tag == "00":
             has_format_indicator = True
         elif kode_tag == "59":
@@ -154,24 +259,24 @@ def validate_and_parse_emvco_qr(teks_qr_mentah):
         elif kode_tag == "51":
             sub_idx = 0
             while sub_idx < len(isi):
-                sub_tag = isi[sub_idx : sub_idx + 2]
-                sub_len_str = isi[sub_idx + 2 : sub_idx + 4]
+                sub_tag = isi[sub_idx: sub_idx + 2]
+                sub_len_str = isi[sub_idx + 2: sub_idx + 4]
                 if not sub_len_str.isdigit():
                     break
                 sub_len = int(sub_len_str)
-                sub_isi = isi[sub_idx + 4 : sub_idx + 4 + sub_len]
+                sub_isi = isi[sub_idx + 4: sub_idx + 4 + sub_len]
                 if sub_tag == "02" and sub_isi.startswith("ID"):
                     nmid_dig = sub_isi
                 sub_idx += 4 + sub_len
         elif kode_tag == "62":
             sub_idx = 0
             while sub_idx < len(isi):
-                sub_tag = isi[sub_idx : sub_idx + 2]
-                sub_len_str = isi[sub_idx + 2 : sub_idx + 4]
+                sub_tag = isi[sub_idx: sub_idx + 2]
+                sub_len_str = isi[sub_idx + 2: sub_idx + 4]
                 if not sub_len_str.isdigit():
                     break
                 sub_len = int(sub_len_str)
-                sub_isi = isi[sub_idx + 4 : sub_idx + 4 + sub_len]
+                sub_isi = isi[sub_idx + 4: sub_idx + 4 + sub_len]
                 if sub_tag == "07":
                     tid_dig = sub_isi
                     break
@@ -180,10 +285,11 @@ def validate_and_parse_emvco_qr(teks_qr_mentah):
 
     if nmid_dig == "Tidak ditemukan":
         m = re.search(r'ID\d{13}', teks_qr_mentah)
-        if m: nmid_dig = m.group()
+        if m:
+            nmid_dig = m.group()
 
     m_acq = re.search(r'9360\d{4}', teks_qr_mentah)
-    if m_acq: 
+    if m_acq:
         kode_bank = m_acq.group()
         nama_bank = DAFTAR_NAMA_BANK.get(kode_bank, "BANK LAIN")
         acq_dig = f"{kode_bank} ({nama_bank})"
@@ -191,8 +297,14 @@ def validate_and_parse_emvco_qr(teks_qr_mentah):
     payload_status = "VALID_QR_PAYLOAD" if has_format_indicator and nama_dig != "Tidak ditemukan" else "INVALID_STRUCTURE"
     tech_info = {"status": payload_status, "is_valid": (payload_status == "VALID_QR_PAYLOAD")}
 
-    return tech_info, nama_dig, kota_dig, nmid_dig, acq_dig, tid_dig
+    qris_analysis = parse_emvco_qr_deep_analysis(teks_qr_mentah)
 
+    return tech_info, nama_dig, kota_dig, nmid_dig, acq_dig, tid_dig, qris_analysis
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# TrOCR Inference (Optimized Speed)
+# ═════════════════════════════════════════════════════════════════════════════
 
 def ocr_trocr(gambar_potongan, processor, model):
     if gambar_potongan is None or gambar_potongan.size == 0:
@@ -205,20 +317,16 @@ def ocr_trocr(gambar_potongan, processor, model):
     return processor.batch_decode(tokens, skip_special_tokens=True)[0].strip()
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+# Identity Matching (Current QR Risk Component)
+# ═════════════════════════════════════════════════════════════════════════════
+
 def calculate_identity_similarity(phys_name, dig_name):
-    """
-    Multi-Evidence Identity Matching Model (M4 & M5):
-    Level 1 — Exact Match (100)
-    Level 2 — Normalized Match (100)
-    Level 3 — Fuzzy Match (40-89)
-    Level 4 — Completely Different (0-39)
-    """
     if phys_name in ["Tidak terbaca", ""] or dig_name in ["Tidak ditemukan", ""]:
-        return 0.0, "COMPLETELY_DIFFERENT", 100.0  # High Identity Risk
+        return 0.0, "COMPLETELY_DIFFERENT", 100.0
 
     p_raw = phys_name.lower().strip()
     d_raw = dig_name.lower().strip()
-
     p_norm = normalisasi_teks(phys_name).lower()
     d_norm = normalisasi_teks(dig_name).lower()
 
@@ -239,8 +347,6 @@ def calculate_identity_similarity(phys_name, dig_name):
         else:
             level = "COMPLETELY_DIFFERENT"
 
-    # Identity Risk Score (Invers dari Similarity)
-    # Thresholding: 90-100 -> Risk: 0-10, 70-89 -> Risk: 20-40, 40-69 -> Risk: 50-70, 0-39 -> Risk: 90-100
     if sim >= 90.0:
         identity_risk = 0.0
     elif sim >= 70.0:
@@ -253,15 +359,141 @@ def calculate_identity_similarity(phys_name, dig_name):
     return sim, level, identity_risk
 
 
-def query_sqlite_reputation(nmid_digital, nmid_physical, merchant_name_dig, merchant_name_phys):
+# ═════════════════════════════════════════════════════════════════════════════
+# EMRS — Evidence-Based Merchant Reputation Score Engine (REVISED FORMULA)
+# ═════════════════════════════════════════════════════════════════════════════
+
+def time_decay_weight(created_at: datetime) -> float:
+    now = datetime.utcnow()
+    months_ago = max(0, (now - created_at).days / 30.0)
+    return math.exp(-0.1 * months_ago)
+
+
+def calculate_emrs(merchant: Merchant, reports: list, disputes: list) -> dict:
     """
-    Reputation Risk Engine & Category Severity Weighting (M6):
-    Categories & Severity:
-    - QR Replacement: 80
-    - Identity Mismatch: 60
-    - Additional Fee: 40
-    - General Complaint / Service: 10
+    REVISED EMRS FORMULA & CONFIDENCE MODEL:
+    R = 0.40·A + 0.30·C + 0.20·D + 0.10·L
+
+    A — Authenticity / Identity Consistency (40%)
+    C — Complaint Score (30%)
+    D — Dispute Score (20%)
+    L — LaQris Observed Longevity & History (10%)
+    T — LaQris Observed Transaction Reliability (Secondary/Optional Metric)
+
+    Confidence Level:
+    - LOW (< 5 evidence items / Insufficient history)
+    - MEDIUM (5–19 evidence items)
+    - HIGH (>= 20 evidence items)
     """
+    now = datetime.utcnow()
+
+    # ── A: Authenticity / Identity Consistency (40%) ──────────────────────────
+    total_identity = merchant.identity_match_count + merchant.identity_mismatch_count
+    if total_identity > 0:
+        A_raw = (merchant.identity_match_count / total_identity) * 100.0
+        A = max(0.0, A_raw - (merchant.critical_mismatch_count * 15.0))
+    else:
+        A = 50.0  # Netral
+
+    # ── C: Complaint Score (30%) ──────────────────────────────────────────────
+    C = 100.0
+    for rpt in reports:
+        sev_penalty = SEVERITY_PENALTY.get(rpt.severity, 5)
+        ev_weight = 1.0 if rpt.evidence_level >= 2 else 0.5
+        td = time_decay_weight(rpt.created_at)
+        C -= sev_penalty * ev_weight * td
+    C = max(0.0, min(100.0, C))
+
+    # ── D: Dispute Score (20%) ────────────────────────────────────────────────
+    D = 100.0
+    for disp in disputes:
+        penalty = DISPUTE_PENALTY["verified"] if disp.is_verified else DISPUTE_PENALTY["unverified"]
+        td = time_decay_weight(disp.created_at)
+        D -= penalty * td
+    D = max(0.0, min(100.0, D))
+
+    # ── L: LaQris Observed Longevity & History (10%) ──────────────────────────
+    reg_at = merchant.registered_at or now
+    days_active = (now - reg_at).days
+    months_active = days_active / 30.0
+
+    if months_active < 1:
+        L = 40.0
+    elif months_active < 6:
+        L = 60.0 + (months_active / 6.0) * 15.0
+    elif months_active < 24:
+        L = 75.0 + ((months_active - 6) / 18.0) * 15.0
+    else:
+        L = min(100.0, 90.0 + ((months_active - 24) / 24.0) * 10.0)
+
+    # ── Optional: LaQris Observed Transaction Reliability ─────────────────────
+    T_observed = None
+    if merchant.verified_transactions > 0:
+        T_observed = round((merchant.successful_transactions / merchant.verified_transactions) * 100.0, 1)
+
+    # ── Final EMRS Revised Formula ────────────────────────────────────────────
+    R = round(
+        (0.40 * A) +
+        (0.30 * C) +
+        (0.20 * D) +
+        (0.10 * L),
+        1
+    )
+    R = max(0.0, min(100.0, R))
+
+    # ── Evidence Count & Confidence Level ─────────────────────────────────────
+    total_evidence = total_identity + merchant.verified_transactions + len(reports) + len(disputes)
+    confidence_score = min(100.0, round((total_evidence / 20.0) * 100.0, 1))
+
+    if total_evidence >= 20:
+        confidence_level = "HIGH"
+        evidence_quality = "HIGH"
+    elif total_evidence >= 5:
+        confidence_level = "MEDIUM"
+        evidence_quality = "MEDIUM"
+    else:
+        confidence_level = "LOW"
+        evidence_quality = "LOW"
+
+    data_sufficiency = "SUFFICIENT DATA" if total_evidence >= 3 else "INSUFFICIENT HISTORY"
+
+    # ── Grade Assignment ──────────────────────────────────────────────────────
+    if R >= 85:
+        grade = "Excellent"
+    elif R >= 70:
+        grade = "Very Good"
+    elif R >= 55:
+        grade = "Good"
+    elif R >= 40:
+        grade = "Fair"
+    else:
+        grade = "Poor"
+
+    return {
+        "reputation_score": R,
+        "grade": grade,
+        "confidence_level": confidence_level,
+        "confidence_score": confidence_score,
+        "data_sufficiency_status": data_sufficiency,
+        "components": {
+            "A": round(A, 1),
+            "C": round(C, 1),
+            "D": round(D, 1),
+            "L": round(L, 1),
+            "T_observed": T_observed
+        },
+        "evidence_quality": evidence_quality,
+        "total_evidence_count": total_evidence,
+        "found_in_db": True,
+        "nmid": merchant.nmid,
+        "merchant_name": merchant.merchant_name,
+        "registered_at": merchant.registered_at.isoformat() if merchant.registered_at else None,
+        "first_seen_observed": merchant.registered_at.strftime("%B %Y") if merchant.registered_at else "Agustus 2026",
+        "last_seen_observed": datetime.utcnow().strftime("%B %Y")
+    }
+
+
+def query_merchant_reputation(nmid_digital, nmid_physical, merchant_name_dig, merchant_name_phys) -> dict:
     db = SessionLocal()
     try:
         m = None
@@ -275,201 +507,242 @@ def query_sqlite_reputation(nmid_digital, nmid_physical, merchant_name_dig, merc
             m = db.query(Merchant).filter(Merchant.merchant_name.ilike(f"%{merchant_name_phys}%")).first()
 
         if m:
-            rep_qris = db.query(Report).filter(Report.merchant_id == m.id, Report.category == "QRIS Replacement").count()
-            rep_fee = db.query(Report).filter(Report.merchant_id == m.id, Report.category == "Additional Fee").count()
-            rep_mismatch = db.query(Report).filter(Report.merchant_id == m.id, Report.category == "Merchant Mismatch").count()
-
-            # Calculate Weighted Reputation Risk & Severity
-            total = max(m.total_reports, 1)
-            severity_risk = round(((rep_qris * 80) + (rep_mismatch * 60) + (rep_fee * 40)) / total, 1)
-            
-            # Reputation Risk (berdasarkan Rating & Jumlah Laporan Terverifikasi)
-            rating_risk = (5.0 - m.rating) * 20.0  # Rating 2.1 -> (5-2.1)*20 = 58.0
-            reputation_risk = min(100.0, round((rating_risk * 0.6) + (severity_risk * 0.4), 1))
-
-            return {
-                "status": "KNOWN",
-                "found_in_db": True,
-                "nmid": m.nmid,
-                "merchant_name": m.merchant_name,
-                "rating": m.rating,
-                "total_reports": m.total_reports,
-                "verified_reports": m.verified_reports,
-                "reputation_risk_score": reputation_risk,
-                "severity_risk_score": severity_risk,
-                "breakdown_categories": {
-                    "qris_replacement": rep_qris,
-                    "additional_fee": rep_fee,
-                    "merchant_mismatch": rep_mismatch
-                }
-            }
+            reports = db.query(Report).filter(Report.merchant_id == m.id).all()
+            disputes = db.query(Dispute).filter(Dispute.merchant_id == m.id).all()
+            return calculate_emrs(m, reports, disputes)
         else:
             return {
-                "status": "UNKNOWN",
+                "reputation_score": None,
+                "grade": "Belum Terdaftar",
+                "confidence_level": "LOW",
+                "confidence_score": 0.0,
+                "data_sufficiency_status": "INSUFFICIENT HISTORY",
+                "components": {"A": 0.0, "C": 0.0, "D": 0.0, "L": 0.0, "T_observed": None},
+                "evidence_quality": "INSUFFICIENT",
+                "total_evidence_count": 0,
                 "found_in_db": False,
                 "nmid": nmid_digital if nmid_digital != "Tidak ditemukan" else nmid_physical,
                 "merchant_name": merchant_name_dig if merchant_name_dig != "Tidak ditemukan" else merchant_name_phys,
-                "rating": 5.0,
-                "total_reports": 0,
-                "verified_reports": 0,
-                "reputation_risk_score": 0.0,
-                "severity_risk_score": 0.0,
-                "breakdown_categories": {"qris_replacement": 0, "additional_fee": 0, "merchant_mismatch": 0}
+                "registered_at": None,
+                "first_seen_observed": None,
+                "last_seen_observed": None
             }
     finally:
         db.close()
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+# Full Integrated Pipeline
+# ═════════════════════════════════════════════════════════════════════════════
+
 def process_qris_verification(gambar_input, filename_base="scan"):
-    """
-    Full Integrated Pipeline (M1-M8):
-    1. QR Payload Validation (EMVCo)
-    2. Physical Identity Extraction (YOLO26s + TrOCR)
-    3. Multi-Evidence Identity Matching
-    4. SQLite Reputation Risk & Report Severity Calculation
-    5. Overall Risk Scoring (0.40 Identity + 0.30 Reputation + 0.20 Severity + 0.10 Technical)
-    """
     model_barcode, model_ocr, proc_trocr, model_trocr = load_ai_models()
     session_id = str(uuid.uuid4())[:8]
 
-    # 1. Deteksi Barcode pake Model 1
     res_barcode = model_barcode.predict(gambar_input, conf=0.25, verbose=False)[0]
-
-    # 2. Deteksi Bounding Box Label OCR pake Model 2
     res_ocr = model_ocr.predict(gambar_input, conf=0.10, verbose=False)[0]
 
     gambar_vis = gambar_input.copy()
     tinggi_foto, lebar_foto = gambar_input.shape[:2]
 
-    # Bounding box Barcode (Hijau)
-    for box in res_barcode.boxes:
-        coords = box.xyxy[0].tolist()
-        x1, y1, x2, y2 = int(coords[0]), int(coords[1]), int(coords[2]), int(coords[3])
-        cv2.rectangle(gambar_vis, (x1, y1), (x2, y2), (0, 255, 127), 4)
-        cv2.putText(gambar_vis, "QR Code", (x1, max(y1-10, 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 127), 2)
+    # Barcode extraction
+    teks_qr_mentah = scan_qr_code_digital(gambar_input)
+    if not teks_qr_mentah:
+        for box in res_barcode.boxes:
+            cls_id = int(box.cls[0].item())
+            if cls_id == 0:
+                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                potongan = gambar_input[max(0, y1):min(tinggi_foto, y2), max(0, x1):min(lebar_foto, x2)]
+                teks_qr_mentah = scan_qr_code_digital(potongan)
+                if teks_qr_mentah:
+                    break
 
-    # Bounding box OCR Label
-    daftar_nama_label = res_ocr.names
-    kotak_terbaik = {}
+    # Parse EMVCo + deep analysis
+    tech_info, dig_name, dig_city, dig_nmid, dig_acq, dig_tid, qris_analysis = validate_and_parse_emvco_qr(teks_qr_mentah)
 
+    # OCR extraction
+    phys_name, phys_nmid, phys_acq, phys_tid = "", "", "", ""
     for box in res_ocr.boxes:
-        id_label = int(box.cls[0].item())
-        nama_resmi = daftar_nama_label.get(id_label, f"Label_{id_label}")
-        conf = float(box.conf[0].item())
-        coords = box.xyxy[0].tolist()
-        x1, y1, x2, y2 = int(coords[0]), int(coords[1]), int(coords[2]), int(coords[3])
-        warna = DAFTAR_WARNA_LABEL[id_label % len(DAFTAR_WARNA_LABEL)]
+        cls_id = int(box.cls[0].item())
+        nama_kelas = model_ocr.names[cls_id]
+        label_std = PEMETAAN_LABEL_ROBOFLOW.get(nama_kelas.lower().strip(), nama_kelas.lower().strip())
+        x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+        potongan = gambar_input[max(0, y1):min(tinggi_foto, y2), max(0, x1):min(lebar_foto, x2)]
+        teks_ocr = ocr_trocr(potongan, proc_trocr, model_trocr)
+
+        if label_std == "nama_merchant" and not phys_name:
+            phys_name = teks_ocr
+        elif label_std == "nmid" and not phys_nmid:
+            phys_nmid = re.sub(r'^(NMID\s*:?\s*)', '', teks_ocr, flags=re.IGNORECASE).strip()
+        elif label_std == "acquirer" and not phys_acq:
+            phys_acq = teks_ocr
+        elif label_std == "tid" and not phys_tid:
+            phys_tid = teks_ocr
+
+        warna = DAFTAR_WARNA_LABEL[cls_id % len(DAFTAR_WARNA_LABEL)]
         cv2.rectangle(gambar_vis, (x1, y1), (x2, y2), warna, 2)
-        cv2.putText(gambar_vis, f"{nama_resmi}", (x1, max(y1-6, 15)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, warna, 2)
+        cv2.putText(gambar_vis, f"{label_std}: {teks_ocr}", (x1, max(15, y1 - 5)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, warna, 1)
 
-        kunci = PEMETAAN_LABEL_ROBOFLOW.get(nama_resmi.lower(), nama_resmi.lower())
-        if conf >= 0.10:
-            if kunci not in kotak_terbaik or conf > kotak_terbaik[kunci]['conf']:
-                kotak_terbaik[kunci] = {'box': box, 'conf': conf}
-
-    folder_backend = os.path.dirname(os.path.abspath(__file__))
-    folder_vis = os.path.join(folder_backend, "static", "vis_output")
-    os.makedirs(folder_vis, exist_ok=True)
-    path_vis = os.path.join(folder_vis, f"vis_{filename_base}.jpg")
+    # Save visualization
+    folder_static = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "vis_output")
+    os.makedirs(folder_static, exist_ok=True)
+    path_vis = os.path.join(folder_static, f"vis_{filename_base}.jpg")
     cv2.imwrite(path_vis, gambar_vis)
 
-    # 3. Decode & Validasi QR Payload Digital (M1)
-    qr_text = scan_qr_code_digital(gambar_input)
-    tech_info, dig_name, dig_city, dig_nmid, dig_acq, dig_tid = validate_and_parse_emvco_qr(qr_text)
-
-    # 4. Extract Physical Text pake TrOCR (M2 & M3)
-    potongan = {}
-    for kunci, data in kotak_terbaik.items():
-        coords = data['box'].xyxy[0].tolist()
-        x1, y1, x2, y2 = int(coords[0]), int(coords[1]), int(coords[2]), int(coords[3])
-        pot = gambar_input[max(0, y1):min(tinggi_foto, y2), max(0, x1):min(lebar_foto, x2)]
-        if pot.size > 0 and kunci != "qrcode":
-            pot = cv2.resize(pot, None, fx=1.5, fy=1.5, interpolation=cv2.INTER_CUBIC)
-        potongan[kunci] = pot
-
-    phys_name = ocr_trocr(potongan.get("nama_merchant"), proc_trocr, model_trocr) if "nama_merchant" in potongan else "Tidak terbaca"
-    
-    phys_nmid = "Tidak terbaca"
-    if "nmid" in potongan:
-        t = ocr_trocr(potongan["nmid"], proc_trocr, model_trocr).upper().replace(" ", "")
-        m = re.search(r'[I1L][D0O][A-Z0-9]{13}', t)
-        if m:
-            tbl = str.maketrans("ILODSZBGT", "110052867")
-            phys_nmid = "ID" + m.group()[-13:].translate(tbl)
-        elif len(t) >= 10:
-            phys_nmid = re.sub(r'^.*NMID[:\-\s]*', '', t)
-
-    phys_acq = ocr_trocr(potongan.get("acquirer"), proc_trocr, model_trocr) if "acquirer" in potongan else "Tidak terbaca"
-    phys_tid = ocr_trocr(potongan.get("tid"), proc_trocr, model_trocr) if "tid" in potongan else "Tidak terbaca"
-
-    # 5. Multi-Evidence Identity Matching & Similarity (M4 & M5)
+    # Identity matching & QR risk
     name_similarity, match_level, identity_risk = calculate_identity_similarity(phys_name, dig_name)
-    
-    # NMID Matching check
-    is_nmid_mismatch = (dig_nmid != "Tidak ditemukan" and phys_nmid != "Tidak terbaca" and dig_nmid != phys_nmid)
-    if is_nmid_mismatch:
-        identity_risk = max(identity_risk, 90.0)
+    is_mismatch = (match_level == "COMPLETELY_DIFFERENT" or name_similarity < 40.0)
 
-    # 6. SQLite Reputation Check & Severity Risk (M6)
-    reputation = query_sqlite_reputation(dig_nmid, phys_nmid, dig_name, phys_name)
-    reputation_risk = reputation.get("reputation_risk_score", 0.0)
-    severity_risk = reputation.get("severity_risk_score", 0.0)
+    technical_risk = 0.0 if tech_info.get("is_valid") else 80.0
+    current_qr_risk_score = round((0.70 * identity_risk) + (0.30 * technical_risk), 1)
+    current_trust_score = round(100.0 - current_qr_risk_score, 1)
 
-    # Technical QR Risk (0 = Valid Payload, 100 = Invalid Payload/Structure)
-    tech_risk = 0.0 if tech_info["is_valid"] else 100.0
-
-    # 7. Combined Risk Scoring Model Formula (M7)
-    # Risk Score = 0.40*IdentityRisk + 0.30*ReputationRisk + 0.20*SeverityRisk + 0.10*TechnicalRisk
-    overall_risk_score = round(
-        (0.40 * identity_risk) +
-        (0.30 * reputation_risk) +
-        (0.20 * severity_risk) +
-        (0.10 * tech_risk),
-        1
-    )
-
-    trust_score = round(max(0.0, 100.0 - overall_risk_score), 1)
-
-    # Risk Levels:
-    # 0-20 -> LOW, 21-40 -> MODERATE, 41-60 -> ELEVATED, 61-80 -> HIGH, 81-100 -> CRITICAL
-    if overall_risk_score >= 61.0:
+    if is_mismatch:
         risk_level = "HIGH_RISK"
-    elif overall_risk_score >= 41.0:
+        explanation = f"PERINGATAN: Identitas stiker fisik ('{phys_name}') TIDAK COCOK dengan penerima QRIS digital ('{dig_name}'). Terindikasi stiker ditimpa/palsu!"
+    elif current_qr_risk_score >= 50.0:
         risk_level = "ELEVATED_RISK"
-    elif overall_risk_score >= 21.0:
+        explanation = f"HATI-HATI: Kemiripan nama '{name_similarity}%'. Periksa kembali nama toko sebelum melakukan transaksi."
+    elif current_qr_risk_score >= 25.0:
         risk_level = "MODERATE_RISK"
+        explanation = "Indikasi minor pergeseran identitas. Disarankan verifikasi ulang nominal pembayaran."
     else:
         risk_level = "SAFE"
+        explanation = "Stiker QRIS terverifikasi aman. Identitas fisik dan digital cocok."
 
-    is_mismatch = (identity_risk >= 60.0)
+    # EMRS Merchant Reputation
+    merchant_reputation = query_merchant_reputation(dig_nmid, phys_nmid, dig_name, phys_name)
 
-    # 8. User Warning Explanation Text (M8)
-    if is_mismatch:
-        explanation = f"⚠️ INDIKASI KETIDAKSESUAIAN IDENTITAS: Stiker fisik toko ('{phys_name}') tidak cocok dengan rekening penerima QRIS digital ('{dig_name}'). Uang Anda berpotensi masuk ke rekening yang salah!"
-    elif reputation.get("found_in_db") and reputation.get("rating", 5.0) <= 3.0:
-        explanation = f"⚠️ PERINGATAN REPUTASI: Merchant digital '{dig_name}' memiliki rating {reputation['rating']}/5.0 dengan {reputation['total_reports']} laporan pengguna di SQLite!"
-    else:
-        explanation = f"✅ TERVERIFIKASI AMAN: Identitas fisik toko ('{phys_name}') 100% cocok dengan identitas penerima digital QR Code ('{dig_name}')."
+    _update_merchant_identity_counter(dig_nmid, phys_nmid, dig_name, phys_name, is_mismatch)
+
+    # DB session log
+    db = SessionLocal()
+    try:
+        session_rec = VerificationSession(
+            session_id=session_id,
+            nmid=dig_nmid,
+            digital_name=dig_name,
+            physical_name=phys_name,
+            status="MISMATCH" if is_mismatch else "MATCH",
+            trust_score=current_trust_score,
+            risk_level=risk_level,
+            reputation_score=merchant_reputation.get("reputation_score", 50.0)
+        )
+        db.add(session_rec)
+        db.commit()
+    finally:
+        db.close()
 
     return {
         "session_id": session_id,
-        "is_mismatch": is_mismatch,
-        "risk_level": risk_level,
-        "overall_risk_score": overall_risk_score,
-        "trust_score": trust_score,
-        "name_similarity": name_similarity,
-        "match_level": match_level,
-        "explanation": explanation,
-        "physical_merchant": phys_name if phys_name != "" else "Tidak terbaca",
-        "digital_merchant": dig_name,
-        "digital_city": dig_city,
-        "physical_nmid": phys_nmid,
-        "digital_nmid": dig_nmid,
-        "physical_acquirer": phys_acq if phys_acq != "" else "Tidak terbaca",
-        "digital_acquirer": dig_acq,
-        "physical_tid": phys_tid if phys_tid != "" else "Tidak terbaca",
-        "digital_tid": dig_tid,
-        "visualization_url": f"/static/vis_output/vis_{filename_base}.jpg",
-        "reputation": reputation,
-        "technical_info": tech_info
+        "current_qr_risk": {
+            "risk_level": risk_level,
+            "overall_risk_score": current_qr_risk_score,
+            "trust_score": current_trust_score,
+            "is_mismatch": is_mismatch,
+            "name_similarity": name_similarity,
+            "match_level": match_level,
+            "explanation": explanation,
+            "physical_merchant": phys_name if phys_name != "" else "Tidak terbaca",
+            "digital_merchant": dig_name,
+            "digital_city": dig_city,
+            "physical_nmid": phys_nmid,
+            "digital_nmid": dig_nmid,
+            "physical_acquirer": phys_acq if phys_acq != "" else "Tidak terbaca",
+            "digital_acquirer": dig_acq,
+            "physical_tid": phys_tid if phys_tid != "" else "Tidak terbaca",
+            "digital_tid": dig_tid,
+            "technical_info": tech_info,
+            "qris_raw_analysis": qris_analysis
+        },
+        "merchant_reputation": merchant_reputation,
+        "visualization_url": f"/static/vis_output/vis_{filename_base}.jpg"
     }
+
+
+def _update_merchant_identity_counter(dig_nmid, phys_nmid, dig_name, phys_name, is_mismatch):
+    db = SessionLocal()
+    try:
+        m = None
+        if dig_nmid and dig_nmid != "Tidak ditemukan":
+            m = db.query(Merchant).filter(Merchant.nmid == dig_nmid).first()
+        if not m and phys_nmid and phys_nmid != "Tidak terbaca":
+            m = db.query(Merchant).filter(Merchant.nmid == phys_nmid).first()
+
+        if m:
+            if is_mismatch:
+                m.identity_mismatch_count = (m.identity_mismatch_count or 0) + 1
+            else:
+                m.identity_match_count = (m.identity_match_count or 0) + 1
+            db.commit()
+    finally:
+        db.close()
+
+
+def submit_feedback_to_db(nmid: str, category: str, severity: str,
+                          description: str, transaction_ref: str, has_evidence: bool) -> dict:
+    db = SessionLocal()
+    try:
+        m = db.query(Merchant).filter(Merchant.nmid == nmid).first()
+        if not m:
+            return {"success": False, "message": f"Merchant NMID '{nmid}' tidak ditemukan.", "evidence_level": 0, "new_reputation_score": 0.0}
+
+        evidence_level = 2 if has_evidence else 1
+
+        if transaction_ref:
+            existing = db.query(Report).filter(
+                Report.merchant_id == m.id,
+                Report.transaction_ref == transaction_ref
+            ).first()
+            if existing:
+                return {"success": False, "message": "Feedback untuk transaksi ini sudah pernah disubmit.", "evidence_level": evidence_level, "new_reputation_score": m.reputation_score}
+
+        rpt = Report(
+            merchant_id=m.id,
+            category=category,
+            severity=severity,
+            description=description,
+            evidence_level=evidence_level,
+            transaction_ref=transaction_ref,
+            is_verified=(evidence_level == 2),
+            created_at=datetime.utcnow()
+        )
+        db.add(rpt)
+
+        m.total_reports = (m.total_reports or 0) + 1
+        if evidence_level == 2:
+            m.verified_reports = (m.verified_reports or 0) + 1
+        if category == "QRIS Replacement" and severity == "CRITICAL":
+            m.critical_mismatch_count = (m.critical_mismatch_count or 0) + 1
+
+        db.commit()
+
+        reports = db.query(Report).filter(Report.merchant_id == m.id).all()
+        disputes = db.query(Dispute).filter(Dispute.merchant_id == m.id).all()
+        emrs = calculate_emrs(m, reports, disputes)
+
+        m.reputation_score = emrs["reputation_score"]
+        db.commit()
+
+        return {
+            "success": True,
+            "message": "Feedback berhasil disimpan. Terima kasih atas laporan Anda!",
+            "evidence_level": evidence_level,
+            "new_reputation_score": emrs["reputation_score"]
+        }
+    finally:
+        db.close()
+
+
+def get_merchant_reputation_by_nmid(nmid: str) -> dict:
+    db = SessionLocal()
+    try:
+        m = db.query(Merchant).filter(Merchant.nmid == nmid).first()
+        if not m:
+            return {"found_in_db": False, "reputation_score": 0.0}
+        reports = db.query(Report).filter(Report.merchant_id == m.id).all()
+        disputes = db.query(Dispute).filter(Dispute.merchant_id == m.id).all()
+        return calculate_emrs(m, reports, disputes)
+    finally:
+        db.close()

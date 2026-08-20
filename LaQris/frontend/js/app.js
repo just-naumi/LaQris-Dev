@@ -1,260 +1,365 @@
 /* ==============================================================================
-   LaQris POC Tahap 1 — Dynamic Frontend Logic & API Integration
+   LaQris POC v2.0 — EMRS Frontend Logic
    ============================================================================== */
 
 const API_BASE = "";
 
+// State: simpan data NMID aktif untuk feedback modal
+let currentNmid = null;
+
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("LaQris POC Tahap 1 Frontend App Loaded.");
+    console.log("LaQris EMRS v2.0 Frontend Loaded.");
 });
 
-// Run scan with pre-loaded sample
+
+// ══════════════════════════════════════════════════════════════
+// Scan Functions
+// ══════════════════════════════════════════════════════════════
+
 async function runScanSample(sampleFilename) {
-    showStepProgress(1);
-    
+    startLoading();
+
     const formData = new FormData();
     formData.append("sample_name", sampleFilename);
 
     try {
-        updateStepIndicator(2);
-        const response = await fetch(`${API_BASE}/api/scan`, {
-            method: "POST",
-            body: formData
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        updateStepIndicator(4);
+        await tickSteps();
+        const response = await fetch(`${API_BASE}/api/scan`, { method: "POST", body: formData });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
-        updateStepIndicator(5);
-        
-        setTimeout(() => {
-            renderScanResults(data);
-        }, 400);
-
+        finishLoading();
+        setTimeout(() => renderScanResults(data), 400);
     } catch (error) {
-        console.error("Gagal melakukan scan sampel:", error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Gagal Scan',
-            text: 'Terjadi kesalahan saat memproses gambar QRIS.',
-            background: '#1e293b',
-            color: '#fff'
-        });
+        console.error("Gagal scan sampel:", error);
+        showError("Gagal memproses sampel QRIS.", error.message);
+        resetScanner();
     }
 }
 
-// Handle file selection from upload dropzone
 async function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    showStepProgress(1);
+    startLoading();
 
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-        updateStepIndicator(2);
-        const response = await fetch(`${API_BASE}/api/scan`, {
-            method: "POST",
-            body: formData
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        updateStepIndicator(4);
+        await tickSteps();
+        const response = await fetch(`${API_BASE}/api/scan`, { method: "POST", body: formData });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
-        updateStepIndicator(5);
-
-        setTimeout(() => {
-            renderScanResults(data);
-        }, 400);
-
+        finishLoading();
+        setTimeout(() => renderScanResults(data), 400);
     } catch (error) {
         console.error("Gagal upload file:", error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Gagal Scan File',
-            text: error.message || 'Terjadi kesalahan saat mengunggah foto.',
-            background: '#1e293b',
-            color: '#fff'
-        });
+        showError("Gagal mengunggah foto QRIS.", error.message);
+        resetScanner();
     }
 }
 
-// Render Results to UI
-function renderScanResults(data) {
-    document.getElementById("resultSection").style.display = "flex";
 
-    // 1. Visual Image Bounding Box
-    if (data.visualization_image_url) {
-        document.getElementById("visImage").src = data.visualization_image_url;
-    }
+// ══════════════════════════════════════════════════════════════
+// Loading State
+// ══════════════════════════════════════════════════════════════
 
-    // 2. Physical vs Digital Comparison
-    const phys = data.physical_entity || {};
-    const dig = data.digital_entity || {};
-
-    document.getElementById("physMerchantName").textContent = phys.merchant_name || "Tidak terbaca";
-    document.getElementById("physNmid").textContent = `NMID: ${phys.nmid || 'Tidak terbaca'}`;
-    document.getElementById("physAcquirer").textContent = `Acquirer: ${phys.acquirer || 'Tidak terbaca'}`;
-
-    document.getElementById("digMerchantName").textContent = dig.merchant_name || "Tidak ditemukan";
-    document.getElementById("digNmid").textContent = `NMID: ${dig.nmid || 'Tidak ditemukan'}`;
-    document.getElementById("digAcquirer").textContent = `Acquirer: ${dig.acquirer || 'Tidak ditemukan'}`;
-
-    // 3. Trust Score Bar
-    const score = data.trust_score || 0;
-    document.getElementById("trustScoreValue").textContent = `${score}%`;
-    const progressBar = document.getElementById("trustProgressBar");
-    progressBar.style.width = `${score}%`;
-    
-    if (score >= 85) {
-        progressBar.className = "progress-bar bg-success";
-    } else if (score >= 50) {
-        progressBar.className = "progress-bar bg-warning";
-    } else {
-        progressBar.className = "progress-bar bg-danger";
-    }
-
-    // 4. Verdict Status Banner
-    const verdictCard = document.getElementById("verdictCard");
-    const riskBadge = document.getElementById("riskBadge");
-    const verdictTitle = document.getElementById("verdictTitle");
-    const verdictExp = document.getElementById("verdictExplanation");
-    const verdictIcon = document.getElementById("verdictIcon");
-
-    verdictTitle.textContent = data.verdict_status;
-    verdictExp.textContent = data.explanation;
-
-    if (data.risk_level === "HIGH_RISK") {
-        riskBadge.textContent = "HIGH RISK (BAHAYA)";
-        riskBadge.className = "badge bg-danger mb-1";
-        verdictIcon.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-danger"></i>`;
-        verdictCard.style.borderColor = "var(--accent-rose)";
-    } else if (data.risk_level === "SAFE") {
-        riskBadge.textContent = "VERIFIED SAFE (AMAN)";
-        riskBadge.className = "badge bg-success mb-1";
-        verdictIcon.innerHTML = `<i class="fa-solid fa-shield-check text-emerald"></i>`;
-        verdictCard.style.borderColor = "var(--accent-emerald)";
-    } else {
-        riskBadge.textContent = "MEDIUM RISK (PERHATIAN)";
-        riskBadge.className = "badge bg-warning text-dark mb-1";
-        verdictIcon.innerHTML = `<i class="fa-solid fa-circle-exclamation text-warning"></i>`;
-        verdictCard.style.borderColor = "var(--accent-amber)";
-    }
-
-    // 5. SQLite Merchant Reputation Widget
-    const rep = data.reputation;
-    if (rep) {
-        document.getElementById("repNmidBadge").textContent = `NMID: ${rep.nmid}`;
-        document.getElementById("repRating").textContent = rep.rating.toFixed(1);
-        document.getElementById("repTotalReports").textContent = rep.total_reports;
-        document.getElementById("repVerifiedReports").textContent = rep.verified_reports;
-
-        const bc = rep.breakdown_categories || { qris_replacement: 0, additional_fee: 0, merchant_mismatch: 0 };
-        document.getElementById("catReplacementCount").textContent = bc.qris_replacement;
-        document.getElementById("catFeeCount").textContent = bc.additional_fee;
-        document.getElementById("catMismatchCount").textContent = bc.merchant_mismatch;
-
-        const maxRep = Math.max(rep.total_reports, 1);
-        document.getElementById("catReplacementBar").style.width = `${(bc.qris_replacement / maxRep) * 100}%`;
-        document.getElementById("catFeeBar").style.width = `${(bc.additional_fee / maxRep) * 100}%`;
-        document.getElementById("catMismatchBar").style.width = `${(bc.merchant_mismatch / maxRep) * 100}%`;
-    } else {
-        document.getElementById("repNmidBadge").textContent = `NMID: ${dig.nmid || '-'}`;
-        document.getElementById("repRating").textContent = "5.0";
-        document.getElementById("repTotalReports").textContent = "0";
-        document.getElementById("repVerifiedReports").textContent = "0";
-        document.getElementById("catReplacementCount").textContent = "0";
-        document.getElementById("catFeeCount").textContent = "0";
-        document.getElementById("catMismatchCount").textContent = "0";
-        document.getElementById("catReplacementBar").style.width = "0%";
-        document.getElementById("catFeeBar").style.width = "0%";
-        document.getElementById("catMismatchBar").style.width = "0%";
-    }
-
-    // Scroll smoothly to results
-    document.getElementById("resultSection").scrollIntoView({ behavior: 'smooth' });
-
-    // 6. Trigger HIGH RISK Warning Modal if High Risk Detected!
-    if (data.risk_level === "HIGH_RISK") {
-        setTimeout(() => {
-            showWarningModal(data);
-        }, 500);
-    }
+function startLoading() {
+    document.getElementById("uploadPanel").classList.add("d-none");
+    document.getElementById("loadingPanel").classList.remove("d-none");
+    document.getElementById("resultSection").classList.add("d-none");
+    setStep(1);
 }
 
-// Show Warning Modal
-function showWarningModal(data) {
-    const physName = data.physical_entity?.merchant_name || "TOKO BERKAH JAYA";
-    const digName = data.digital_entity?.merchant_name || "BUDI PRIBADI";
-    const digNmid = data.digital_entity?.nmid || "ID1024309405321";
-
-    document.getElementById("modalPhysName").textContent = physName;
-    document.getElementById("modalDigName").textContent = digName;
-
-    document.getElementById("modalBoxPhys").textContent = physName;
-    document.getElementById("modalBoxDig").textContent = `${digName} (NMID: ${digNmid})`;
-
-    const rep = data.reputation;
-    if (rep) {
-        document.getElementById("modalReputationDetail").innerHTML = 
-            `Merchant <strong>${rep.merchant_name}</strong> memiliki Rating <strong>${rep.rating.toFixed(1)} / 5.0</strong> dengan total <strong>${rep.total_reports} laporan penipuan</strong> (${rep.breakdown_categories?.qris_replacement || 0} Laporan QRIS Replacement).`;
-    } else {
-        document.getElementById("modalReputationDetail").innerHTML = 
-            `Identitas stiker fisik (${physName}) tidak cocok dengan identitas penerima digital (${digName}). Terindikasi stiker QRIS ditimpa.`;
-    }
-
-    const modal = new bootstrap.Modal(document.getElementById('warningModal'));
-    modal.show();
+function finishLoading() {
+    document.getElementById("loadingPanel").classList.add("d-none");
+    document.getElementById("resultSection").classList.remove("d-none");
 }
 
-function closeWarningModal() {
-    const modalEl = document.getElementById('warningModal');
-    const modal = bootstrap.Modal.getInstance(modalEl);
-    if (modal) modal.hide();
-}
-
-// Action button: CANCEL PAYMENT
-function cancelTransactionAction() {
-    closeWarningModal();
-    Swal.fire({
-        icon: 'success',
-        title: '❌ TRANSACTION CANCELLED!',
-        html: `<strong style="color: #34d399; font-size: 1.1rem;">Suspicious Transaction Prevented!</strong><br><br>Pembayaran berhasil dibatalkan oleh pengguna. Anda terhindar dari potensi penipuan QRIS ditimpa.`,
-        background: '#18181b',
-        color: '#fff',
-        confirmButtonColor: '#10b981',
-        confirmButtonText: 'Kembali ke Beranda'
-    });
-}
-
-// Step Progress Animations
-function showStepProgress(step) {
-    updateStepIndicator(step);
-}
-
-function updateStepIndicator(step) {
+function setStep(n) {
     for (let i = 1; i <= 5; i++) {
         const el = document.getElementById(`step${i}`);
         if (!el) continue;
-        if (i < step) {
-            el.className = "step-item complete";
-        } else if (i === step) {
-            el.className = "step-item active";
-        } else {
-            el.className = "step-item";
-        }
+        el.className = i < n ? "step-item complete" : i === n ? "step-item active" : "step-item";
     }
 }
 
-// Open Database Directory Modal
+async function tickSteps() {
+    const delays = [200, 300, 300, 400, 0];
+    for (let i = 1; i <= 5; i++) {
+        setStep(i);
+        await sleep(delays[i - 1]);
+    }
+}
+
+function sleep(ms) {
+    return new Promise(r => setTimeout(r, ms));
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// Render Results — Dua Panel Terpisah
+// ══════════════════════════════════════════════════════════════
+
+function renderScanResults(data) {
+    const qr = data.current_qr_risk || {};
+    const rep = data.merchant_reputation || {};
+
+    // Simpan NMID untuk feedback
+    currentNmid = qr.digital_nmid || rep.nmid || null;
+
+    // ── PANEL A: Current QR Risk ──────────────────────────────
+    renderQRRiskPanel(qr);
+
+    // ── PANEL B: Merchant Reputation (EMRS) ──────────────────
+    renderReputationPanel(rep);
+
+    // Visualisasi YOLO
+    if (data.visualization_url) {
+        document.getElementById("visImage").src = data.visualization_url + "?t=" + Date.now();
+        document.getElementById("visBox").style.display = "block";
+    }
+
+    // Action buttons
+    const btnCancel = document.getElementById("btnCancelPayment");
+    if (qr.is_mismatch || qr.risk_level === "HIGH_RISK") {
+        btnCancel.style.display = "block";
+    } else {
+        btnCancel.style.display = "none";
+    }
+
+    document.getElementById("resultSection").scrollIntoView({ behavior: "smooth" });
+
+    // High risk modal
+    if (qr.risk_level === "HIGH_RISK") {
+        setTimeout(() => showWarningModal(qr, rep), 600);
+    }
+}
+
+function renderQRRiskPanel(qr) {
+    // Trust Score Bar
+    const score = qr.trust_score ?? 0;
+    document.getElementById("trustScoreValue").textContent = `${score.toFixed(0)} / 100`;
+
+    const bar = document.getElementById("trustProgressBar");
+    bar.style.width = `${score}%`;
+    bar.className = "score-bar-fill";
+    if (score >= 80) bar.classList.add("fill-safe");
+    else if (score >= 50) bar.classList.add("fill-moderate");
+    else bar.classList.add("fill-danger");
+
+    // Risk Badge
+    const badgeLg = document.getElementById("riskBadgeLg");
+    const icon = document.getElementById("riskPanelIcon");
+    const rl = qr.risk_level || "SAFE";
+
+    const riskMap = {
+        "HIGH_RISK":      { label: "HIGH RISK",      cls: "badge-danger",   iconCls: "icon-danger",   iconI: "fa-triangle-exclamation" },
+        "ELEVATED_RISK":  { label: "ELEVATED RISK",  cls: "badge-warning",  iconCls: "icon-warning",  iconI: "fa-circle-exclamation" },
+        "MODERATE_RISK":  { label: "MODERATE RISK",  cls: "badge-moderate", iconCls: "icon-moderate", iconI: "fa-circle-info" },
+        "SAFE":           { label: "AMAN ✓",          cls: "badge-safe",    iconCls: "icon-safe",     iconI: "fa-shield-check" }
+    };
+    const rm = riskMap[rl] || riskMap["SAFE"];
+    badgeLg.textContent = rm.label;
+    badgeLg.className = `risk-badge-lg ${rm.cls}`;
+    icon.className = `panel-icon ${rm.iconCls}`;
+    icon.innerHTML = `<i class="fa-solid ${rm.iconI}"></i>`;
+
+    // Explanation
+    const expBox = document.getElementById("explanationBox");
+    expBox.textContent = qr.explanation || "—";
+    expBox.className = `explanation-box ${qr.is_mismatch ? "exp-danger" : "exp-safe"}`;
+
+    // Physical vs Digital
+    document.getElementById("physMerchantName").textContent = qr.physical_merchant || "Tidak terbaca";
+    document.getElementById("physNmid").textContent         = qr.physical_nmid    || "Tidak terbaca";
+    document.getElementById("physAcquirer").textContent     = qr.physical_acquirer || "Tidak terbaca";
+    document.getElementById("physTid").textContent          = qr.physical_tid     || "Tidak terbaca";
+
+    document.getElementById("digMerchantName").textContent  = qr.digital_merchant || "Tidak ditemukan";
+    document.getElementById("digNmid").textContent          = qr.digital_nmid     || "Tidak ditemukan";
+    document.getElementById("digAcquirer").textContent      = qr.digital_acquirer || "Tidak ditemukan";
+    document.getElementById("digCity").textContent          = qr.digital_city     || "Tidak ditemukan";
+
+    // Match badge
+    const matchBadge = document.getElementById("matchBadge");
+    matchBadge.className = `kv-vs-badge ${qr.is_mismatch ? "vs-mismatch" : "vs-match"}`;
+    matchBadge.innerHTML = qr.is_mismatch
+        ? `<i class="fa-solid fa-xmark"></i>`
+        : `<i class="fa-solid fa-check"></i>`;
+
+    // Match details
+    document.getElementById("similarityVal").textContent  = `${qr.name_similarity ?? 0}%`;
+    document.getElementById("matchLevelVal").textContent  = qr.match_level || "—";
+    document.getElementById("qrStatusVal").textContent    = qr.technical_info?.status || "—";
+}
+
+function renderReputationPanel(rep) {
+    const score = rep.reputation_score ?? 50;
+    const comps = rep.components || {};
+
+    // EMRS Score Circle
+    document.getElementById("emrsScoreNum").textContent = score.toFixed(0);
+    const circle = document.getElementById("emrsScoreCircle");
+    circle.className = "emrs-score-circle";
+    if (score >= 85)      circle.classList.add("circle-excellent");
+    else if (score >= 70) circle.classList.add("circle-good");
+    else if (score >= 55) circle.classList.add("circle-fair");
+    else if (score >= 40) circle.classList.add("circle-poor");
+    else                  circle.classList.add("circle-critical");
+
+    // Grade Banner
+    const gradeMap = {
+        "Excellent": { cls: "grade-excellent", icon: "🏆" },
+        "Very Good":  { cls: "grade-verygood",  icon: "⭐" },
+        "Good":       { cls: "grade-good",      icon: "👍" },
+        "Fair":       { cls: "grade-fair",      icon: "⚠️" },
+        "Poor":       { cls: "grade-poor",      icon: "🔴" }
+    };
+    const gm = gradeMap[rep.grade] || gradeMap["Fair"];
+    const gradeBanner = document.getElementById("gradeBanner");
+    gradeBanner.className = `grade-banner ${gm.cls}`;
+    document.getElementById("gradeLabel").textContent = `${gm.icon} ${rep.grade ?? "—"}`;
+
+    const evQ = rep.evidence_quality || "INSUFFICIENT";
+    const evLabel = { "HIGH": "High Evidence", "MEDIUM": "Medium Evidence", "LOW": "Low Evidence", "INSUFFICIENT": "Insufficient Data" };
+    document.getElementById("gradeEvidence").textContent = `${evLabel[evQ]} (${rep.total_evidence_count ?? 0} poin)`;
+
+    // EMRS Components
+    const compData = [
+        { id: "T", label: "T", val: comps.T },
+        { id: "A", label: "A", val: comps.A },
+        { id: "L", label: "L", val: comps.L },
+        { id: "C", label: "C", val: comps.C },
+        { id: "D", label: "D", val: comps.D }
+    ];
+    for (const c of compData) {
+        const v = c.val ?? 50;
+        document.getElementById(`score${c.id}`).textContent = `${v.toFixed(0)}`;
+        const bar = document.getElementById(`bar${c.id}`);
+        bar.style.width = `${v}%`;
+    }
+
+    // Merchant Info Row
+    if (rep.found_in_db) {
+        document.getElementById("merchantInfoRow").style.display = "flex";
+        document.getElementById("repNmid").textContent = rep.nmid || "—";
+
+        if (rep.registered_at) {
+            const regDate = new Date(rep.registered_at);
+            document.getElementById("repRegistered").textContent = `Aktif sejak ${regDate.toLocaleDateString("id-ID", { year: "numeric", month: "long" })}`;
+        }
+    } else {
+        document.getElementById("merchantInfoRow").style.display = "none";
+    }
+
+    // Enable/disable feedback btn
+    document.getElementById("btnFeedback").disabled = !rep.found_in_db;
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// Warning Modal
+// ══════════════════════════════════════════════════════════════
+
+function showWarningModal(qr, rep) {
+    document.getElementById("modalPhysName").textContent = qr.physical_merchant || "TIDAK TERBACA";
+    document.getElementById("modalDigName").textContent  = qr.digital_merchant  || "TIDAK DITEMUKAN";
+
+    const repDetail = document.getElementById("modalReputationDetail");
+    if (rep && rep.found_in_db) {
+        repDetail.innerHTML = `Merchant <strong>${rep.merchant_name}</strong> memiliki EMRS Score <strong>${(rep.reputation_score ?? 0).toFixed(0)} / 100</strong> (${rep.grade}). Terdapat <strong>${rep.total_evidence_count ?? 0} poin evidence</strong> dalam database LaQris.`;
+    } else {
+        repDetail.innerHTML = `Identitas stiker fisik tidak cocok dengan identitas penerima digital QRIS. Merchant <strong>belum dikenal</strong> di database LaQris.`;
+    }
+    new bootstrap.Modal(document.getElementById("warningModal")).show();
+}
+
+function closeWarningModal() {
+    const el = document.getElementById("warningModal");
+    bootstrap.Modal.getInstance(el)?.hide();
+}
+
+function cancelTransactionAction() {
+    closeWarningModal();
+    Swal.fire({
+        icon: "success",
+        title: "❌ Transaksi Dibatalkan!",
+        html: `<strong style="color:#34d399;font-size:1.05rem;">Potensi Penipuan Berhasil Dicegah!</strong><br><br>Anda berhasil membatalkan pembayaran dan terhindar dari penipuan stiker QRIS ditimpa.`,
+        background: "#18181b",
+        color: "#fff",
+        confirmButtonColor: "#10b981",
+        confirmButtonText: "Kembali ke Beranda",
+    }).then(() => resetScanner());
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// Feedback Modal
+// ══════════════════════════════════════════════════════════════
+
+function openFeedbackModal() {
+    if (!currentNmid) return;
+    new bootstrap.Modal(document.getElementById("feedbackModal")).show();
+}
+
+function closeFeedbackModal() {
+    bootstrap.Modal.getInstance(document.getElementById("feedbackModal"))?.hide();
+}
+
+function toggleEvidence() {
+    const current = document.getElementById("fbHasEvidence").value === "true";
+    const next = !current;
+    document.getElementById("fbHasEvidence").value = next.toString();
+    const icon = document.getElementById("fbEvidenceIcon");
+    const toggle = document.getElementById("fbEvidenceToggle");
+    icon.innerHTML = next ? '<i class="fa-solid fa-square-check"></i>' : '<i class="fa-regular fa-square"></i>';
+    toggle.className = next ? "fb-evidence-toggle active" : "fb-evidence-toggle";
+}
+
+async function submitFeedback() {
+    if (!currentNmid) return;
+
+    const payload = {
+        nmid: currentNmid,
+        category: document.getElementById("fbCategory").value,
+        severity: document.getElementById("fbSeverity").value,
+        description: document.getElementById("fbDescription").value || null,
+        transaction_ref: document.getElementById("fbTxRef").value || null,
+        has_evidence: document.getElementById("fbHasEvidence").value === "true"
+    };
+
+    try {
+        const resp = await fetch(`${API_BASE}/api/feedback`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const result = await resp.json();
+        closeFeedbackModal();
+
+        if (resp.ok) {
+            Swal.fire({
+                icon: "success",
+                title: "Laporan Terkirim!",
+                html: `Evidence Level: <strong>${payload.has_evidence ? "2 (Verified)" : "1 (Unverified)"}</strong><br>EMRS baru: <strong>${result.new_reputation_score?.toFixed(1) ?? "—"} / 100</strong>`,
+                background: "#18181b",
+                color: "#fff",
+                confirmButtonColor: "#6366f1"
+            });
+        } else {
+            Swal.fire({ icon: "error", title: "Gagal", text: result.detail || "Error.", background: "#18181b", color: "#fff" });
+        }
+    } catch (e) {
+        Swal.fire({ icon: "error", title: "Network Error", text: e.message, background: "#18181b", color: "#fff" });
+    }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// Database Modal
+// ══════════════════════════════════════════════════════════════
+
 async function openDatabaseModal() {
     try {
         const response = await fetch(`${API_BASE}/api/merchants`);
@@ -263,22 +368,60 @@ async function openDatabaseModal() {
         const tbody = document.getElementById("merchantTableBody");
         tbody.innerHTML = "";
 
-        merchants.forEach(m => {
+        for (const m of merchants) {
+            // Get reputation score
+            let emrsScore = m.reputation_score ?? 50;
+            let grade = "—";
+
+            // Determine grade from score
+            if (emrsScore >= 85) grade = "Excellent";
+            else if (emrsScore >= 70) grade = "Very Good";
+            else if (emrsScore >= 55) grade = "Good";
+            else if (emrsScore >= 40) grade = "Fair";
+            else grade = "Poor";
+
+            const gradeCls = {
+                "Excellent": "badge-excellent", "Very Good": "badge-verygood",
+                "Good": "badge-good", "Fair": "badge-fair", "Poor": "badge-poor"
+            }[grade] || "badge-fair";
+
             const tr = document.createElement("tr");
             tr.innerHTML = `
-                <td><code>${m.nmid}</code></td>
-                <td><strong class="text-white">${m.merchant_name}</strong></td>
-                <td><span class="badge bg-secondary">${m.acquirer}</span></td>
-                <td><span class="badge bg-warning text-dark"><i class="fa-solid fa-star"></i> ${m.rating.toFixed(1)}</span></td>
-                <td><span class="badge bg-danger">${m.total_reports} Laporan (${m.verified_reports} Verified)</span></td>
+                <td><code class="code-nmid">${m.nmid}</code></td>
+                <td><strong>${m.merchant_name}</strong></td>
+                <td><span class="badge-acquirer">${m.acquirer}</span></td>
+                <td><strong class="emrs-val">${emrsScore.toFixed(1)}</strong></td>
+                <td><span class="db-grade ${gradeCls}">${grade}</span></td>
+                <td><span class="badge-reports">${m.total_reports} (${m.verified_reports} verified)</span></td>
             `;
             tbody.appendChild(tr);
-        });
+        }
 
-        const modal = new bootstrap.Modal(document.getElementById('databaseModal'));
-        modal.show();
-
+        new bootstrap.Modal(document.getElementById("databaseModal")).show();
     } catch (error) {
-        console.error("Gagal membaca database SQLite:", error);
+        console.error("Gagal membaca database:", error);
     }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// Reset
+// ══════════════════════════════════════════════════════════════
+
+function resetScanner() {
+    currentNmid = null;
+    document.getElementById("fileInput").value = "";
+    document.getElementById("uploadPanel").classList.remove("d-none");
+    document.getElementById("loadingPanel").classList.add("d-none");
+    document.getElementById("resultSection").classList.add("d-none");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// Utilities
+// ══════════════════════════════════════════════════════════════
+
+function showError(title, text) {
+    Swal.fire({ icon: "error", title, text, background: "#18181b", color: "#fff" });
 }
