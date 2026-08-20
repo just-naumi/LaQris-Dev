@@ -4,7 +4,6 @@ import { useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { detectImage } from "@/lib/api";
-import type { DetectionResponse } from "@/types/detection";
 
 interface HistoryItem {
   id: string;
@@ -19,7 +18,6 @@ export default function DashboardPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<DetectionResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -66,9 +64,7 @@ export default function DashboardPage() {
     if (file) {
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
-      setResult(null);
       setErrorMsg(null);
-      router.push("/scan");
     }
   };
 
@@ -78,13 +74,20 @@ export default function DashboardPage() {
     setErrorMsg(null);
     try {
       const data = await detectImage(selectedFile);
-      setResult(data);
+      sessionStorage.setItem("laqris:last-scan", JSON.stringify(data));
 
-      const firstLabel = data.detections[0]?.label || "Pemindaian Objek";
+      const resultType = data.is_mismatch || data.risk_level === "HIGH_RISK"
+        ? "bahaya"
+        : data.risk_level === "MODERATE_RISK" || data.risk_level === "ELEVATED_RISK"
+          ? "waspada"
+          : "aman";
+      router.push(`/result/${resultType}`);
+
+      const merchantName = data.digital_merchant || data.physical_merchant || "QRIS";
       const newEntry: HistoryItem = {
         id: Date.now().toString(),
-        merchantName: `Scan: ${firstLabel.toUpperCase()}`,
-        reputationScore: `${Math.round((data.detections[0]?.confidence || 0.95) * 100)}% · Terverifikasi`,
+        merchantName: `Scan: ${merchantName}`,
+        reputationScore: `${Math.round(data.trust_score)}% · Terverifikasi`,
         textColor: "text-emerald-600",
         timeAgo: "Baru saja",
       };

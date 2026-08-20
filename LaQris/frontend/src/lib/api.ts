@@ -1,6 +1,6 @@
-import type { DetectionResponse, HealthResponse } from "@/types/detection";
+import type { HealthResponse, ScanResponse } from "@/types/detection";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:5000";
 
 /**
  * Generic fetch wrapper with error handling.
@@ -29,11 +29,11 @@ export async function checkHealth(): Promise<HealthResponse> {
  * Upload an image file and run YOLO object detection.
  * @param file - The image File object from an <input type="file"> or drag-and-drop.
  */
-export async function detectImage(file: File): Promise<DetectionResponse> {
+export async function detectImage(file: File): Promise<ScanResponse> {
   const formData = new FormData();
   formData.append("file", file);
 
-  return apiFetch<DetectionResponse>("/api/v1/detection/image", {
+  return apiFetch<ScanResponse>("/api/scan", {
     method: "POST",
     body: formData,
   });

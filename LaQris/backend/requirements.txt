@@ -1,18 +1,13 @@
-# Core framework
-fastapi==0.115.0
-uvicorn[standard]==0.30.6
-python-multipart==0.0.9
-
-# Settings
-pydantic==2.8.2
-pydantic-settings==2.4.0
-
-# AI / YOLO
-ultralytics==8.3.0
-
-# Image processing
-Pillow==10.4.0
-numpy==1.26.4
-
-# Dev tools
-httpx==0.27.2        # for testing async endpoints
+fastapi>=0.100.0
+uvicorn>=0.22.0
+sqlalchemy>=2.0.0
+pydantic>=2.0.0
+opencv-python-headless
+numpy
+pyzbar
+ultralytics
+transformers
+torch
+pillow
+python-multipart
+pyyaml

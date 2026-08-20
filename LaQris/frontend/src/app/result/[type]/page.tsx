@@ -2,10 +2,28 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import type { ScanResponse } from "@/types/detection";
 
 export default function ResultPage() {
   const params = useParams();
   const type = (params?.type as string) || "aman";
+  const [scanData, setScanData] = useState<ScanResponse | null>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const storedScan = sessionStorage.getItem("laqris:last-scan");
+      if (storedScan) {
+        try {
+          setScanData(JSON.parse(storedScan) as ScanResponse);
+        } catch {
+          sessionStorage.removeItem("laqris:last-scan");
+        }
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // Data config for Aman, Waspada, and Bahaya
   const configs = {
@@ -84,6 +102,10 @@ export default function ResultPage() {
   };
 
   const currentConfig = configs[type as keyof typeof configs] || configs.aman;
+  const merchantName = scanData?.digital_merchant || currentConfig.merchantName;
+  const bankName = scanData?.digital_acquirer || currentConfig.bankName;
+  const reputationScore = scanData ? `${Math.round(scanData.trust_score)}%` : currentConfig.reputationScore;
+  const details = scanData ? [scanData.explanation, `Kecocokan nama: ${scanData.match_level}`, `NMID digital: ${scanData.digital_nmid}`] : currentConfig.details;
 
   return (
     <div className="min-h-screen bg-neutral-900 py-0 sm:py-8 flex items-center justify-center font-sans antialiased">
@@ -131,7 +153,7 @@ export default function ResultPage() {
             <div className="space-y-2 text-xs">
               <div className="flex justify-between items-center">
                 <span className="text-neutral-400 font-medium">Nama Merchant:</span>
-                <span className="font-bold text-neutral-900">{currentConfig.merchantName}</span>
+                <span className="font-bold text-neutral-900">{merchantName}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-neutral-400 font-medium">Kategori:</span>
@@ -139,11 +161,11 @@ export default function ResultPage() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-neutral-400 font-medium">Penyedia Jasa:</span>
-                <span className="font-semibold text-neutral-700">{currentConfig.bankName}</span>
+                <span className="font-semibold text-neutral-700">{bankName}</span>
               </div>
               <div className="flex justify-between items-center pt-1 border-t border-neutral-100">
                 <span className="text-neutral-400 font-medium">Skor Reputasi:</span>
-                <span className="font-extrabold text-neutral-900">{currentConfig.reputationScore} ({currentConfig.reputationText})</span>
+                <span className="font-extrabold text-neutral-900">{reputationScore} ({currentConfig.reputationText})</span>
               </div>
             </div>
           </div>
@@ -155,7 +177,7 @@ export default function ResultPage() {
             </h3>
 
             <ul className="space-y-2 text-[11px] font-medium text-neutral-600">
-              {currentConfig.details.map((detail, idx) => (
+              {details.map((detail, idx) => (
                 <li key={idx} className="flex items-start gap-2">
                   <span className="text-emerald-500 font-bold shrink-0 mt-0.5">•</span>
                   <span>{detail}</span>
