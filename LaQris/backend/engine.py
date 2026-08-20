@@ -695,8 +695,8 @@ def process_qris_verification(gambar_input, filename_base="scan"):
     session_id = str(uuid.uuid4())[:8]
 
     # Predict dengan YOLO
-    res_barcode = model_barcode.predict(gambar_input, conf=0.20, verbose=False)[0]
-    res_ocr = model_ocr.predict(gambar_input, conf=0.15, verbose=False)[0]
+    res_barcode = model_barcode.predict(gambar_input, conf=0.18, verbose=False)[0]
+    res_ocr = model_ocr.predict(gambar_input, conf=0.10, verbose=False)[0]
 
     gambar_vis = gambar_input.copy()
     tinggi_foto, lebar_foto = gambar_input.shape[:2]
@@ -739,6 +739,7 @@ def process_qris_verification(gambar_input, filename_base="scan"):
 
     # 3. Ekstraksi teks fisik HANYA dari Potongan Kotak YOLO OCR
     phys_name, phys_nmid, phys_acq, phys_tid = "", "", "", ""
+    target_nmid_box = None
     target_qr_box = None
 
     for box in res_ocr.boxes:
@@ -759,8 +760,10 @@ def process_qris_verification(gambar_input, filename_base="scan"):
 
         if label_std == "nama_merchant" and not phys_name:
             phys_name = teks_ocr
-        elif label_std == "nmid" and not phys_nmid:
-            phys_nmid = re.sub(r'^(NMID\s*:?\s*)', '', teks_ocr, flags=re.IGNORECASE).strip()
+        elif label_std == "nmid":
+            target_nmid_box = (x1, y1, x2, y2)
+            if not phys_nmid:
+                phys_nmid = re.sub(r'^(NMID\s*:?\s*)', '', teks_ocr, flags=re.IGNORECASE).strip()
         elif label_std == "acquirer" and not phys_acq:
             phys_acq = teks_ocr
         elif label_std == "tid" and not phys_tid:
@@ -771,6 +774,24 @@ def process_qris_verification(gambar_input, filename_base="scan"):
         cv2.rectangle(gambar_vis, (x1, y1), (x2, y2), warna, 2)
         cv2.putText(gambar_vis, f"{label_std}: {teks_ocr}", (x1, max(15, y1 - 5)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45, warna, 1)
+
+    # ── Potongan Presisi Slot Nama Merchant (Tepat di Atas Kotak NMID) ─────────
+    if not phys_name and target_nmid_box is not None:
+        nx1, ny1, nx2, ny2 = target_nmid_box
+        h_slot = max(35, int((ny2 - ny1) * 1.2))
+        slot_y1 = max(0, ny1 - h_slot)
+        slot_y2 = max(5, ny1 - 2)
+        slot_x1 = max(0, nx1 - 40)
+        slot_x2 = min(lebar_foto, nx2 + 40)
+        
+        potongan_slot = gambar_input[slot_y1:slot_y2, slot_x1:slot_x2]
+        if potongan_slot is not None and potongan_slot.size > 0:
+            teks_slot = ocr_trocr(potongan_slot, proc_trocr, model_trocr)
+            if teks_slot and len(teks_slot) >= 3:
+                phys_name = teks_slot
+                cv2.rectangle(gambar_vis, (slot_x1, slot_y1), (slot_x2, slot_y2), (0, 215, 255), 2)
+                cv2.putText(gambar_vis, f"nama_merchant (slot): {phys_name}", (slot_x1, max(15, slot_y1 - 5)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 215, 255), 1)
 
     # 4. Pencocokan Identitas & Kalkulasi Risiko QR Saat Ini
     name_similarity, match_level, identity_risk = calculate_identity_similarity(phys_name, dig_name)
