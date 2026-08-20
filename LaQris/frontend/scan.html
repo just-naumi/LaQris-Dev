@@ -372,6 +372,7 @@
             border-radius: 14px;
             border: 1px solid #e2e8f0;
             cursor: pointer;
+            margin-bottom: 10px;
             transition: all 0.2s;
         }
         .btn-secondary-action:hover { background: #e2e8f0; color: #0f172a; }
@@ -559,19 +560,62 @@
             </div>
 
             <!-- Action Buttons -->
-            <button id="btnCancel" class="btn-cancel-action" onclick="cancelPayment()" style="display:none">
+            <button type="button" id="btnCancel" class="btn-cancel-action" onclick="cancelPayment()" style="display:none">
                 Batalkan Pembayaran
             </button>
-            <button class="btn-report-action" id="btnReport" onclick="openReportModal()" style="display:none">
+            <button type="button" class="btn-report-action" id="btnReport" onclick="openReportModal()" style="display:none">
                 🚩 Laporkan Masalah
             </button>
-            <button class="btn-secondary-action" onclick="resetScanner()">
+            <button type="button" class="btn-secondary-action" id="btnReview" onclick="openReviewModal()" style="display:none">
+                ⭐ Kasih Review
+            </button>
+            <button type="button" class="btn-secondary-action" onclick="resetScanner()">
                 Scan Stiker Lain
             </button>
 
         </div>
     </div>
 
+</div>
+
+<!-- Modal: Kasih Review -->
+<div class="modal fade" id="reviewModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:20px; border:none; padding:4px;">
+            <div class="modal-body p-3">
+                <h6 class="fw-bold mb-3">⭐ Kasih Review Toko</h6>
+                <label class="form-label small fw-semibold">Kepuasan customer</label>
+                <select class="form-select form-select-sm mb-2" id="reviewSatisfaction">
+                    <option value="SATISFIED">Puas</option>
+                    <option value="NEUTRAL">Biasa saja</option>
+                    <option value="DISSATISFIED">Tidak puas</option>
+                </select>
+                <label class="form-label small fw-semibold">Beri bintang</label>
+                <select class="form-select form-select-sm mb-2" id="reviewStars">
+                    <option value="5">★★★★★ Sangat puas</option>
+                    <option value="4">★★★★ Puas</option>
+                    <option value="3">★★★ Cukup</option>
+                    <option value="2">★★ Tidak puas</option>
+                    <option value="1">★ Sangat tidak puas</option>
+                </select>
+                <label class="form-label small fw-semibold">Laporan masalah</label>
+                <select class="form-select form-select-sm mb-2" id="reviewIssueCategory">
+                    <option value="NONE">Tidak ada masalah</option>
+                    <option value="SERVICE">Pelayanan</option>
+                    <option value="PAYMENT">Pembayaran</option>
+                    <option value="ADDITIONAL_FEE">Biaya tambahan</option>
+                    <option value="OTHER">Masalah lainnya</option>
+                </select>
+                <textarea class="form-control form-control-sm mb-2" id="reviewIssueDescription" rows="2" placeholder="Ceritakan pengalaman atau masalah (opsional)"></textarea>
+                <label class="form-label small fw-semibold">Dokumentasi bukti pembayaran (opsional)</label>
+                <input class="form-control form-control-sm mb-3" id="reviewPaymentProof" type="file" accept="image/*,.pdf">
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-light flex-fill" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-sm btn-primary flex-fill" onclick="submitReview()">Kirim Review</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Modal: Laporkan Masalah -->
@@ -747,7 +791,13 @@ function renderResult(data) {
     const estYear = qAnalysis.nmid_parsed?.estimated_reg_year;
     document.getElementById('valQrRegYear').textContent    = estYear ? `~${estYear}` : '—';
 
-    document.getElementById('btnReport').style.display = rep.found_in_db ? 'block' : 'none';
+    const isFraudSuspected = qr.is_mismatch || qr.risk_level === 'HIGH_RISK';
+    document.getElementById('btnReport').style.display = isFraudSuspected ? 'block' : 'none';
+    const reviewButton = document.getElementById('btnReview');
+    reviewButton.style.display = currentNmid ? 'block' : 'none';
+    reviewButton.title = rep.found_in_db
+        ? 'Bagikan pengalaman dan bantu memperbarui reputasi toko.'
+        : 'Merchant belum terdaftar, review belum dapat mengubah reputasi.';
 }
 
 // ── Reset Scanner ────────────────────────────────────────────────────────────
@@ -767,7 +817,42 @@ function cancelPayment() {
 
 // ── Report Modal ─────────────────────────────────────────────────────────────
 function openReportModal() {
-    new bootstrap.Modal(document.getElementById('reportModal')).show();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('reportModal')).show();
+}
+
+function openReviewModal() {
+    if (!currentNmid) return;
+    if (!document.getElementById('reviewMerchantNote')) {
+        const note = document.createElement('div');
+        note.id = 'reviewMerchantNote';
+        note.className = 'small text-muted mb-2';
+        note.textContent = 'Review Anda akan digunakan untuk memperbarui reputasi toko.';
+        document.querySelector('#reviewModal .modal-body h6').after(note);
+    }
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('reviewModal')).show();
+}
+
+async function submitReview() {
+    if (!currentNmid) return;
+    const formData = new FormData();
+    formData.append('nmid', currentNmid);
+    formData.append('merchant_name', document.getElementById('valDigName').textContent);
+    formData.append('satisfaction', document.getElementById('reviewSatisfaction').value);
+    formData.append('stars', document.getElementById('reviewStars').value);
+    formData.append('issue_category', document.getElementById('reviewIssueCategory').value);
+    formData.append('issue_description', document.getElementById('reviewIssueDescription').value);
+    const proof = document.getElementById('reviewPaymentProof').files[0];
+    if (proof) formData.append('payment_proof', proof);
+
+    try {
+        const res = await fetch('/api/reviews', { method: 'POST', body: formData });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.detail || 'Review gagal dikirim.');
+        bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
+        alert(`✅ Review tersimpan!\nRating toko: ${result.new_rating.toFixed(1)} / 5\nReputasi baru: ${result.new_reputation_score.toFixed(1)} / 100`);
+    } catch (e) {
+        alert('Gagal mengirim review: ' + e.message);
+    }
 }
 
 async function submitReport() {

@@ -36,6 +36,7 @@ class Merchant(Base):
     # ── Relationships ──────────────────────────────────────────
     reports = relationship("Report", back_populates="merchant", cascade="all, delete-orphan")
     disputes = relationship("Dispute", back_populates="merchant", cascade="all, delete-orphan")
+    reviews = relationship("Review", back_populates="merchant", cascade="all, delete-orphan")
 
 
 class Report(Base):
@@ -66,6 +67,23 @@ class Report(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     merchant = relationship("Merchant", back_populates="reports")
+
+
+class Review(Base):
+    """Review pelanggan yang menggabungkan kepuasan, laporan, rating, dan bukti."""
+    __tablename__ = "reviews"
+
+    id = Column(Integer, primary_key=True, index=True)
+    merchant_id = Column(Integer, ForeignKey("merchants.id"), nullable=False)
+    satisfaction = Column(String, nullable=False)
+    issue_category = Column(String, nullable=False)
+    issue_description = Column(Text, nullable=True)
+    stars = Column(Integer, nullable=False)
+    payment_proof_path = Column(String, nullable=True)
+    has_payment_proof = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    merchant = relationship("Merchant", back_populates="reviews")
 
 
 class Dispute(Base):

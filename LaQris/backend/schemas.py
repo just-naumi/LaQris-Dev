@@ -149,3 +149,11 @@ class FeedbackResponseSchema(BaseModel):
     message: str
     evidence_level: int
     new_reputation_score: float
+
+
+class ReviewResponseSchema(BaseModel):
+    success: bool
+    message: str
+    review_id: int
+    new_rating: float
+    new_reputation_score: float

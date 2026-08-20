@@ -1,5 +1,6 @@
 import os
 import shutil
+from uuid import uuid4
 import cv2
 import numpy as np
 from fastapi import FastAPI, File, UploadFile, Form, Depends, HTTPException
@@ -16,7 +17,8 @@ from engine import (
     process_qris_verification,
     submit_feedback_to_db,
     get_merchant_reputation_by_nmid,
-    calculate_emrs
+    calculate_emrs,
+    submit_review_to_db
 )
 
 # Auto-initialize SQLite database on startup
@@ -177,6 +179,46 @@ def submit_feedback(payload: schemas.FeedbackSubmitSchema):
     )
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result["message"])
+    return result
+
+
+@app.post("/api/reviews", response_model=schemas.ReviewResponseSchema)
+async def submit_review(
+    nmid: str = Form(...),
+    merchant_name: str = Form("Merchant dari hasil scan"),
+    satisfaction: str = Form(...),
+    issue_category: str = Form("NONE"),
+    issue_description: Optional[str] = Form(None),
+    stars: int = Form(...),
+    payment_proof: Optional[UploadFile] = File(None),
+):
+    """Menyimpan review pelanggan, termasuk dokumentasi bukti pembayaran."""
+    if stars < 1 or stars > 5:
+        raise HTTPException(status_code=422, detail="Bintang harus bernilai 1 sampai 5.")
+
+    proof_path = None
+    if payment_proof and payment_proof.filename:
+        extension = os.path.splitext(payment_proof.filename)[1].lower()
+        if extension not in {".jpg", ".jpeg", ".png", ".webp", ".pdf"}:
+            raise HTTPException(status_code=400, detail="Format bukti harus JPG, PNG, WEBP, atau PDF.")
+        evidence_dir = os.path.join(FOLDER_STATIC, "review_evidence")
+        os.makedirs(evidence_dir, exist_ok=True)
+        stored_name = f"{uuid4().hex}{extension}"
+        proof_path = os.path.join(evidence_dir, stored_name)
+        with open(proof_path, "wb") as output:
+            shutil.copyfileobj(payment_proof.file, output)
+
+    result = submit_review_to_db(
+        nmid=nmid,
+        merchant_name=merchant_name,
+        satisfaction=satisfaction,
+        issue_category=issue_category,
+        issue_description=issue_description,
+        stars=stars,
+        payment_proof_path=proof_path,
+    )
+    if not result["success"]:
+        raise HTTPException(status_code=404, detail=result["message"])
     return result
 
 

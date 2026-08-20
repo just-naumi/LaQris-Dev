@@ -27,7 +27,7 @@ from transformers import TrOCRProcessor, VisionEncoderDecoderModel, ViTImageProc
 
 # Impor koneksi database dan tabel dari file lokal
 from database import SessionLocal
-from models import Merchant, Report, Dispute, VerificationSession
+from models import Merchant, Report, Dispute, Review, VerificationSession
 
 # Abaikan pesan warning yang tidak kritis agar terminal tetap bersih
 warnings.filterwarnings("ignore")
@@ -475,7 +475,7 @@ def time_decay_weight(created_at: datetime) -> float:
 # =============================================================================
 # FUNGSI 9: Kalkulasi EMRS Merchant Reputation Score (calculate_emrs)
 # =============================================================================
-def calculate_emrs(merchant: Merchant, reports: list, disputes: list) -> dict:
+def calculate_emrs(merchant: Merchant, reports: list, disputes: list, reviews: list | None = None) -> dict:
     """
     FORMULA EMRS REVISI v2.0 (Evidence-Based Merchant Reputation Score):
     Skor Reputasi (R) = 0.40 * A + 0.30 * C + 0.20 * D + 0.10 * L
@@ -504,6 +504,12 @@ def calculate_emrs(merchant: Merchant, reports: list, disputes: list) -> dict:
         ev_weight = 1.0 if rpt.evidence_level >= 2 else 0.5
         td = time_decay_weight(rpt.created_at)
         C -= sev_penalty * ev_weight * td
+    C = max(0.0, min(100.0, C))
+
+    reviews = reviews or []
+    if reviews:
+        average_stars = sum(review.stars for review in reviews) / len(reviews)
+        C -= max(0.0, (5.0 - average_stars) * 5.0)
     C = max(0.0, min(100.0, C))
 
     # 3. Komponen D: Dispute Score (20%)
@@ -544,7 +550,7 @@ def calculate_emrs(merchant: Merchant, reports: list, disputes: list) -> dict:
     R = max(0.0, min(100.0, R))
 
     # Hitung Jumlah Bukti & Tingkat Kepercayaan Data (Confidence Level)
-    total_evidence = total_identity + merchant.verified_transactions + len(reports) + len(disputes)
+    total_evidence = total_identity + merchant.verified_transactions + len(reports) + len(disputes) + len(reviews)
     confidence_score = min(100.0, round((total_evidence / 20.0) * 100.0, 1))
 
     if total_evidence >= 20:
@@ -607,23 +613,26 @@ def query_merchant_reputation(nmid_digital, nmid_physical, merchant_name_dig, me
     db = SessionLocal()
     try:
         m = None
-        # Cari berdasarkan NMID digital
-        if nmid_digital and nmid_digital != "Tidak ditemukan":
+        has_digital_nmid = bool(nmid_digital and nmid_digital != "Tidak ditemukan")
+        has_physical_nmid = bool(nmid_physical and nmid_physical != "Tidak terbaca")
+
+        # NMID adalah identitas utama; nama hanya fallback jika NMID tidak terbaca.
+        if has_digital_nmid:
             m = db.query(Merchant).filter(Merchant.nmid == nmid_digital).first()
-        # Cari berdasarkan NMID fisik
-        if not m and nmid_physical and nmid_physical != "Tidak terbaca":
+        if not m and not has_digital_nmid and has_physical_nmid:
             m = db.query(Merchant).filter(Merchant.nmid == nmid_physical).first()
-        # Cari berdasarkan nama merchant
-        if not m and merchant_name_dig:
-            m = db.query(Merchant).filter(Merchant.merchant_name.ilike(f"%{merchant_name_dig}%")).first()
-        if not m and merchant_name_phys:
-            m = db.query(Merchant).filter(Merchant.merchant_name.ilike(f"%{merchant_name_phys}%")).first()
+        if not m and not has_digital_nmid and not has_physical_nmid:
+            if merchant_name_dig:
+                m = db.query(Merchant).filter(Merchant.merchant_name.ilike(f"%{merchant_name_dig}%")).first()
+            if not m and merchant_name_phys:
+                m = db.query(Merchant).filter(Merchant.merchant_name.ilike(f"%{merchant_name_phys}%")).first()
 
         if m:
             # Merchant terdaftar -> hitung EMRS berdasarkan laporan dan sengketa di DB
             reports = db.query(Report).filter(Report.merchant_id == m.id).all()
             disputes = db.query(Dispute).filter(Dispute.merchant_id == m.id).all()
-            return calculate_emrs(m, reports, disputes)
+            reviews = db.query(Review).filter(Review.merchant_id == m.id).all()
+            return calculate_emrs(m, reports, disputes, reviews)
         else:
             # Merchant BELUM TERDAFTAR di database LaQris
             return {
@@ -916,7 +925,8 @@ def submit_feedback_to_db(nmid: str, category: str, severity: str,
         # Hitung ulang skor EMRS merchant setelah laporan baru masuk
         reports = db.query(Report).filter(Report.merchant_id == m.id).all()
         disputes = db.query(Dispute).filter(Dispute.merchant_id == m.id).all()
-        emrs = calculate_emrs(m, reports, disputes)
+        reviews = db.query(Review).filter(Review.merchant_id == m.id).all()
+        emrs = calculate_emrs(m, reports, disputes, reviews)
 
         # Update skor EMRS terbaru ke database
         m.reputation_score = emrs["reputation_score"]
@@ -927,6 +937,69 @@ def submit_feedback_to_db(nmid: str, category: str, severity: str,
             "message": "Feedback berhasil disimpan. Terima kasih atas laporan Anda!",
             "evidence_level": evidence_level,
             "new_reputation_score": emrs["reputation_score"]
+        }
+    finally:
+        db.close()
+
+
+def submit_review_to_db(nmid: str, merchant_name: str, satisfaction: str, issue_category: str,
+                        issue_description: str | None, stars: int,
+                        payment_proof_path: str | None) -> dict:
+    """Menyimpan review pelanggan dan menghitung ulang rating serta EMRS."""
+    db = SessionLocal()
+    try:
+        merchant = db.query(Merchant).filter(Merchant.nmid == nmid).first()
+        if not merchant:
+            merchant = Merchant(
+                nmid=nmid,
+                merchant_name=merchant_name or "Merchant dari hasil scan",
+                registered_at=datetime.utcnow(),
+                rating=5.0,
+                reputation_score=50.0,
+            )
+            db.add(merchant)
+            db.flush()
+
+        review = Review(
+            merchant_id=merchant.id,
+            satisfaction=satisfaction,
+            issue_category=issue_category,
+            issue_description=issue_description,
+            stars=stars,
+            payment_proof_path=payment_proof_path,
+            has_payment_proof=bool(payment_proof_path),
+        )
+        db.add(review)
+        db.flush()
+
+        if issue_category != "NONE":
+            db.add(Report(
+                merchant_id=merchant.id,
+                category=issue_category,
+                severity="MEDIUM",
+                description=issue_description,
+                evidence_level=2 if payment_proof_path else 1,
+                is_verified=bool(payment_proof_path),
+                created_at=datetime.utcnow(),
+            ))
+            merchant.total_reports = (merchant.total_reports or 0) + 1
+            if payment_proof_path:
+                merchant.verified_reports = (merchant.verified_reports or 0) + 1
+
+        reviews = db.query(Review).filter(Review.merchant_id == merchant.id).all()
+        merchant.rating = round(sum(item.stars for item in reviews) / len(reviews), 1)
+        reports = db.query(Report).filter(Report.merchant_id == merchant.id).all()
+        disputes = db.query(Dispute).filter(Dispute.merchant_id == merchant.id).all()
+        emrs = calculate_emrs(merchant, reports, disputes, reviews)
+        merchant.reputation_score = emrs["reputation_score"]
+        db.commit()
+
+        return {
+            "success": True,
+            "message": "Review berhasil disimpan dan reputasi toko diperbarui.",
+            "review_id": review.id,
+            "new_rating": merchant.rating,
+            "new_reputation_score": emrs["reputation_score"],
         }
     finally:
         db.close()
@@ -946,6 +1019,7 @@ def get_merchant_reputation_by_nmid(nmid: str) -> dict:
             return {"found_in_db": False, "reputation_score": 0.0}
         reports = db.query(Report).filter(Report.merchant_id == m.id).all()
         disputes = db.query(Dispute).filter(Dispute.merchant_id == m.id).all()
-        return calculate_emrs(m, reports, disputes)
+        reviews = db.query(Review).filter(Review.merchant_id == m.id).all()
+        return calculate_emrs(m, reports, disputes, reviews)
     finally:
         db.close()
