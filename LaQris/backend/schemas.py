@@ -149,3 +149,33 @@ class FeedbackResponseSchema(BaseModel):
     message: str
     evidence_level: int
     new_reputation_score: float
+
+
+# ─────────────────────────────────────────────────────────────
+# User Authentication Schemas
+# ─────────────────────────────────────────────────────────────
+
+class UserRegisterSchema(BaseModel):
+    full_name: str
+    email: str
+    phone: Optional[str] = None
+    role: str = "PENGGUNA"  # "PENGGUNA" | "MERCHANT"
+    password: str
+
+
+class UserLoginSchema(BaseModel):
+    email: str
+    password: str
+
+
+class UserResponseSchema(BaseModel):
+    id: int
+    full_name: str
+    email: str
+    phone: Optional[str] = None
+    role: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+

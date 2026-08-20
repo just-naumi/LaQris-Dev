@@ -102,3 +102,16 @@ class VerificationSession(Base):
     trust_score = Column(Float, default=0.0)
     risk_level = Column(String, default="LOW")
     reputation_score = Column(Float, default=50.0)   # EMRS score saat scan
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    full_name = Column(String, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=False)
+    phone = Column(String, nullable=True)
+    role = Column(String, default="PENGGUNA")        # "PENGGUNA" | "MERCHANT"
+    password_hash = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+

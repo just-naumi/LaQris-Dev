@@ -9,8 +9,9 @@ from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
+import hashlib
 from database import init_db, get_db, reset_db
-from models import Merchant, Report, Dispute, VerificationSession
+from models import Merchant, Report, Dispute, VerificationSession, User
 import schemas
 from engine import (
     process_qris_verification,
@@ -228,10 +229,66 @@ def seed_database_endpoint():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# User Authentication API Endpoints
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _hash_password(raw_password: str) -> str:
+    return hashlib.sha256(raw_password.encode('utf-8')).hexdigest()
+
+
+@app.post("/api/register")
+def register_user(payload: schemas.UserRegisterSchema, db: Session = Depends(get_db)):
+    """Registrasi pengguna / merchant baru ke database LaQris."""
+    existing = db.query(User).filter(User.email == payload.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Email ini sudah terdaftar. Silakan login.")
+
+    user = User(
+        full_name=payload.full_name,
+        email=payload.email,
+        phone=payload.phone,
+        role=payload.role,
+        password_hash=_hash_password(payload.password)
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {
+        "message": "Registrasi berhasil! Silakan login ke akun Anda.",
+        "user": {
+            "id": user.id,
+            "full_name": user.full_name,
+            "email": user.email,
+            "role": user.role
+        }
+    }
+
+
+@app.post("/api/login")
+def login_user(payload: schemas.UserLoginSchema, db: Session = Depends(get_db)):
+    """Autentikasi masuk pengguna dengan email dan password."""
+    user = db.query(User).filter(User.email == payload.email).first()
+    if not user or user.password_hash != _hash_password(payload.password):
+        raise HTTPException(status_code=401, detail="Email atau password yang Anda masukkan salah.")
+
+    return {
+        "message": "Login berhasil!",
+        "user": {
+            "id": user.id,
+            "full_name": user.full_name,
+            "email": user.email,
+            "phone": user.phone,
+            "role": user.role
+        }
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Frontend SPA Serving
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.get("/")
+@app.get("/index.html")
 def serve_frontend_index():
     index_path = os.path.join(FOLDER_FRONTEND, "index.html")
     if os.path.exists(index_path):
@@ -258,6 +315,36 @@ def serve_frontend_scan():
             }
         )
     return {"message": "scan.html not found."}
+
+
+@app.get("/register")
+@app.get("/register.html")
+def serve_frontend_register():
+    reg_path = os.path.join(FOLDER_FRONTEND, "register.html")
+    if os.path.exists(reg_path):
+        return FileResponse(
+            reg_path,
+            headers={
+                "Cache-Control": "no-store, no-cache, must-revalidate",
+                "Pragma": "no-cache"
+            }
+        )
+    return {"message": "register.html not found."}
+
+
+@app.get("/login")
+@app.get("/login.html")
+def serve_frontend_login():
+    login_path = os.path.join(FOLDER_FRONTEND, "login.html")
+    if os.path.exists(login_path):
+        return FileResponse(
+            login_path,
+            headers={
+                "Cache-Control": "no-store, no-cache, must-revalidate",
+                "Pragma": "no-cache"
+            }
+        )
+    return {"message": "login.html not found."}
 
 
 if os.path.exists(FOLDER_FRONTEND):
