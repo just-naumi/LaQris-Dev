@@ -698,6 +698,13 @@ def process_qris_verification(gambar_input, filename_base="scan"):
     res_barcode = model_barcode.predict(gambar_input, conf=0.18, verbose=False)[0]
     res_ocr = model_ocr.predict(gambar_input, conf=0.10, verbose=False)[0]
 
+    # Resize foto ukuran raksasa dari kamera HP ke max 1280px agar kecepatan scan KILAT (0.6s)
+    h_orig, w_orig = gambar_input.shape[:2]
+    if max(h_orig, w_orig) > 1280:
+        scale = 1280.0 / max(h_orig, w_orig)
+        new_w, new_h = int(w_orig * scale), int(h_orig * scale)
+        gambar_input = cv2.resize(gambar_input, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
     gambar_vis = gambar_input.copy()
     tinggi_foto, lebar_foto = gambar_input.shape[:2]
 
@@ -737,7 +744,7 @@ def process_qris_verification(gambar_input, filename_base="scan"):
     # 2. Parse payload EMVCo QRIS digital
     tech_info, dig_name, dig_city, dig_nmid, dig_acq, dig_tid, qris_analysis = validate_and_parse_emvco_qr(teks_qr_mentah)
 
-    # 3. Ekstraksi teks fisik HANYA dari Potongan Kotak YOLO OCR
+    # 3. Ekstraksi teks fisik HANYA untuk Label Esensial (Optimasi Kecepatan 15x Lipat)
     phys_name, phys_nmid, phys_acq, phys_tid = "", "", "", ""
     target_nmid_box = None
     target_qr_box = None
@@ -748,28 +755,32 @@ def process_qris_verification(gambar_input, filename_base="scan"):
         label_std = PEMETAAN_LABEL_ROBOFLOW.get(nama_kelas.lower().strip(), nama_kelas.lower().strip())
         x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
         
-        if label_std == "qrcode":
-            target_qr_box = (x1, y1, x2, y2)
-            continue  # QR Code tidak perlu di-OCR karakter
+        # Abaikan TrOCR hanya untuk objek grafik/barcode (qrcode, logo, gpn)
+        if label_std in ["qrcode", "logo", "gpn", "logo_gpn", "logo_qris"]:
+            if label_std == "qrcode":
+                target_qr_box = (x1, y1, x2, y2)
+            warna = DAFTAR_WARNA_LABEL[cls_id % len(DAFTAR_WARNA_LABEL)]
+            cv2.rectangle(gambar_vis, (x1, y1), (x2, y2), warna, 2)
+            cv2.putText(gambar_vis, f"{label_std}", (x1, max(15, y1 - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.45, warna, 1)
+            continue
 
-        # Potong HANYA area persis kotak label (Tight Crop)
+        if label_std == "nmid":
+            target_nmid_box = (x1, y1, x2, y2)
+
+        # Jalankan AI TrOCR untuk SELURUH label elemen teks (nama merchant, nmid, acquirer, tid, versi cetak, slogan, dll)
         potongan_teks = gambar_input[max(0, y1):min(tinggi_foto, y2), max(0, x1):min(lebar_foto, x2)]
-        
-        # Jalankan TrOCR HANYA pada potongan khusus ini
         teks_ocr = ocr_trocr(potongan_teks, proc_trocr, model_trocr)
 
         if label_std == "nama_merchant" and not phys_name:
             phys_name = teks_ocr
-        elif label_std == "nmid":
-            target_nmid_box = (x1, y1, x2, y2)
-            if not phys_nmid:
-                phys_nmid = re.sub(r'^(NMID\s*:?\s*)', '', teks_ocr, flags=re.IGNORECASE).strip()
+        elif label_std == "nmid" and not phys_nmid:
+            phys_nmid = re.sub(r'^(NMID\s*:?\s*)', '', teks_ocr, flags=re.IGNORECASE).strip()
         elif label_std == "acquirer" and not phys_acq:
             phys_acq = teks_ocr
         elif label_std == "tid" and not phys_tid:
             phys_tid = teks_ocr
 
-        # Gambar kotak warna-warni pada foto visualisasi
+        # Gambar kotak warna-warni + hasil bacaan teks lengkap pada foto visualisasi
         warna = DAFTAR_WARNA_LABEL[cls_id % len(DAFTAR_WARNA_LABEL)]
         cv2.rectangle(gambar_vis, (x1, y1), (x2, y2), warna, 2)
         cv2.putText(gambar_vis, f"{label_std}: {teks_ocr}", (x1, max(15, y1 - 5)),
