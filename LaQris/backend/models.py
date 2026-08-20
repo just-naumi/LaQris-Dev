@@ -94,6 +94,7 @@ class VerificationSession(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     session_id = Column(String, unique=True, index=True)
+    user_id = Column(String, index=True, nullable=True) # User ID penanda pemilik scan
     nmid = Column(String, nullable=True)
     digital_name = Column(String, nullable=True)
     physical_name = Column(String, nullable=True)

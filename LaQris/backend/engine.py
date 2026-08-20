@@ -693,7 +693,7 @@ def query_merchant_reputation(nmid_digital, nmid_physical, merchant_name_dig, me
 # =============================================================================
 # FUNGSI 11: Pipeline Utama Verifikasi QRIS (process_qris_verification)
 # =============================================================================
-def process_qris_verification(gambar_input, filename_base="scan"):
+def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
     """
     Ini adalah FUNGSI UTAMA yang memproses foto stiker QRIS dari pengguna:
     1. Menjalankan deteksi QR Code & OCR dengan AI
@@ -1004,6 +1004,7 @@ def process_qris_verification(gambar_input, filename_base="scan"):
     try:
         session_rec = VerificationSession(
             session_id=session_id,
+            user_id=user_id,
             nmid=dig_nmid,
             digital_name=dig_name,
             physical_name=phys_name,

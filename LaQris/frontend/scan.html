@@ -1032,6 +1032,16 @@
             const formData = new FormData();
             formData.append('file', blob, filename);
 
+            const rawUser = localStorage.getItem('laqris_user') || sessionStorage.getItem('laqris_user');
+            if (rawUser) {
+                try {
+                    const u = JSON.parse(rawUser);
+                    if (u.user_id) {
+                        formData.append('user_id', u.user_id);
+                    }
+                } catch (e) {}
+            }
+
             // Step 1 Active
             setStepState(1, 'active');
 

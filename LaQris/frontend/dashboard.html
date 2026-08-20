@@ -466,8 +466,18 @@
             const container = document.getElementById('historyListContainer');
             if (!container) return;
 
+            const rawUser = localStorage.getItem('laqris_user') || sessionStorage.getItem('laqris_user');
+            let userId = null;
+            if (rawUser) {
+                try {
+                    const u = JSON.parse(rawUser);
+                    userId = u.user_id;
+                } catch (e) {}
+            }
+
             try {
-                const res = await fetch('/api/scans/history?limit=5');
+                const url = userId ? `/api/scans/history?user_id=${encodeURIComponent(userId)}&limit=5` : `/api/scans/history?limit=5`;
+                const res = await fetch(url);
                 if (!res.ok) throw new Error('Gagal memuat riwayat');
 
                 const data = await res.json();
