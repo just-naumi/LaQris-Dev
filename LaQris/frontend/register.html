@@ -251,7 +251,8 @@ async function handleRegister(e) {
 
     const fullName = document.getElementById('regFullName').value.trim();
     const email    = document.getElementById('regEmail').value.trim();
-    const phone    = document.getElementById('regPhone').value.trim();
+    const phoneEl  = document.getElementById('regPhone');
+    const phone    = phoneEl ? phoneEl.value.trim() : null;
     const password = document.getElementById('regPassword').value;
     const confirm  = document.getElementById('regConfirmPassword').value;
 
