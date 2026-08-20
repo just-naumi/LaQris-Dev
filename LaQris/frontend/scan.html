@@ -319,79 +319,19 @@
         .risk-danger .status-headline { color: #9f1239; }
         .risk-danger .status-subnote  { background: #fff1f2; color: #881337; border-color: #fecdd3; }
 
-        /* Observation History Card */
-        .obs-card {
-            background: #f0f9ff;
-            border: 1px solid #bae6fd;
-            border-radius: 18px;
-            padding: 16px;
-            margin-bottom: 18px;
-        }
-        .obs-title {
-            font-size: 0.88rem;
-            font-weight: 800;
-            color: #0369a1;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .obs-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-        .obs-stat {
-            background: #ffffff;
-            border: 1px solid #e0f2fe;
-            border-radius: 12px;
-            padding: 10px 12px;
-            text-align: center;
-        }
-        .obs-stat-val {
-            font-size: 1.3rem;
-            font-weight: 900;
-            color: #0369a1;
-            line-height: 1;
-        }
-        .obs-stat-label {
-            font-size: 0.7rem;
-            color: #64748b;
-            margin-top: 3px;
-            font-weight: 600;
-        }
-        .obs-match-bar {
-            margin-top: 8px;
-        }
-        .obs-match-label {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.76rem;
-            color: #475569;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
+        /* Observation History — pakai receipt-card style */
         .obs-bar-track {
-            height: 8px;
+            height: 5px;
             background: #fee2e2;
-            border-radius: 8px;
+            border-radius: 6px;
             overflow: hidden;
+            margin-top: 6px;
         }
         .obs-bar-fill {
             height: 100%;
             background: linear-gradient(90deg, #16a34a, #22c55e);
-            border-radius: 8px;
+            border-radius: 6px;
             transition: width 0.7s cubic-bezier(0.16,1,0.3,1);
-        }
-        .obs-meta-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.75rem;
-            color: #64748b;
-            margin-top: 8px;
-            flex-wrap: wrap;
-            gap: 4px;
         }
 
         /* Receipt Card */
@@ -456,26 +396,14 @@
             color: #0284c7;
         }
 
-        /* EMRS Card */
+        /* EMRS Score Pill (reused in receipt-card header) */
         .emrs-card {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            border: 1px solid #f1f5f9;
             border-radius: 18px;
-            padding: 16px;
+            padding: 10px 0;
             margin-bottom: 18px;
-        }
-
-        .emrs-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 14px;
-        }
-
-        .emrs-title {
-            font-size: 0.92rem;
-            font-weight: 800;
-            color: #0f172a;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
         }
 
         .emrs-score-pill {
@@ -506,36 +434,24 @@
         }
 
         .comp-row {
-            margin-bottom: 10px;
+            padding: 10px 16px;
+            border-bottom: 1px solid #f8fafc;
         }
 
-        .comp-label-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.78rem;
-            margin-bottom: 4px;
-        }
-
-        .comp-name {
-            color: #64748b;
-            font-weight: 500;
-        }
-
-        .comp-val {
-            font-weight: 700;
-            color: #1e293b;
+        .comp-row:last-of-type {
+            border-bottom: none;
         }
 
         .comp-bar-track {
-            height: 6px;
+            height: 5px;
             background: #e2e8f0;
-            border-radius: 6px;
+            border-radius: 5px;
             overflow: hidden;
         }
 
         .comp-bar-fill {
             height: 100%;
-            border-radius: 6px;
+            border-radius: 5px;
             transition: width 0.6s ease;
         }
 
@@ -964,119 +880,101 @@
                         </div>
                     </div>
 
-                    <!-- LaQris Observation History Card (Real Data from DB) -->
-                    <div class="obs-card" id="obsHistoryCard">
-                        <div class="obs-title">
-                            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                            </svg>
-                            LaQris Observation History
+                    <!-- LaQris Observation History Card -->
+                    <div class="receipt-card" id="obsHistoryCard">
+                        <div class="receipt-section-title">LaQris Observation History</div>
+
+                        <div class="receipt-row">
+                            <span class="receipt-label">Total Observasi</span>
+                            <span id="obsTotalObs" class="receipt-val val-blue">—</span>
                         </div>
-                        <div class="obs-grid">
-                            <div class="obs-stat">
-                                <div class="obs-stat-val" id="obsTotalObs">—</div>
-                                <div class="obs-stat-label">Total Observasi</div>
-                            </div>
-                            <div class="obs-stat">
-                                <div class="obs-stat-val" id="obsUniqueObs">—</div>
-                                <div class="obs-stat-label">Observer Unik</div>
-                            </div>
-                            <div class="obs-stat">
-                                <div class="obs-stat-val" id="obsMatchCount" style="color:#16a34a">—</div>
-                                <div class="obs-stat-label">Identity Match</div>
-                            </div>
-                            <div class="obs-stat">
-                                <div class="obs-stat-val" id="obsMismatchCount" style="color:#e11d48">—</div>
-                                <div class="obs-stat-label">Identity Mismatch</div>
-                            </div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">Observer Unik</span>
+                            <span id="obsUniqueObs" class="receipt-val">—</span>
                         </div>
-                        <div class="obs-match-bar">
-                            <div class="obs-match-label">
-                                <span>Identity Match Rate</span>
-                                <span id="obsMatchRate">—%</span>
-                            </div>
-                            <div class="obs-bar-track">
-                                <div class="obs-bar-fill" id="obsMatchBarFill" style="width:0%"></div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">Identity Match</span>
+                            <span id="obsMatchCount" class="receipt-val val-safe">—</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">Identity Mismatch</span>
+                            <span id="obsMismatchCount" class="receipt-val val-danger">—</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">Identity Match Rate</span>
+                            <div style="text-align:right; flex:1.3;">
+                                <div style="font-size:0.88rem;font-weight:700;color:#0f172a;margin-bottom:4px;" id="obsMatchRate">—%</div>
+                                <div class="obs-bar-track">
+                                    <div class="obs-bar-fill" id="obsMatchBarFill" style="width:0%"></div>
+                                </div>
                             </div>
                         </div>
-                        <div class="obs-meta-row">
-                            <span id="obsFirstSeen">—</span>
-                            <span>→</span>
-                            <span id="obsLastSeen">—</span>
+                        <div class="receipt-row">
+                            <span class="receipt-label">Pertama Diobservasi</span>
+                            <span id="obsFirstSeen" class="receipt-val">—</span>
                         </div>
-                        <div style="display:flex;gap:12px;margin-top:10px;">
-                            <div style="flex:1;background:#fff;border:1px solid #e0f2fe;border-radius:10px;padding:8px;text-align:center;">
-                                <div style="font-size:1.1rem;font-weight:800;color:#0369a1" id="obsFeedback">—</div>
-                                <div style="font-size:0.7rem;color:#64748b;font-weight:600">Verified Feedback</div>
-                            </div>
-                            <div style="flex:1;background:#fff;border:1px solid #fee2e2;border-radius:10px;padding:8px;text-align:center;">
-                                <div style="font-size:1.1rem;font-weight:800;color:#dc2626" id="obsComplaints">—</div>
-                                <div style="font-size:0.7rem;color:#64748b;font-weight:600">Complaints</div>
-                            </div>
-                            <div style="flex:1;background:#fff;border:1px solid #fde68a;border-radius:10px;padding:8px;text-align:center;">
-                                <div style="font-size:1.1rem;font-weight:800;color:#d97706" id="obsDisputes">—</div>
-                                <div style="font-size:0.7rem;color:#64748b;font-weight:600">Disputes</div>
-                            </div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">Terakhir Diobservasi</span>
+                            <span id="obsLastSeen" class="receipt-val">—</span>
                         </div>
-                        <div id="obsNoData" class="d-none" style="text-align:center;color:#64748b;font-size:0.82rem;padding:14px 0;">
-                            Merchant ini belum pernah diobservasi di LaQris.
+                        <div class="receipt-row">
+                            <span class="receipt-label">Verified Feedback</span>
+                            <span id="obsFeedback" class="receipt-val val-blue">—</span>
                         </div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">Complaints</span>
+                            <span id="obsComplaints" class="receipt-val val-danger">—</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">Disputes</span>
+                            <span id="obsDisputes" class="receipt-val" style="color:#d97706">—</span>
+                        </div>
+                        <div id="obsNoData" class="d-none" style="text-align:center;color:#94a3b8;font-size:0.82rem;padding:14px 16px;">Merchant ini belum pernah diobservasi di LaQris.</div>
                     </div>
 
                     <!-- EMRS Reputation Card -->
                     <div class="emrs-card">
-                        <div class="emrs-header">
-                            <div>
-                                <div class="emrs-title">Reputasi Merchant (EMRS)</div>
-                                <div style="font-size: 0.76rem; color: #64748b; margin-top: 2px;" id="emrsSubhead">
-                                    Berdasarkan data observasi terverifikasi</div>
+                        <div class="receipt-section-title" style="display:flex;align-items:center;justify-content:space-between;padding-right:16px;">
+                            <span>Reputasi Merchant (EMRS)</span>
+                            <span class="emrs-score-pill" id="emrsScorePill">— / 100</span>
+                        </div>
+                        <div style="font-size:0.76rem;color:#94a3b8;padding:0 16px 10px;" id="emrsSubhead">Berdasarkan data observasi terverifikasi</div>
+
+                        <div class="comp-row">
+                            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.86rem;margin-bottom:5px;">
+                                <span style="color:#64748b;font-weight:500;">Kesesuaian Identitas QRIS</span>
+                                <span style="font-weight:700;color:#0f172a;" id="compA">—</span>
                             </div>
-                            <div class="emrs-score-pill emrs-fair" id="emrsScorePill">— / 100</div>
+                            <div class="comp-bar-track"><div class="comp-bar-fill bar-A" id="barA" style="width:0%"></div></div>
                         </div>
 
                         <div class="comp-row">
-                            <div class="comp-label-row">
-                                <span class="comp-name">Kesesuaian Identitas QRIS</span>
-                                <span class="comp-val" id="compA">—</span>
+                            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.86rem;margin-bottom:5px;">
+                                <span style="color:#64748b;font-weight:500;">Rekam Laporan Masalah</span>
+                                <span style="font-weight:700;color:#0f172a;" id="compC">—</span>
                             </div>
-                            <div class="comp-bar-track">
-                                <div class="comp-bar-fill bar-A" id="barA" style="width:0%"></div>
-                            </div>
+                            <div class="comp-bar-track"><div class="comp-bar-fill bar-C" id="barC" style="width:0%"></div></div>
                         </div>
 
                         <div class="comp-row">
-                            <div class="comp-label-row">
-                                <span class="comp-name">Rekam Laporan Masalah</span>
-                                <span class="comp-val" id="compC">—</span>
+                            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.86rem;margin-bottom:5px;">
+                                <span style="color:#64748b;font-weight:500;">Rekam Bebas Sengketa</span>
+                                <span style="font-weight:700;color:#0f172a;" id="compD">—</span>
                             </div>
-                            <div class="comp-bar-track">
-                                <div class="comp-bar-fill bar-C" id="barC" style="width:0%"></div>
-                            </div>
+                            <div class="comp-bar-track"><div class="comp-bar-fill bar-D" id="barD" style="width:0%"></div></div>
                         </div>
 
                         <div class="comp-row">
-                            <div class="comp-label-row">
-                                <span class="comp-name">Rekam Bebas Sengketa</span>
-                                <span class="comp-val" id="compD">—</span>
+                            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.86rem;margin-bottom:5px;">
+                                <span style="color:#64748b;font-weight:500;">Riwayat Keaktifan Toko</span>
+                                <span style="font-weight:700;color:#0f172a;" id="compL">—</span>
                             </div>
-                            <div class="comp-bar-track">
-                                <div class="comp-bar-fill bar-D" id="barD" style="width:0%"></div>
-                            </div>
+                            <div class="comp-bar-track"><div class="comp-bar-fill bar-L" id="barL" style="width:0%"></div></div>
                         </div>
 
-                        <div class="comp-row">
-                            <div class="comp-label-row">
-                                <span class="comp-name">Riwayat Keaktifan Toko</span>
-                                <span class="comp-val" id="compL">—</span>
-                            </div>
-                            <div class="comp-bar-track">
-                                <div class="comp-bar-fill bar-L" id="barL" style="width:0%"></div>
-                            </div>
-                        </div>
-
-                        <div class="receipt-row" style="padding: 10px 0 0; border: none; margin-top: 4px;">
+                        <div class="receipt-row" style="border:none;margin-top:2px;">
                             <span class="receipt-label">Status Histori</span>
-                            <span id="valReputation" class="receipt-val text-dark">—</span>
+                            <span id="valReputation" class="receipt-val">—</span>
                         </div>
                     </div>
 
@@ -1333,8 +1231,8 @@
                 const matchRate = obs.identity_match_rate ?? 0;
                 document.getElementById('obsMatchRate').textContent = `${matchRate.toFixed(1)}%`;
                 document.getElementById('obsMatchBarFill').style.width = `${matchRate}%`;
-                document.getElementById('obsFirstSeen').textContent = obs.first_observed ? `Pertama: ${obs.first_observed}` : '—';
-                document.getElementById('obsLastSeen').textContent = obs.last_observed ? `Terakhir: ${obs.last_observed}` : '—';
+                document.getElementById('obsFirstSeen').textContent = obs.first_observed || '—';
+                document.getElementById('obsLastSeen').textContent = obs.last_observed || '—';
                 document.getElementById('obsFeedback').textContent = obs.verified_feedback ?? 0;
                 document.getElementById('obsComplaints').textContent = obs.complaints ?? 0;
                 document.getElementById('obsDisputes').textContent = obs.disputes ?? 0;
