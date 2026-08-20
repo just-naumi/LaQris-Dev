@@ -934,9 +934,8 @@
 
                     <!-- EMRS Reputation Card -->
                     <div class="emrs-card">
-                        <div class="receipt-section-title" style="display:flex;align-items:center;justify-content:space-between;padding-right:16px;">
-                            <span>Reputasi Merchant (EMRS)</span>
-                            <span class="emrs-score-pill" id="emrsScorePill">— / 100</span>
+                        <div class="receipt-section-title">
+                            Reputasi Merchant (EMRS)
                         </div>
                         <div style="font-size:0.76rem;color:#94a3b8;padding:0 16px 10px;" id="emrsSubhead">Berdasarkan data observasi terverifikasi</div>
 
@@ -1244,23 +1243,11 @@
             const grade = rep.grade || (isRegistered ? 'Fair' : 'Belum Terdaftar');
             const comps = rep.components || {};
 
-            const pill = document.getElementById('emrsScorePill');
-            pill.className = 'emrs-score-pill';
             if (!isRegistered || score === null || score === undefined) {
-                pill.textContent = 'Belum Terdaftar';
-                pill.style.background = '#f1f5f9';
-                pill.style.color = '#64748b';
                 document.getElementById('emrsSubhead').textContent = 'Merchant belum memiliki data reputasi di LaQris';
             } else {
-                pill.style.background = '';
-                pill.style.color = '';
-                pill.textContent = `${score.toFixed(0)} / 100  ${grade}`;
-                if (score >= 80) pill.classList.add('emrs-excellent');
-                else if (score >= 60) pill.classList.add('emrs-good');
-                else if (score >= 40) pill.classList.add('emrs-fair');
-                else pill.classList.add('emrs-poor');
                 const confLabel = rep.confidence_level || 'LOW';
-                document.getElementById('emrsSubhead').textContent = `Confidence: ${confLabel} · ${rep.total_evidence_count ?? 0} total evidence`;
+                document.getElementById('emrsSubhead').textContent = `Skor: ${score.toFixed(0)}/100 · ${grade} · Confidence: ${confLabel}`;
             }
 
             const setComp = (id, val) => {
