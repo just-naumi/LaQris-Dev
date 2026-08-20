@@ -6,48 +6,13 @@ import type { ScanResponse } from "@/types/detection";
 
 type ResultType = "aman" | "waspada" | "bahaya";
 
-const resultConfig: Record<ResultType, {
-  title: string;
-  subtitle: string;
-  accent: string;
-  soft: string;
-  border: string;
-  action: string;
-}> = {
-  aman: {
-    title: "QRIS Ini Aman Digunakan",
-    subtitle: "Merchant terverifikasi resmi dan tidak ditemukan indikasi bahaya.",
-    accent: "text-emerald-600",
-    soft: "bg-emerald-50",
-    border: "border-emerald-200",
-    action: "Pindai QRIS Lain",
-  },
-  waspada: {
-    title: "Perlu Perhatian Sebelum Membayar",
-    subtitle: "Ditemukan perbedaan yang perlu Anda periksa kembali.",
-    accent: "text-amber-600",
-    soft: "bg-amber-50",
-    border: "border-amber-200",
-    action: "Laporkan Masalah",
-  },
-  bahaya: {
-    title: "Indikasi Identitas Tidak Sesuai",
-    subtitle: "Terdeteksi indikasi fraud atau ketidaksesuaian QRIS.",
-    accent: "text-rose-600",
-    soft: "bg-rose-50",
-    border: "border-rose-200",
-    action: "Lanjut Laporan",
-  },
-};
-
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:5000";
 
-function valueOrFallback(value: string | undefined, fallback: string) {
+function displayValue(value: string | undefined, fallback: string) {
   return value && value !== "Tidak ditemukan" && value !== "Tidak terbaca" ? value : fallback;
 }
 
 export default function QrisResultPage({ type }: { type: ResultType }) {
-  const config = resultConfig[type];
   const [scanData, setScanData] = useState<ScanResponse | null>(null);
 
   useEffect(() => {
@@ -63,87 +28,80 @@ export default function QrisResultPage({ type }: { type: ResultType }) {
     return () => window.clearTimeout(timer);
   }, []);
 
-  const trustScore = scanData ? Math.round(scanData.trust_score) : type === "aman" ? 98 : type === "waspada" ? 65 : 50;
-  const physicalMerchant = valueOrFallback(scanData?.physical_merchant, type === "bahaya" ? "Tidak terbaca" : "Toko Berkah Jaya");
-  const digitalMerchant = valueOrFallback(scanData?.digital_merchant, type === "bahaya" ? "Tidak ditemukan" : "Toko Berkah Jaya");
-  const physicalNmid = valueOrFallback(scanData?.physical_nmid, "Tidak terbaca");
-  const digitalNmid = valueOrFallback(scanData?.digital_nmid, "Tidak ditemukan");
-  const physicalAcquirer = valueOrFallback(scanData?.physical_acquirer, "Tidak terbaca");
-  const digitalAcquirer = valueOrFallback(scanData?.digital_acquirer, "Tidak ditemukan");
-  const physicalTid = valueOrFallback(scanData?.physical_tid, "Tidak terbaca");
-  const digitalTid = valueOrFallback(scanData?.digital_tid, "Tidak ditemukan");
+  const isSafe = type === "aman";
+  const isDanger = type === "bahaya";
+  const trustScore = scanData ? Math.round(scanData.trust_score) : isSafe ? 100 : isDanger ? 50 : 65;
+  const physicalMerchant = displayValue(scanData?.physical_merchant, isDanger ? "Tidak terbaca" : "Toko Berkah Jaya");
+  const digitalMerchant = displayValue(scanData?.digital_merchant, isDanger ? "Tidak ditemukan" : "Toko Berkah Jaya");
+  const physicalNmid = displayValue(scanData?.physical_nmid, "Tidak terbaca");
+  const digitalNmid = displayValue(scanData?.digital_nmid, "Tidak ditemukan");
+  const city = displayValue(scanData?.digital_city, "Tidak ditemukan");
+  const acquirer = displayValue(scanData?.digital_acquirer, "Tidak ditemukan");
+  const terminalId = displayValue(scanData?.digital_tid, "Tidak ditemukan");
   const visualizationUrl = scanData?.visualization_url ? `${API_BASE}${scanData.visualization_url}` : null;
-  const explanation = scanData?.explanation || config.subtitle;
-  const reportCount = typeof scanData?.reputation?.total_reports === "number" ? scanData.reputation.total_reports : type === "bahaya" ? 14 : 0;
-
-  const actionHref = type === "bahaya" || type === "waspada" ? "/report" : "/dashboard";
+  const reportCount = typeof scanData?.reputation?.total_reports === "number" ? scanData.reputation.total_reports : isDanger ? 14 : 0;
+  const explanation = scanData?.explanation || (isSafe ? "Identitas QRIS sesuai dan tidak ditemukan indikasi bahaya." : "Terdapat ketidaksesuaian identitas yang perlu diperiksa.");
+  const matchText = scanData ? `${Math.round(scanData.name_similarity)}% (${scanData.match_level})` : isSafe ? "100% (EXACT_MATCH)" : "0% (COMPLETELY_DIFFERENT)";
 
   return (
-    <main className="h-dvh overflow-hidden bg-neutral-900 py-0 sm:py-8 flex items-center justify-center font-sans antialiased">
-      <div className="w-full max-w-[390px] h-full sm:h-[min(844px,calc(100dvh-4rem))] bg-white sm:rounded-[44px] shadow-2xl overflow-hidden flex flex-col relative border-0 sm:border-[8px] border-neutral-800 text-neutral-900">
-        <header className="navbar min-h-[58px] bg-white/90 backdrop-blur border-b border-neutral-100 px-6 flex items-center justify-between shrink-0">
-          <Link href="/dashboard" className="text-2xl font-black tracking-tight">LàQris.</Link>
-          <Link href="/dashboard" className="text-xs font-bold text-neutral-500 hover:text-neutral-900">Kembali</Link>
+    <main className="h-dvh overflow-hidden bg-slate-100 flex items-center justify-center font-sans antialiased">
+      <div className="w-full max-w-[390px] h-full sm:h-[min(844px,calc(100dvh-4rem))] bg-white sm:rounded-[22px] shadow-xl overflow-hidden flex flex-col relative border border-slate-200 text-slate-900">
+        <header className="h-[46px] shrink-0 border-b border-slate-100 flex items-center justify-center">
+          <h1 className="text-xs font-extrabold">Status Verifikasi QRIS</h1>
         </header>
 
-        <div className="scrollbar-hidden flex-1 overflow-y-auto px-6 py-4 space-y-3.5">
-          <section className={`${config.soft} ${config.border} rounded-3xl border p-5 text-center`}>
-            <div className={`mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm ${config.accent}`}>
-              {type === "aman" ? (
-                <svg className="h-11 w-11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m5 12 4 4L19 6" /></svg>
+        <div className="scrollbar-hidden flex-1 overflow-y-auto px-3 py-3 space-y-2.5">
+          <section className={`rounded-2xl border p-3.5 text-center ${isSafe ? "bg-emerald-50 border-emerald-200" : isDanger ? "bg-rose-50 border-rose-200" : "bg-amber-50 border-amber-200"}`}>
+            <div className={`mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm ${isSafe ? "text-emerald-500" : isDanger ? "text-rose-600" : "text-amber-500"}`}>
+              {isSafe ? (
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m5 12 4 4L19 6" /></svg>
               ) : (
-                <svg className="h-11 w-11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM12 16.5h.008v.008H12V16.5Z" /></svg>
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM12 16.5h.008v.008H12V16.5Z" /></svg>
               )}
             </div>
-            <h1 className="text-xl font-black tracking-tight">{config.title}</h1>
-            <p className="mx-auto mt-1 max-w-[260px] text-xs font-medium leading-relaxed text-neutral-500">{config.subtitle}</p>
-            <div className="mt-3 inline-flex rounded-full bg-white px-3 py-1.5 text-sm font-black text-neutral-600 shadow-sm">
-              Trust Score: {trustScore} / 100
-            </div>
+            <h2 className="text-sm font-black tracking-tight">{isSafe ? "Verifikasi Berhasil (Aman)" : isDanger ? "Indikasi Identitas Tidak Sesuai" : "Perlu Perhatian"}</h2>
+            <div className="mt-1 inline-flex rounded-full bg-white px-2.5 py-1 text-[9px] font-black text-slate-600 shadow-sm">Trust Score: {trustScore} / 100</div>
           </section>
 
-          {scanData?.explanation && (
-            <div className={`${config.soft} ${config.border} rounded-2xl border px-3 py-3 text-xs font-medium leading-relaxed ${config.accent}`}>
-              {explanation}
-            </div>
-          )}
+          <div className={`rounded-xl border px-3 py-2 text-[9px] leading-relaxed ${isSafe ? "bg-slate-50 border-slate-200 text-slate-500" : "bg-rose-50 border-rose-200 text-rose-600"}`}>
+            {!isSafe && <span className="mr-1">⚠</span>}{explanation}
+          </div>
 
           {visualizationUrl && (
-            <section className="overflow-hidden rounded-3xl border border-neutral-200 bg-neutral-50">
-              <img src={visualizationUrl} alt="Visualisasi hasil deteksi QRIS" className="mx-auto max-h-[250px] w-auto max-w-full object-contain" />
-            </section>
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+              <img src={visualizationUrl} alt="Visual Deteksi YOLO" className="mx-auto h-[165px] w-full object-contain" />
+            </div>
           )}
 
-          <section className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm">
-            <div className="mb-2.5 flex items-center justify-between border-b border-neutral-100 pb-2">
-              <h2 className="text-xs font-black">Informasi Kode QRIS</h2>
-              <span className={`text-[10px] font-bold ${config.accent}`}>{type === "aman" ? "Resmi" : "Perlu Perhatian"}</span>
-            </div>
-            <div className="divide-y divide-neutral-100 text-xs">
-              <div className="flex items-start justify-between gap-3 py-2"><span className="text-neutral-500">Merchant Terlihat (Fisik)</span><strong className="text-right">{physicalMerchant}</strong></div>
-              <div className="flex items-start justify-between gap-3 py-2"><span className="text-neutral-500">Penerima QRIS (Digital)</span><strong className={`text-right ${digitalMerchant === "Tidak ditemukan" ? "text-blue-600" : ""}`}>{digitalMerchant}</strong></div>
-              <div className="flex items-start justify-between gap-3 py-2"><span className="text-neutral-500">NMID Fisik / Digital</span><strong className="text-right font-mono text-[10px]">{physicalNmid} / {digitalNmid}</strong></div>
-              <div className="flex items-start justify-between gap-3 py-2"><span className="text-neutral-500">Acquirer Fisik / Digital</span><strong className="text-right">{physicalAcquirer} / {digitalAcquirer}</strong></div>
-              <div className="flex items-start justify-between gap-3 py-2"><span className="text-neutral-500">Terminal ID Fisik / Digital</span><strong className="text-right font-mono text-[10px]">{physicalTid} / {digitalTid}</strong></div>
-              <div className="flex items-start justify-between gap-3 py-2"><span className="text-neutral-500">Reputasi SQLite</span><strong className="text-right">{type === "bahaya" ? "Berisiko" : "Rating baik"} ({reportCount} laporan)</strong></div>
+          <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="divide-y divide-slate-100 text-[9px]">
+              <div className="flex items-start justify-between gap-3 px-2 py-2"><span className="text-slate-500">Merchant Terlihat<br />(Fisik)</span><strong className={`max-w-[58%] text-right ${isDanger ? "text-rose-600" : ""}`}>{physicalMerchant}</strong></div>
+              <div className="flex items-start justify-between gap-3 px-2 py-2"><span className="text-slate-500">Penerima QRIS (Digital)</span><strong className="max-w-[58%] text-right text-blue-600">{digitalMerchant}</strong></div>
+              <div className="flex items-start justify-between gap-3 px-2 py-2"><span className="text-slate-500">Kesesuaian Identitas</span><strong className="max-w-[58%] text-right">{matchText}</strong></div>
+              <div className="flex items-start justify-between gap-3 px-2 py-2"><span className="text-slate-500">NMID Fisik</span><strong className="text-right font-mono">{physicalNmid}</strong></div>
+              <div className="flex items-start justify-between gap-3 px-2 py-2"><span className="text-slate-500">NMID Digital</span><strong className="text-right font-mono">{digitalNmid}</strong></div>
+              <div className="flex items-start justify-between gap-3 px-2 py-2"><span className="text-slate-500">Kota Merchant (EMV)</span><strong className="text-right">{city}</strong></div>
+              <div className="flex items-start justify-between gap-3 px-2 py-2"><span className="text-slate-500">Acquirer Bank</span><strong className="text-right">{acquirer}</strong></div>
+              <div className="flex items-start justify-between gap-3 px-2 py-2"><span className="text-slate-500">Terminal ID</span><strong className="text-right font-mono">{terminalId}</strong></div>
+              <div className="flex items-start justify-between gap-3 px-2 py-2"><span className="text-slate-500">Reputasi SQLite</span><strong className="text-right">Rating 5.0 / 5.0 ({reportCount} Laporan)</strong></div>
             </div>
           </section>
 
-          <section className="rounded-3xl border border-neutral-200 bg-neutral-50 p-4">
-            <h2 className="mb-3 text-xs font-black">Hasil Analisis AI</h2>
-            <div className="space-y-3">
-              <div className="rounded-2xl bg-white p-3"><strong className="block text-xs">1. Keaslian Fisik</strong><span className="mt-1 block text-[11px] text-neutral-500">{type === "bahaya" ? "Terdeteksi indikasi stiker QRIS palsu atau ditimpa." : "QRIS terverifikasi dan tidak ditemukan indikasi stiker timpa."}</span></div>
-              <div className="rounded-2xl bg-white p-3"><strong className="block text-xs">2. Kesesuaian Data</strong><span className="mt-1 block text-[11px] text-neutral-500">{scanData ? `${scanData.match_level} dengan skor kecocokan ${Math.round(scanData.name_similarity)}%.` : "Perbandingan data fisik dan digital tersedia setelah pemindaian."}</span></div>
-              <div className="rounded-2xl bg-white p-3"><strong className="block text-xs">3. Reputasi QRIS</strong><span className="mt-1 block text-[11px] text-neutral-500">{type === "bahaya" ? `Ditemukan ${reportCount} laporan atau indikasi yang perlu ditindaklanjuti.` : "Tidak ditemukan laporan berbahaya pada pemeriksaan ini."}</span></div>
+          <section className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <h2 className="mb-2 text-[10px] font-black">Hasil Analisis AI</h2>
+            <div className="space-y-1.5 text-[9px] leading-relaxed text-slate-500">
+              <p><strong className="text-slate-900">1. Keaslian Fisik</strong><br />{isDanger ? "Terdeteksi indikasi stiker QRIS palsu atau ditimpa." : "QRIS terverifikasi original, tidak ada stiker timpa."}</p>
+              <p><strong className="text-slate-900">2. Kesesuaian Data</strong><br />{scanData ? `${scanData.match_level} dengan skor kecocokan ${Math.round(scanData.name_similarity)}%.` : "Data fisik sesuai dengan data digital."}</p>
+              <p><strong className="text-slate-900">3. Reputasi QRIS</strong><br />{isDanger ? `Reputasi perlu diperiksa dengan ${reportCount} laporan.` : "Reputasi baik dan bebas dari laporan bahaya."}</p>
             </div>
           </section>
         </div>
 
-        <footer className="shrink-0 border-t border-neutral-100 bg-white px-6 py-5">
-          <Link href={actionHref} className={`flex w-full items-center justify-center rounded-full py-3.5 text-xs font-black text-white shadow-md transition-transform active:scale-[0.98] ${type === "aman" ? "bg-neutral-900 hover:bg-neutral-800" : type === "waspada" ? "bg-amber-500 hover:bg-amber-600" : "bg-rose-600 hover:bg-rose-700"}`}>
-            {config.action}
+        <footer className="shrink-0 border-t border-slate-100 bg-white px-3 py-3">
+          <Link href={isDanger || type === "waspada" ? "/report" : "/dashboard"} className={`flex w-full items-center justify-center rounded-xl py-2.5 text-[10px] font-black text-white shadow-sm ${isSafe ? "bg-slate-900" : isDanger ? "bg-rose-600" : "bg-amber-500"}`}>
+            {isSafe ? "Scan Stiker Lain" : isDanger ? "Batalkan Pembayaran" : "Laporkan Masalah"}
           </Link>
-          {type !== "aman" && <Link href="/dashboard" className="mt-3 block text-center text-[11px] font-bold text-neutral-500 hover:text-neutral-900">Scan Stiker Lain</Link>}
+          {!isSafe && <Link href="/dashboard" className="mt-2 block text-center text-[9px] font-bold text-slate-500">Scan Stiker Lain</Link>}
         </footer>
       </div>
     </main>
