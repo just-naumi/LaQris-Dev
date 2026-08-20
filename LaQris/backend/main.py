@@ -364,6 +364,8 @@ def serve_frontend_login():
 
 if os.path.exists(FOLDER_FRONTEND):
     app.mount("/app", StaticFiles(directory=FOLDER_FRONTEND, html=True), name="frontend")
+    app.mount("/", StaticFiles(directory=FOLDER_FRONTEND, html=True), name="frontend_root")
+
 
 if __name__ == "__main__":
     import uvicorn
