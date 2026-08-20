@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LaQris - Pilih &amp; Scan QRIS</title>
+    <title>LaQris - Pilih Metode Scan</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -79,44 +79,29 @@
 
         /* Main Container */
         .select-body {
-            padding: 24px 22px 36px 22px;
+            padding: 28px 24px 40px 24px;
             flex: 1;
             display: flex;
             flex-direction: column;
         }
 
         .header-title-section {
-            margin-bottom: 24px;
-        }
-
-        .select-category-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 5px 12px;
-            background: #eff6ff;
-            color: #2563eb;
-            font-size: 0.75rem;
-            font-weight: 700;
-            border-radius: 20px;
-            margin-bottom: 10px;
-            letter-spacing: 0.02em;
-            text-transform: uppercase;
+            margin-bottom: 28px;
         }
 
         .select-header-title {
-            font-size: 1.8rem;
+            font-size: 1.85rem;
             font-weight: 900;
             color: #0f172a;
             line-height: 1.2;
             letter-spacing: -0.03em;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
 
         .select-header-subtitle {
-            font-size: 0.88rem;
+            font-size: 0.9rem;
             color: #64748b;
-            line-height: 1.5;
+            line-height: 1.55;
             margin: 0;
         }
 
@@ -124,7 +109,7 @@
         .cards-wrapper {
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 18px;
             margin-top: 6px;
         }
 
@@ -132,7 +117,7 @@
             position: relative;
             display: flex;
             align-items: center;
-            padding: 20px 18px;
+            padding: 22px 20px;
             border-radius: 24px;
             background: #ffffff;
             border: 1.5px solid #f1f5f9;
@@ -151,8 +136,8 @@
 
         .card-camera:hover {
             border-color: #3b82f6;
-            transform: translateY(-3px);
-            box-shadow: 0 14px 32px rgba(37, 99, 235, 0.12);
+            transform: translateY(-4px);
+            box-shadow: 0 16px 36px rgba(37, 99, 235, 0.12);
         }
 
         .card-gallery {
@@ -162,13 +147,13 @@
 
         .card-gallery:hover {
             border-color: #8b5cf6;
-            transform: translateY(-3px);
-            box-shadow: 0 14px 32px rgba(139, 92, 246, 0.12);
+            transform: translateY(-4px);
+            box-shadow: 0 16px 36px rgba(139, 92, 246, 0.12);
         }
 
         .card-icon-wrapper {
-            width: 56px;
-            height: 56px;
+            width: 58px;
+            height: 58px;
             border-radius: 18px;
             display: flex;
             align-items: center;
@@ -190,55 +175,34 @@
         }
 
         .ios-frosted-card:hover .card-icon-wrapper {
-            transform: scale(1.06) rotate(-3deg);
+            transform: scale(1.08) rotate(-3deg);
         }
 
         .card-content-wrapper {
             flex: 1;
-            margin-left: 14px;
-            margin-right: 8px;
+            margin-left: 16px;
+            margin-right: 10px;
             z-index: 1;
         }
 
-        .card-badge {
-            display: inline-block;
-            font-size: 0.68rem;
-            font-weight: 800;
-            padding: 3px 8px;
-            border-radius: 20px;
-            margin-bottom: 4px;
-            letter-spacing: 0.03em;
-            text-transform: uppercase;
-        }
-
-        .card-camera .card-badge {
-            background: #dbeafe;
-            color: #1d4ed8;
-        }
-
-        .card-gallery .card-badge {
-            background: #ede9fe;
-            color: #6d28d9;
-        }
-
         .card-main-title {
-            font-size: 1.05rem;
+            font-size: 1.08rem;
             font-weight: 800;
             color: #0f172a;
             line-height: 1.25;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
         }
 
         .card-description {
-            font-size: 0.78rem;
+            font-size: 0.8rem;
             color: #64748b;
-            line-height: 1.4;
+            line-height: 1.45;
             margin: 0;
         }
 
         .card-chevron {
-            width: 30px;
-            height: 30px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.8);
             display: flex;
@@ -253,266 +217,26 @@
         .ios-frosted-card:hover .card-chevron {
             background: #0f172a;
             color: #ffffff;
-            transform: translateX(3px);
+            transform: translateX(4px);
         }
 
         /* Loading Box */
         .loading-box {
             text-align: center;
-            padding: 60px 20px;
+            padding: 80px 20px;
         }
 
         .spinner-custom {
-            width: 48px;
-            height: 48px;
+            width: 52px;
+            height: 52px;
             border: 4px solid #e2e8f0;
-            border-top: 4px solid #0284c7;
+            border-top: 4px solid #2563eb;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             margin: 0 auto;
         }
 
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* Status Center */
-        .status-center {
-            text-align: center;
-            margin-bottom: 24px;
-        }
-
-        .status-circle {
-            width: 68px;
-            height: 68px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 14px;
-            font-size: 2.2rem;
-            font-weight: 700;
-        }
-
-        .status-circle-danger { background: #fee2e2; color: #e11d48; }
-        .status-circle-safe   { background: #dcfce7; color: #16a34a; }
-
-        .status-headline {
-            font-size: 1.15rem;
-            font-weight: 800;
-            color: #0f172a;
-            margin-bottom: 6px;
-        }
-
-        .trust-score-badge {
-            display: inline-block;
-            background: #f1f5f9;
-            color: #334155;
-            font-size: 0.8rem;
-            font-weight: 700;
-            padding: 4px 14px;
-            border-radius: 20px;
-            margin-bottom: 8px;
-        }
-
-        .status-subnote {
-            font-size: 0.84rem;
-            line-height: 1.5;
-            padding: 10px 14px;
-            border-radius: 12px;
-            margin-top: 6px;
-        }
-
-        .status-subnote-danger { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
-
-        /* Receipt Card */
-        .receipt-card {
-            background: #ffffff;
-            border: 1px solid #f1f5f9;
-            border-radius: 18px;
-            padding: 10px 0;
-            margin-bottom: 18px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-        }
-
-        .receipt-section-title {
-            font-size: 0.78rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: #94a3b8;
-            padding: 8px 16px 6px;
-        }
-
-        .receipt-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            padding: 12px 16px;
-            border-bottom: 1px solid #f8fafc;
-            gap: 12px;
-        }
-
-        .receipt-row:last-child { border-bottom: none; }
-
-        .receipt-label {
-            font-size: 0.86rem;
-            font-weight: 500;
-            color: #64748b;
-            flex: 1;
-            margin: 0;
-        }
-
-        .receipt-val {
-            font-size: 0.88rem;
-            font-weight: 700;
-            color: #0f172a;
-            text-align: right;
-            flex: 1.3;
-            margin: 0;
-            word-break: break-word;
-        }
-
-        .val-danger { color: #e11d48; }
-        .val-safe   { color: #16a34a; }
-        .val-blue   { color: #0284c7; }
-
-        /* EMRS Card */
-        .emrs-card {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 18px;
-            padding: 16px;
-            margin-bottom: 18px;
-        }
-
-        .emrs-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 14px;
-        }
-
-        .emrs-title {
-            font-size: 0.92rem;
-            font-weight: 800;
-            color: #0f172a;
-        }
-
-        .emrs-score-pill {
-            font-size: 0.82rem;
-            font-weight: 800;
-            padding: 5px 12px;
-            border-radius: 20px;
-        }
-
-        .emrs-excellent { background: #dcfce7; color: #15803d; }
-        .emrs-good      { background: #e0f2fe; color: #0369a1; }
-        .emrs-fair      { background: #fef9c3; color: #a16207; }
-        .emrs-poor      { background: #fee2e2; color: #b91c1c; }
-
-        .comp-row { margin-bottom: 10px; }
-        .comp-label-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.78rem;
-            margin-bottom: 4px;
-        }
-        .comp-name { color: #64748b; font-weight: 500; }
-        .comp-val  { font-weight: 700; color: #1e293b; }
-
-        .comp-bar-track {
-            height: 6px;
-            background: #e2e8f0;
-            border-radius: 6px;
-            overflow: hidden;
-        }
-
-        .comp-bar-fill {
-            height: 100%;
-            border-radius: 6px;
-            transition: width 0.6s ease;
-        }
-
-        .bar-A { background: #0284c7; }
-        .bar-C { background: #e11d48; }
-        .bar-D { background: #16a34a; }
-        .bar-L { background: #8b5cf6; }
-
-        .vis-preview-box {
-            border-radius: 16px;
-            overflow: hidden;
-            border: 1px solid #e2e8f0;
-            margin-bottom: 18px;
-            background: #f8fafc;
-            text-align: center;
-        }
-
-        .vis-preview-box img {
-            width: 100%;
-            max-height: 280px;
-            object-fit: contain;
-        }
-
-        .btn-cancel-action {
-            width: 100%;
-            background: #e11d48;
-            color: #ffffff;
-            font-weight: 700;
-            font-size: 0.95rem;
-            padding: 14px;
-            border-radius: 14px;
-            border: none;
-            cursor: pointer;
-            margin-bottom: 10px;
-            box-shadow: 0 4px 12px rgba(225,29,72,0.25);
-            transition: all 0.2s;
-        }
-        .btn-cancel-action:hover { background: #be123c; }
-
-        .btn-secondary-action {
-            width: 100%;
-            background: #f1f5f9;
-            color: #475569;
-            font-weight: 700;
-            font-size: 0.9rem;
-            padding: 12px;
-            border-radius: 14px;
-            border: 1px solid #e2e8f0;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .btn-secondary-action:hover { background: #e2e8f0; color: #0f172a; }
-
-        /* Security Callout Footer */
-        .select-security-callout {
-            margin-top: auto;
-            padding-top: 24px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 16px 18px;
-            background: #f8fafc;
-            border-radius: 16px;
-            border: 1px solid #e2e8f0;
-        }
-
-        .security-icon-box {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            background: #dcfce7;
-            color: #16a34a;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .security-text {
-            font-size: 0.78rem;
-            color: #475569;
-            line-height: 1.4;
-            margin: 0;
-        }
     </style>
 </head>
 <body>
@@ -533,20 +257,14 @@
     <!-- Main Container -->
     <div class="select-body">
 
-        <!-- Hidden File Inputs (Triggered Directly on Card Tap) -->
-        <input type="file" id="fileInputCamera"  class="d-none" accept="image/*" capture="environment" onchange="processQrImage(event)">
-        <input type="file" id="fileInputGallery" class="d-none" accept="image/*" onchange="processQrImage(event)">
+        <!-- Hidden File Inputs -->
+        <input type="file" id="fileInputCamera"  class="d-none" accept="image/*" capture="environment" onchange="handleImageSelection(event)">
+        <input type="file" id="fileInputGallery" class="d-none" accept="image/*" onchange="handleImageSelection(event)">
 
-        <!-- Initial Option Cards View -->
+        <!-- Initial Options Container -->
         <div id="selectionArea">
             <!-- Title Section -->
             <div class="header-title-section">
-                <div class="select-category-tag">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                    </svg>
-                    Verifikasi Keamanan
-                </div>
                 <h1 class="select-header-title">Pilih Metode<br>Scan QRIS</h1>
                 <p class="select-header-subtitle">
                     Pilih cara pemindaian stiker QRIS fisik atau gambar untuk memulai verifikasi identitas toko.
@@ -556,7 +274,7 @@
             <!-- Cards Wrapper (iOS Frosted Style) -->
             <div class="cards-wrapper">
 
-                <!-- Card 1: Camera (Triggers Camera Directly on Tap) -->
+                <!-- Card 1: Camera -->
                 <div class="ios-frosted-card card-camera" onclick="document.getElementById('fileInputCamera').click()">
                     <div class="card-icon-wrapper">
                         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -565,7 +283,6 @@
                         </svg>
                     </div>
                     <div class="card-content-wrapper">
-                        <span class="card-badge">Cepat &amp; Presisi</span>
                         <div class="card-main-title">Buka Kamera HP</div>
                         <p class="card-description">Foto langsung stiker QRIS fisik di toko/kasir secara instan.</p>
                     </div>
@@ -576,7 +293,7 @@
                     </div>
                 </div>
 
-                <!-- Card 2: Gallery (Triggers Gallery Directly on Tap) -->
+                <!-- Card 2: Gallery -->
                 <div class="ios-frosted-card card-gallery" onclick="document.getElementById('fileInputGallery').click()">
                     <div class="card-icon-wrapper">
                         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -586,7 +303,6 @@
                         </svg>
                     </div>
                     <div class="card-content-wrapper">
-                        <span class="card-badge">Pilih dari Foto</span>
                         <div class="card-main-title">Pilih dari Galeri</div>
                         <p class="card-description">Unggah gambar/foto stiker QRIS yang tersimpan di galeri HP.</p>
                     </div>
@@ -598,158 +314,13 @@
                 </div>
 
             </div>
-
-            <!-- Security Callout Footer -->
-            <div class="select-security-callout mt-4">
-                <div class="security-icon-box">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                        <polyline points="9 11 12 14 22 4"></polyline>
-                    </svg>
-                </div>
-                <p class="security-text">
-                    <strong>Proteksi Dual-AI Dual Matching:</strong> Sistem memverifikasi kesesuaian stiker fisik dan kode QR digital secara real-time.
-                </p>
-            </div>
         </div>
 
         <!-- Loading Box -->
         <div id="loadingBox" class="loading-box d-none">
             <div class="spinner-custom"></div>
-            <div class="fw-semibold text-dark mt-3" style="font-size: 0.92rem;">Memeriksa Keaslian QRIS...</div>
+            <div class="fw-semibold text-dark mt-3" style="font-size: 0.95rem;">Memeriksa Keaslian QRIS...</div>
             <div class="text-secondary small mt-1">Dual YOLO + TrOCR &amp; EMVCo Validation</div>
-        </div>
-
-        <!-- Verification Result Screen -->
-        <div id="resultContent" class="d-none">
-
-            <!-- Status Headline -->
-            <div class="status-center">
-                <div id="statusIcon" class="status-circle status-circle-danger">
-                    <span>⚠</span>
-                </div>
-                <div id="statusTitle" class="status-headline">Indikasi Identitas Tidak Sesuai</div>
-                <div class="trust-score-badge" id="trustScoreBadge">Trust Score: — / 100</div>
-                <div id="statusNote" class="status-subnote status-subnote-danger">
-                    Memeriksa identitas stiker QRIS...
-                </div>
-            </div>
-
-            <!-- Visual Detection Box -->
-            <div class="vis-preview-box">
-                <img id="visImage" src="" alt="Visual Deteksi YOLO">
-            </div>
-
-            <!-- Receipt: Perbandingan Identitas -->
-            <div class="receipt-card">
-                <div class="receipt-section-title">Perbandingan Identitas</div>
-                <div class="receipt-row">
-                    <span class="receipt-label">Merchant Terlihat (Fisik)</span>
-                    <span id="valPhysName" class="receipt-val val-danger">—</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">Penerima QRIS (Digital)</span>
-                    <span id="valDigName" class="receipt-val val-blue">—</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">Kesesuaian Identitas</span>
-                    <span id="valMatchLevel" class="receipt-val text-secondary">—</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">NMID Fisik</span>
-                    <span id="valPhysNmid" class="receipt-val" style="font-family:monospace;font-size:0.8rem">—</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">NMID Digital</span>
-                    <span id="valDigNmid" class="receipt-val" style="font-family:monospace;font-size:0.8rem">—</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">Kota Merchant</span>
-                    <span id="valDigCity" class="receipt-val">—</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">Acquirer Bank</span>
-                    <span id="valAcquirer" class="receipt-val">—</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">Terminal ID</span>
-                    <span id="valTid" class="receipt-val">—</span>
-                </div>
-            </div>
-
-            <!-- EMRS Reputation Card -->
-            <div class="emrs-card">
-                <div class="emrs-header">
-                    <div>
-                        <div class="emrs-title">Reputasi Toko (EMRS)</div>
-                        <div style="font-size: 0.76rem; color: #64748b; margin-top: 2px;" id="emrsSubhead">Berdasarkan data observasi terverifikasi</div>
-                    </div>
-                    <div class="emrs-score-pill emrs-fair" id="emrsScorePill">— / 100</div>
-                </div>
-
-                <div class="comp-row">
-                    <div class="comp-label-row">
-                        <span class="comp-name">Kesesuaian Identitas QRIS</span>
-                        <span class="comp-val" id="compA">—</span>
-                    </div>
-                    <div class="comp-bar-track"><div class="comp-bar-fill bar-A" id="barA" style="width:0%"></div></div>
-                </div>
-
-                <div class="comp-row">
-                    <div class="comp-label-row">
-                        <span class="comp-name">Rekam Laporan Masalah</span>
-                        <span class="comp-val" id="compC">—</span>
-                    </div>
-                    <div class="comp-bar-track"><div class="comp-bar-fill bar-C" id="barC" style="width:0%"></div></div>
-                </div>
-
-                <div class="comp-row">
-                    <div class="comp-label-row">
-                        <span class="comp-name">Rekam Bebas Sengketa</span>
-                        <span class="comp-val" id="compD">—</span>
-                    </div>
-                    <div class="comp-bar-track"><div class="comp-bar-fill bar-D" id="barD" style="width:0%"></div></div>
-                </div>
-
-                <div class="comp-row">
-                    <div class="comp-label-row">
-                        <span class="comp-name">Riwayat Keaktifan Toko</span>
-                        <span class="comp-val" id="compL">—</span>
-                    </div>
-                    <div class="comp-bar-track"><div class="comp-bar-fill bar-L" id="barL" style="width:0%"></div></div>
-                </div>
-
-                <div class="receipt-row" style="padding: 10px 0 0; border: none; margin-top: 4px;">
-                    <span class="receipt-label">Status Histori</span>
-                    <span id="valReputation" class="receipt-val text-dark">—</span>
-                </div>
-            </div>
-
-            <!-- Detail Analisis Payload QRIS (EMVCo) -->
-            <div class="receipt-card">
-                <div class="receipt-section-title">Informasi QRIS (EMVCo)</div>
-                <div class="receipt-row">
-                    <span class="receipt-label">Tipe Stiker</span>
-                    <span id="valQrInitiation" class="receipt-val val-blue">—</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">Kategori Usaha</span>
-                    <span id="valQrMcc" class="receipt-val">—</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">Tahun Registrasi</span>
-                    <span id="valQrRegYear" class="receipt-val">—</span>
-                </div>
-            </div>
-
-            <!-- Action Buttons -->
-            <button id="btnCancel" class="btn-cancel-action" onclick="cancelPayment()" style="display:none">
-                Batalkan Pembayaran
-            </button>
-
-            <button class="btn-secondary-action mb-2" onclick="resetScanner()">
-                Scan Stiker Lain
-            </button>
         </div>
 
     </div>
@@ -757,15 +328,12 @@
 </div>
 
 <script>
-let currentNmid = null;
-
-async function processQrImage(event) {
+async function handleImageSelection(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     document.getElementById('selectionArea').classList.add('d-none');
     document.getElementById('loadingBox').classList.remove('d-none');
-    document.getElementById('resultContent').classList.add('d-none');
 
     const formData = new FormData();
     formData.append('file', file);
@@ -776,125 +344,25 @@ async function processQrImage(event) {
             body: formData
         });
         const data = await res.json();
-        document.getElementById('loadingBox').classList.add('d-none');
-
+        
         if (res.ok) {
-            renderVerificationResult(data);
-            document.getElementById('resultContent').classList.remove('d-none');
+            sessionStorage.setItem('laqris_scan_result', JSON.stringify(data));
+            location.href = 'scan.html';
         } else {
             alert('Gagal memproses gambar: ' + (data.detail || 'Terjadi kesalahan'));
-            resetScanner();
+            resetSelection();
         }
     } catch (err) {
-        document.getElementById('loadingBox').classList.add('d-none');
         alert('Terjadi kesalahan koneksi jaringan: ' + err.message);
-        resetScanner();
+        resetSelection();
     }
 }
 
-function renderVerificationResult(data) {
-    const qr  = data.current_qr_risk || {};
-    const rep = data.merchant_reputation || {};
-    currentNmid = qr.digital_nmid || null;
-
-    if (data.visualization_url) {
-        document.getElementById('visImage').src = data.visualization_url + '?t=' + Date.now();
-    }
-
-    const trust = qr.trust_score ?? 0;
-    document.getElementById('trustScoreBadge').textContent = `Trust Score: ${trust.toFixed(0)} / 100`;
-
-    const iconBox  = document.getElementById('statusIcon');
-    const titleBox = document.getElementById('statusTitle');
-    const noteBox  = document.getElementById('statusNote');
-    const btnCancel = document.getElementById('btnCancel');
-
-    if (qr.is_mismatch || qr.risk_level === 'HIGH_RISK') {
-        iconBox.className = 'status-circle status-circle-danger';
-        iconBox.innerHTML = '<span>⚠</span>';
-        titleBox.textContent = 'Indikasi Identitas Tidak Sesuai';
-        noteBox.className = 'status-subnote status-subnote-danger';
-        noteBox.textContent = qr.explanation || 'Identitas stiker toko tidak sesuai dengan rekening penerima digital.';
-        btnCancel.style.display = 'block';
-    } else {
-        iconBox.className = 'status-circle status-circle-safe';
-        iconBox.innerHTML = '<span>✓</span>';
-        titleBox.textContent = 'Verifikasi Berhasil (Aman)';
-        noteBox.className = 'status-subnote';
-        noteBox.textContent = qr.explanation || 'Identitas stiker fisik cocok dengan penerima QR Code digital.';
-        btnCancel.style.display = 'none';
-    }
-
-    document.getElementById('valPhysName').textContent   = qr.physical_merchant || 'Tidak terbaca';
-    document.getElementById('valDigName').textContent    = qr.digital_merchant  || 'Tidak ditemukan';
-    document.getElementById('valMatchLevel').textContent = `${qr.name_similarity ?? 0}% (${qr.match_level || '—'})`;
-    document.getElementById('valPhysNmid').textContent   = qr.physical_nmid     || 'Tidak terbaca';
-    document.getElementById('valDigNmid').textContent    = qr.digital_nmid      || 'Tidak ditemukan';
-    document.getElementById('valDigCity').textContent    = qr.digital_city      || 'Tidak ditemukan';
-    document.getElementById('valAcquirer').textContent   = qr.digital_acquirer  || 'Tidak ditemukan';
-    document.getElementById('valTid').textContent        = qr.digital_tid       || 'Tidak ditemukan';
-
-    const isRegistered = rep.found_in_db === true;
-    const score = rep.reputation_score;
-    const grade = rep.grade || (isRegistered ? 'Fair' : 'Belum Terdaftar');
-    const comps = rep.components || {};
-
-    const pill = document.getElementById('emrsScorePill');
-    pill.className = 'emrs-score-pill';
-    if (!isRegistered || score === null || score === undefined) {
-        pill.textContent = 'Belum Terdaftar';
-        pill.style.background = '#f1f5f9';
-        pill.style.color = '#64748b';
-        document.getElementById('emrsSubhead').textContent = 'Merchant belum memiliki riwayat observasi di LaQris';
-    } else {
-        pill.style.background = '';
-        pill.style.color = '';
-        pill.textContent = `${score.toFixed(0)} / 100  ${grade}`;
-        if (score >= 80)      pill.classList.add('emrs-excellent');
-        else if (score >= 60) pill.classList.add('emrs-good');
-        else if (score >= 40) pill.classList.add('emrs-fair');
-        else                  pill.classList.add('emrs-poor');
-        document.getElementById('emrsSubhead').textContent = `Berdasarkan ${rep.total_evidence_count ?? 0} observasi terverifikasi`;
-    }
-
-    const setComp = (id, val) => {
-        if (!isRegistered) {
-            document.getElementById(`comp${id}`).textContent = 'N/A';
-            document.getElementById(`bar${id}`).style.width = '0%';
-        } else {
-            const v = val ?? 0;
-            document.getElementById(`comp${id}`).textContent = `${v.toFixed(0)} / 100`;
-            document.getElementById(`bar${id}`).style.width = `${v}%`;
-        }
-    };
-    setComp('A', comps.A);
-    setComp('C', comps.C);
-    setComp('D', comps.D);
-    setComp('L', comps.L);
-
-    const repStatus = isRegistered
-        ? `${grade} (Tingkat Kepercayaan Data: ${rep.confidence_level || 'MED'})`
-        : 'Belum ada laporan atau sengketa sebelumnya.';
-    document.getElementById('valReputation').textContent = repStatus;
-
-    const qAnalysis = qr.qris_raw_analysis || {};
-    document.getElementById('valQrInitiation').textContent = qAnalysis.point_of_initiation || 'Statis';
-    document.getElementById('valQrMcc').textContent        = qAnalysis.mcc_category || qAnalysis.mcc_code || 'Retail / Perdagangan';
-    const estYear = qAnalysis.nmid_parsed?.estimated_reg_year;
-    document.getElementById('valQrRegYear').textContent    = estYear ? `~${estYear}` : '—';
-}
-
-function resetScanner() {
+function resetSelection() {
     document.getElementById('fileInputCamera').value = '';
     document.getElementById('fileInputGallery').value = '';
     document.getElementById('selectionArea').classList.remove('d-none');
     document.getElementById('loadingBox').classList.add('d-none');
-    document.getElementById('resultContent').classList.add('d-none');
-    currentNmid = null;
-}
-
-function cancelPayment() {
-    alert('❌ TRANSAKSI DIBATALKAN\n\nAnda berhasil membatalkan pembayaran. Terhindar dari potensi penipuan stiker QRIS ditimpa.');
 }
 </script>
 </body>
