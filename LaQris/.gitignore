@@ -46,3 +46,7 @@ npm-debug.log*
 # Build outputs
 *.pyc
 build/
+
+# Runtime data and generated visualizations
+backend/*.sqlite
+backend/static/vis_output/*
