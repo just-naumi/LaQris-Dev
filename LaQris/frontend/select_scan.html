@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LaQris - Pilih Metode Scan</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: #f8fafc;
+            color: #0f172a;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            justify-content: center;
+        }
+
+        .phone-frame {
+            width: 100%;
+            max-width: 100%;
+            background: #ffffff;
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.04);
+        }
+
+        /* Top Bar */
+        .select-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 22px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .btn-back-ios {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f1f5f9;
+            color: #0f172a;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 12px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            text-decoration: none;
+        }
+
+        .btn-back-ios:hover {
+            background: #e2e8f0;
+            color: #0284c7;
+            transform: translateX(-2px);
+        }
+
+        .topbar-brand {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.02em;
+        }
+
+        /* Main Container */
+        .select-body {
+            padding: 28px 24px 40px 24px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header-title-section {
+            margin-bottom: 28px;
+        }
+
+        .select-category-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            background: #eff6ff;
+            color: #2563eb;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border-radius: 20px;
+            margin-bottom: 12px;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+
+        .select-header-title {
+            font-size: 1.85rem;
+            font-weight: 900;
+            color: #0f172a;
+            line-height: 1.2;
+            letter-spacing: -0.03em;
+            margin-bottom: 8px;
+        }
+
+        .select-header-subtitle {
+            font-size: 0.9rem;
+            color: #64748b;
+            line-height: 1.55;
+            margin: 0;
+        }
+
+        /* iOS Frosted Cards Grid */
+        .cards-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            margin-top: 6px;
+        }
+
+        .ios-frosted-card {
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding: 22px 20px;
+            border-radius: 24px;
+            background: #ffffff;
+            border: 1.5px solid #f1f5f9;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+        }
+
+        .ios-frosted-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 24px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 0;
+        }
+
+        /* Card 1: Camera (Blue Theme) */
+        .card-camera {
+            background: linear-gradient(135deg, #ffffff 0%, #f0f7ff 100%);
+            border-color: #dbeafe;
+        }
+
+        .card-camera:hover {
+            border-color: #3b82f6;
+            transform: translateY(-4px);
+            box-shadow: 0 16px 36px rgba(37, 99, 235, 0.12);
+        }
+
+        /* Card 2: Gallery (Purple Theme) */
+        .card-gallery {
+            background: linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%);
+            border-color: #ddd6fe;
+        }
+
+        .card-gallery:hover {
+            border-color: #8b5cf6;
+            transform: translateY(-4px);
+            box-shadow: 0 16px 36px rgba(139, 92, 246, 0.12);
+        }
+
+        .card-icon-wrapper {
+            width: 58px;
+            height: 58px;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            z-index: 1;
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease;
+        }
+
+        .card-camera .card-icon-wrapper {
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            color: #ffffff;
+        }
+
+        .card-gallery .card-icon-wrapper {
+            background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+            color: #ffffff;
+        }
+
+        .ios-frosted-card:hover .card-icon-wrapper {
+            transform: scale(1.08) rotate(-3deg);
+        }
+
+        .card-content-wrapper {
+            flex: 1;
+            margin-left: 16px;
+            margin-right: 10px;
+            z-index: 1;
+        }
+
+        .card-badge {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 3px 9px;
+            border-radius: 20px;
+            margin-bottom: 6px;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .card-camera .card-badge {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .card-gallery .card-badge {
+            background: #ede9fe;
+            color: #6d28d9;
+        }
+
+        .card-main-title {
+            font-size: 1.08rem;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.25;
+            margin-bottom: 4px;
+        }
+
+        .card-description {
+            font-size: 0.8rem;
+            color: #64748b;
+            line-height: 1.45;
+            margin: 0;
+        }
+
+        .card-chevron {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            z-index: 1;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .ios-frosted-card:hover .card-chevron {
+            background: #0f172a;
+            color: #ffffff;
+            transform: translateX(4px);
+        }
+
+        /* Bottom Security Callout */
+        .select-security-callout {
+            margin-top: auto;
+            padding-top: 32px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 18px;
+            background: #f8fafc;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .security-icon-box {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: #dcfce7;
+            color: #16a34a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .security-text {
+            font-size: 0.78rem;
+            color: #475569;
+            line-height: 1.4;
+            margin: 0;
+        }
+
+        .security-text strong {
+            color: #0f172a;
+        }
+    </style>
+</head>
+<body>
+
+<div class="phone-frame">
+
+    <!-- Top bar -->
+    <div class="select-topbar">
+        <a href="index.html" class="btn-back-ios">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 18l-6-6 6-6"/>
+            </svg>
+            Kembali
+        </a>
+        <span class="topbar-brand">LaQris</span>
+    </div>
+
+    <!-- Main Container -->
+    <div class="select-body">
+
+        <!-- Title Section -->
+        <div class="header-title-section">
+            <div class="select-category-tag">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+                Verifikasi Keamanan
+            </div>
+            <h1 class="select-header-title">Pilih Metode<br>Scan QRIS</h1>
+            <p class="select-header-subtitle">
+                Pilih cara pemindaian stiker QRIS fisik atau gambar untuk memulai verifikasi identitas toko.
+            </p>
+        </div>
+
+        <!-- Cards Wrapper (iOS Frosted Style) -->
+        <div class="cards-wrapper">
+
+            <!-- Card 1: Camera -->
+            <a href="scan.html?mode=camera" class="ios-frosted-card card-camera">
+                <div class="card-icon-wrapper">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                </div>
+                <div class="card-content-wrapper">
+                    <span class="card-badge">Cepat &amp; Presisi</span>
+                    <div class="card-main-title">Buka Kamera HP</div>
+                    <p class="card-description">Foto langsung stiker QRIS fisik di toko/kasir secara instan.</p>
+                </div>
+                <div class="card-chevron">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </div>
+            </a>
+
+            <!-- Card 2: Gallery -->
+            <a href="scan.html?mode=gallery" class="ios-frosted-card card-gallery">
+                <div class="card-icon-wrapper">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                        <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                </div>
+                <div class="card-content-wrapper">
+                    <span class="card-badge">Pilih dari Foto</span>
+                    <div class="card-main-title">Pilih dari Galeri</div>
+                    <p class="card-description">Unggah gambar/foto stiker QRIS yang tersimpan di galeri HP.</p>
+                </div>
+                <div class="card-chevron">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </div>
+            </a>
+
+        </div>
+
+        <!-- Security Callout Footer -->
+        <div class="select-security-callout">
+            <div class="security-icon-box">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    <polyline points="9 11 12 14 22 4"></polyline>
+                </svg>
+            </div>
+            <p class="security-text">
+                <strong>Proteksi Dual-AI Dual Matching:</strong> Sistem memverifikasi kesesuaian stiker fisik dan kode QR digital secara real-time.
+            </p>
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>

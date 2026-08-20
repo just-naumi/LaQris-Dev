@@ -796,6 +796,23 @@ async function submitReport() {
         alert('Gagal mengirim laporan: ' + e.message);
     }
 }
+
+// ── Auto-Trigger Camera/Gallery on Page Load based on URL Param ─────────────
+window.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+    if (mode === 'camera') {
+        setTimeout(() => {
+            const camInput = document.getElementById('fileInputCamera');
+            if (camInput) camInput.click();
+        }, 300);
+    } else if (mode === 'gallery') {
+        setTimeout(() => {
+            const galInput = document.getElementById('fileInputGallery');
+            if (galInput) galInput.click();
+        }, 300);
+    }
+});
 </script>
 </body>
 </html>
