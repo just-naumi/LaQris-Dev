@@ -328,41 +328,17 @@
 </div>
 
 <script>
-async function handleImageSelection(event) {
+function handleImageSelection(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    document.getElementById('selectionArea').classList.add('d-none');
-    document.getElementById('loadingBox').classList.remove('d-none');
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-        const res = await fetch('/api/scan', {
-            method: 'POST',
-            body: formData
-        });
-        const data = await res.json();
-        
-        if (res.ok) {
-            sessionStorage.setItem('laqris_scan_result', JSON.stringify(data));
-            location.href = 'scan.html';
-        } else {
-            alert('Gagal memproses gambar: ' + (data.detail || 'Terjadi kesalahan'));
-            resetSelection();
-        }
-    } catch (err) {
-        alert('Terjadi kesalahan koneksi jaringan: ' + err.message);
-        resetSelection();
-    }
-}
-
-function resetSelection() {
-    document.getElementById('fileInputCamera').value = '';
-    document.getElementById('fileInputGallery').value = '';
-    document.getElementById('selectionArea').classList.remove('d-none');
-    document.getElementById('loadingBox').classList.add('d-none');
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        sessionStorage.setItem('laqris_pending_file', e.target.result);
+        sessionStorage.setItem('laqris_pending_filename', file.name);
+        location.href = 'scan.html';
+    };
+    reader.readAsDataURL(file);
 }
 </script>
 </body>
