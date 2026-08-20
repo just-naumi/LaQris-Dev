@@ -113,24 +113,31 @@ export default function DashboardPage() {
               LàQris.
             </h1>
           </div>
-          <div className="flex-none gap-2">
-            <button className="btn btn-ghost btn-circle btn-sm">
-              <div className="indicator">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
-                </svg>
-                <span className="badge badge-xs badge-emerald indicator-item"></span>
-              </div>
+          <div className="flex-none flex items-center gap-1.5">
+            <button
+              type="button"
+              aria-label="Notifikasi"
+              className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base-content transition-colors hover:bg-base-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral focus-visible:ring-offset-2"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+              </svg>
+              <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500 ring-2 ring-base-100" />
             </button>
 
             {/* DaisyUI Avatar */}
-            <Link href="/" title="Klik untuk keluar">
-              <div className="avatar placeholder">
-                <div className="bg-neutral text-neutral-content rounded-full w-8 h-8 font-bold text-xs">
-                  <span>JD</span>
-                </div>
-              </div>
-            </Link>
+            <div className="relative group">
+              <Link
+                href="/"
+                aria-label="Keluar dari aplikasi"
+                className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral text-neutral-content focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral focus-visible:ring-offset-2"
+              >
+                <span className="block text-[10px] font-bold leading-none tracking-tight">JD</span>
+              </Link>
+              <span className="pointer-events-none absolute right-0 top-full z-30 mt-2 w-max max-w-[150px] translate-y-1 rounded-md bg-neutral px-2.5 py-1.5 text-center text-[10px] font-medium text-neutral-content opacity-0 shadow-lg transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
+                Klik untuk keluar
+              </span>
+            </div>
           </div>
         </div>
 
