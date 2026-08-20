@@ -317,6 +317,21 @@ def serve_frontend_scan():
     return {"message": "scan.html not found."}
 
 
+@app.get("/select_scan")
+@app.get("/select_scan.html")
+def serve_frontend_select_scan():
+    select_path = os.path.join(FOLDER_FRONTEND, "select_scan.html")
+    if os.path.exists(select_path):
+        return FileResponse(
+            select_path,
+            headers={
+                "Cache-Control": "no-store, no-cache, must-revalidate",
+                "Pragma": "no-cache"
+            }
+        )
+    return {"message": "select_scan.html not found."}
+
+
 @app.get("/register")
 @app.get("/register.html")
 def serve_frontend_register():
