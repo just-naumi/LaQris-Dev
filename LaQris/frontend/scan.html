@@ -645,20 +645,20 @@ async function startScanWithTimeline(base64Data) {
     formData.append('file', blob, filename);
 
     // Step 1 Active
-    setStepState(1, 'active', '25%');
+    setStepState(1, 'active');
 
     // Start API Request in parallel
     const apiPromise = fetch('/api/scan', { method: 'POST', body: formData });
 
     // Step 2 Active
     await delay(350);
-    setStepState(1, 'completed', '25%');
-    setStepState(2, 'active', '48%');
+    setStepState(1, 'completed');
+    setStepState(2, 'active');
 
     // Step 3 Active
     await delay(450);
-    setStepState(2, 'completed', '48%');
-    setStepState(3, 'active', '72%');
+    setStepState(2, 'completed');
+    setStepState(3, 'active');
 
     let apiRes, data;
     try {
@@ -671,13 +671,13 @@ async function startScanWithTimeline(base64Data) {
     }
 
     // Step 4 Active
-    setStepState(3, 'completed', '72%');
-    setStepState(4, 'active', '92%');
+    setStepState(3, 'completed');
+    setStepState(4, 'active');
     await delay(350);
 
     // Step 5 Completed
-    setStepState(4, 'completed', '92%');
-    setStepState(5, 'completed', '100%');
+    setStepState(4, 'completed');
+    setStepState(5, 'completed');
     await delay(300);
 
     if (apiRes.ok) {
@@ -691,7 +691,7 @@ async function startScanWithTimeline(base64Data) {
     }
 }
 
-function setStepState(stepNum, state, progressPercent) {
+function setStepState(stepNum, state) {
     const stepEl = document.getElementById(`step${stepNum}`);
     if (stepEl) {
         if (state === 'active') {
@@ -700,9 +700,19 @@ function setStepState(stepNum, state, progressPercent) {
             stepEl.className = 'timeline-step completed';
         }
     }
-    const lineEl = document.getElementById('timelineLineProgress');
-    if (lineEl && progressPercent) {
-        lineEl.style.height = progressPercent;
+    updateLineProgress(stepNum);
+}
+
+function updateLineProgress(activeStepNum) {
+    const activeNode = document.getElementById(`node${activeStepNum}`);
+    const container  = document.querySelector('.timeline-container');
+    const lineEl     = document.getElementById('timelineLineProgress');
+
+    if (activeNode && container && lineEl) {
+        const containerRect = container.getBoundingClientRect();
+        const nodeRect      = activeNode.getBoundingClientRect();
+        const heightPx      = (nodeRect.top + (nodeRect.height / 2)) - containerRect.top;
+        lineEl.style.height = `${Math.max(0, heightPx)}px`;
     }
 }
 
