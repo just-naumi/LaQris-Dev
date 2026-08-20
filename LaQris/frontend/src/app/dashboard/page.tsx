@@ -284,7 +284,7 @@ export default function DashboardPage() {
                   {isLoading ? (
                     <span className="loading loading-spinner loading-xs"></span>
                   ) : (
-                    "✨ Mulai Pindai Gambar"
+                    "Mulai Pindai Gambar"
                   )}
                 </button>
               )}
