@@ -279,6 +279,12 @@ async function handleRegister(e) {
         if (res.ok) {
             succBox.textContent = '🎉 Pendaftaran Berhasil! Mengalihkan ke Dashboard...';
             succBox.style.display = 'block';
+
+            // Clear any old scan session cache
+            sessionStorage.removeItem('laqris_scan_result');
+            sessionStorage.removeItem('laqris_pending_file');
+            sessionStorage.removeItem('laqris_pending_filename');
+
             if (data.access_token) {
                 localStorage.setItem('laqris_access_token', data.access_token);
                 sessionStorage.setItem('laqris_access_token', data.access_token);

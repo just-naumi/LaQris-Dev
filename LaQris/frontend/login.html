@@ -260,6 +260,12 @@ async function handleLogin(e) {
         if (res.ok) {
             succBox.textContent = `👋 Selamat datang kembali, ${data.user?.username || data.user?.full_name || 'Pengguna'}!`;
             succBox.style.display = 'block';
+            
+            // Clear any old scan session cache
+            sessionStorage.removeItem('laqris_scan_result');
+            sessionStorage.removeItem('laqris_pending_file');
+            sessionStorage.removeItem('laqris_pending_filename');
+
             if (data.access_token) {
                 localStorage.setItem('laqris_access_token', data.access_token);
                 sessionStorage.setItem('laqris_access_token', data.access_token);
