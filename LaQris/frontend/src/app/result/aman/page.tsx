@@ -128,13 +128,19 @@ export default function AmanResultPage() {
 
         </div>
 
-        {/* FOOTER ACTION BUTTON */}
-        <div className="p-6 border-t border-base-200 bg-base-100 relative z-10">
+        {/* FOOTER ACTIONS */}
+        <div className="p-6 border-t border-base-200 bg-base-100 relative z-10 space-y-3">
           <Link
             href="/dashboard"
             className="w-full py-3.5 px-6 rounded-full border border-neutral-900 bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs transition-all duration-200 active:scale-[0.98] shadow-md flex items-center justify-center"
           >
-            Lanjut Laporan
+            Pindai QRIS Lain
+          </Link>
+          <Link
+            href="/report"
+            className="w-full py-2 text-center text-[11px] font-bold text-neutral-500 hover:text-neutral-900 transition-colors"
+          >
+            Laporkan Masalah
           </Link>
         </div>
 
