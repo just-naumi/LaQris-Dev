@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LaQris - Berikan Feedback</title>
+    <meta name="description" content="Laporkan potensi kecurangan QRIS atau berikan feedback tentang merchant kepada LaQris.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; }
+        :root {
+            --primary: #3b82f6; --primary-dark: #2563eb; --primary-light: rgba(59,130,246,0.12);
+            --danger: #ef4444; --danger-light: rgba(239,68,68,0.12);
+            --warning: #f59e0b; --warning-light: rgba(245,158,11,0.12);
+            --success: #10b981; --success-light: rgba(16,185,129,0.12);
+            --bg: #f1f5f9; --card-bg: #ffffff; --border: #e2e8f0;
+            --text-main: #0f172a; --text-muted: #64748b;
+            --radius: 16px; --radius-sm: 10px;
+            --shadow: 0 4px 24px rgba(15,23,42,0.08);
+        }
+        body { background: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 0 0 40px; }
+
+        /* ── Top Nav ── */
+        .top-nav { width: 100%; max-width: 560px; display: flex; align-items: center; gap: 12px; padding: 18px 20px 10px; }
+        .btn-back { width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--border); background: var(--card-bg); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; color: var(--text-main); flex-shrink: 0; box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
+        .btn-back:hover { background: var(--primary-light); border-color: var(--primary); color: var(--primary); transform: translateX(-2px); }
+        .nav-title { font-size: 16px; font-weight: 700; }
+
+        /* ── Hero ── */
+        .hero-banner { width: calc(100% - 40px); max-width: 560px; margin: 0 0 20px; padding: 22px 22px 20px; background: linear-gradient(135deg, #1e3a5f, #1a56db); border-radius: var(--radius); position: relative; overflow: hidden; box-shadow: 0 8px 32px rgba(26,86,219,0.28); }
+        .hero-banner::before { content:''; position: absolute; top: -40px; right: -30px; width: 160px; height: 160px; border-radius: 50%; background: rgba(255,255,255,0.06); }
+        .hero-icon { width: 48px; height: 48px; border-radius: 14px; background: rgba(255,255,255,0.18); display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+        .hero-title { font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 6px; }
+        .hero-subtitle { font-size: 13px; color: rgba(255,255,255,0.72); line-height: 1.6; max-width: 300px; }
+
+        /* ── NMID Strip ── */
+        .nmid-strip { width: calc(100% - 40px); max-width: 560px; margin: 0 0 16px; padding: 13px 16px; background: var(--card-bg); border: 1.5px solid var(--border); border-radius: var(--radius-sm); display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow); }
+        .nmid-strip.hidden { display: none; }
+        .nmid-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--success); flex-shrink: 0; box-shadow: 0 0 0 3px var(--success-light); }
+        .nmid-label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+        .nmid-value { font-size: 13px; font-weight: 700; font-family: 'Courier New', monospace; letter-spacing: 0.5px; }
+
+        /* ── Form Card ── */
+        .form-card { width: calc(100% - 40px); max-width: 560px; margin: 0 0 16px; background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+        .form-section-header { padding: 16px 20px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+        .section-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--primary-light); display: flex; align-items: center; justify-content: center; color: var(--primary); flex-shrink: 0; }
+        .section-title { font-size: 14px; font-weight: 700; }
+        .section-subtitle { font-size: 12px; color: var(--text-muted); }
+        .form-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; }
+        .field-group { display: flex; flex-direction: column; gap: 6px; }
+        .field-label { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+        .badge-required { font-size: 10px; font-weight: 600; color: var(--danger); background: var(--danger-light); padding: 1px 6px; border-radius: 4px; }
+        .badge-optional { font-size: 10px; color: var(--text-muted); background: #f1f5f9; padding: 1px 6px; border-radius: 4px; }
+        .field-hint { font-size: 11.5px; color: var(--text-muted); line-height: 1.5; }
+        select.form-input, input.form-input, textarea.form-input { width: 100%; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; color: var(--text-main); background: #f8fafc; transition: all 0.2s; outline: none; appearance: none; -webkit-appearance: none; }
+        select.form-input { background-repeat: no-repeat; background-position: right 12px center; background-size: 16px; padding-right: 36px; }
+        select.form-input:focus, input.form-input:focus, textarea.form-input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 3px var(--primary-light); }
+        textarea.form-input { resize: vertical; min-height: 100px; line-height: 1.6; }
+        select#fbSeverity.level-LOW { border-left: 3px solid var(--primary); }
+        select#fbSeverity.level-MEDIUM { border-left: 3px solid var(--warning); }
+        select#fbSeverity.level-HIGH { border-left: 3px solid #f97316; }
+        select#fbSeverity.level-CRITICAL { border-left: 3px solid var(--danger); }
+
+        /* ── Category Cards ── */
+        .category-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .cat-card { padding: 11px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s; background: #f8fafc; display: flex; flex-direction: column; gap: 4px; }
+        .cat-card:hover, .cat-card.selected { border-color: var(--primary); background: var(--primary-light); }
+        .cat-card.selected .cat-label { color: var(--primary-dark); }
+        .cat-emoji { font-size: 18px; }
+        .cat-label { font-size: 12px; font-weight: 600; line-height: 1.3; }
+        .cat-desc { font-size: 10.5px; color: var(--text-muted); line-height: 1.4; }
+
+        /* ── Evidence Toggle ── */
+        .evidence-toggle { display: flex; align-items: center; gap: 12px; padding: 13px 14px; background: #f8fafc; border: 1.5px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s; }
+        .evidence-toggle:hover { border-color: var(--primary); background: var(--primary-light); }
+        .evidence-toggle input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary); flex-shrink: 0; }
+        .evidence-text strong { font-size: 13px; font-weight: 600; display: block; }
+        .evidence-text span { font-size: 11.5px; color: var(--text-muted); }
+
+        /* ── Info Alert ── */
+        .info-alert { padding: 12px 14px; border-radius: var(--radius-sm); display: flex; gap: 10px; align-items: flex-start; }
+        .info-alert.blue { background: var(--primary-light); border: 1px solid rgba(59,130,246,0.25); }
+        .info-alert-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+        .info-alert-text { font-size: 12px; line-height: 1.6; }
+
+        /* ── Buttons ── */
+        .action-area { width: calc(100% - 40px); max-width: 560px; display: flex; flex-direction: column; gap: 10px; }
+        .btn-submit { width: 100%; padding: 15px; border: none; border-radius: var(--radius); background: linear-gradient(135deg, #1a56db, #3b82f6); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; box-shadow: 0 4px 16px rgba(26,86,219,0.3); }
+        .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(26,86,219,0.4); }
+        .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-cancel { width: 100%; padding: 13px; border: 1.5px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text-muted); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-cancel:hover { border-color: var(--text-muted); color: var(--text-main); }
+
+        /* ── Success ── */
+        .success-screen { display: none; flex-direction: column; align-items: center; padding: 50px 30px; text-align: center; gap: 16px; }
+        .success-screen.visible { display: flex; }
+        .success-circle { width: 80px; height: 80px; border-radius: 50%; background: var(--success-light); display: flex; align-items: center; justify-content: center; font-size: 36px; }
+        .success-title { font-size: 22px; font-weight: 800; }
+        .success-desc { font-size: 14px; color: var(--text-muted); line-height: 1.7; max-width: 280px; }
+        .btn-back-scan { padding: 13px 28px; border: none; border-radius: var(--radius); background: linear-gradient(135deg, #1a56db, #3b82f6); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 16px rgba(26,86,219,0.3); transition: all 0.2s; margin-top: 8px; }
+        .btn-back-scan:hover { transform: translateY(-1px); }
+
+        /* ── Animations ── */
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeUp 0.35s ease forwards; }
+        .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+        .btn-submit.loading .spinner { display: block; }
+        .btn-submit.loading .btn-text { display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 560px) {
+            .hero-banner, .nmid-strip, .form-card, .action-area { width: 100%; border-radius: 0; }
+            .hero-banner { border-radius: 0 0 var(--radius) var(--radius); }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav fade-in">
+    <button class="btn-back" id="btnBack">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+        </svg>
+    </button>
+    <div class="nav-title">Berikan Feedback</div>
+</nav>
+
+<div class="hero-banner fade-in">
+    <div class="hero-icon">
+        <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3.001h6m-6 3h3m6 6l-3-3H4.5A2.25 2.25 0 012.25 15V6A2.25 2.25 0 014.5 3.75h15A2.25 2.25 0 0121.75 6v9a2.25 2.25 0 01-2.25 2.25H16.5l-4.5 4.5z"/>
+        </svg>
+    </div>
+    <div class="hero-title">Laporan &amp; Feedback QRIS</div>
+    <div class="hero-subtitle">Bantu komunitas dengan melaporkan potensi kecurangan atau kejanggalan pada merchant ini.</div>
+</div>
+
+<div class="nmid-strip fade-in" id="nmidStrip">
+    <div class="nmid-dot"></div>
+    <div>
+        <div class="nmid-label">Merchant yang dilaporkan</div>
+        <div class="nmid-value" id="nmidDisplay">Memuat...</div>
+    </div>
+</div>
+
+<div class="form-card fade-in" id="formCard">
+
+    <!-- Kategori -->
+    <div class="form-section-header">
+        <div class="section-icon">
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z"/>
+            </svg>
+        </div>
+        <div>
+            <div class="section-title">Kategori Laporan</div>
+            <div class="section-subtitle">Pilih jenis masalah yang Anda temui</div>
+        </div>
+    </div>
+    <div class="form-body">
+        <div class="category-grid" id="categoryGrid">
+            <div class="cat-card selected" data-value="Merchant Mismatch" onclick="selectCategory(this)">
+                <span class="cat-emoji">&#128978;</span>
+                <span class="cat-label">Nama Merchant Tidak Sesuai</span>
+                <span class="cat-desc">Nama fisik berbeda dengan data QRIS</span>
+            </div>
+            <div class="cat-card" data-value="QRIS Replacement" onclick="selectCategory(this)">
+                <span class="cat-emoji">&#9888;</span>
+                <span class="cat-label">Stiker QRIS Ditimpa</span>
+                <span class="cat-desc">Diduga QRIS palsu ditempel di atas aslinya</span>
+            </div>
+            <div class="cat-card" data-value="Additional Fee" onclick="selectCategory(this)">
+                <span class="cat-emoji">&#128184;</span>
+                <span class="cat-label">Biaya Tambahan Tidak Sah</span>
+                <span class="cat-desc">Merchant meminta biaya di luar nominal</span>
+            </div>
+            <div class="cat-card" data-value="General Complaint" onclick="selectCategory(this)">
+                <span class="cat-emoji">&#128203;</span>
+                <span class="cat-label">Laporan Umum</span>
+                <span class="cat-desc">Kendala lain yang perlu dilaporkan</span>
+            </div>
+        </div>
+        <select id="fbCategory" style="display:none;">
+            <option value="Merchant Mismatch">Ketidaksesuaian Nama Merchant</option>
+            <option value="QRIS Replacement">Indikasi Stiker Ditimpa (Palsu)</option>
+            <option value="Additional Fee">Biaya Tambahan Tidak Sah</option>
+            <option value="General Complaint">Laporan Umum</option>
+        </select>
+    </div>
+
+    <!-- Severity -->
+    <div class="form-section-header" style="border-top:1px solid var(--border);">
+        <div class="section-icon" style="background:rgba(245,158,11,0.12);color:var(--warning);">
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+            </svg>
+        </div>
+        <div>
+            <div class="section-title">Tingkat Keparahan</div>
+            <div class="section-subtitle">Seberapa serius masalah ini?</div>
+        </div>
+    </div>
+    <div class="form-body">
+        <div class="field-group">
+            <select id="fbSeverity" class="form-input level-MEDIUM" onchange="updateSeverityStyle(this)">
+                <option value="LOW">Rendah - Info saja, tidak mendesak</option>
+                <option value="MEDIUM" selected>Sedang - Perlu perhatian</option>
+                <option value="HIGH">Tinggi - Potensi kerugian besar</option>
+                <option value="CRITICAL">Kritis - Penipuan aktif / darurat</option>
+            </select>
+        </div>
+
+        <div class="field-group">
+            <label class="field-label" for="fbDescription">
+                Deskripsi Kejadian
+                <span class="badge-required">Wajib</span>
+            </label>
+            <textarea id="fbDescription" class="form-input" rows="4"
+                placeholder="Ceritakan detail kejadian: apa yang Anda lihat, kapan, dan apa yang mencurigakan..."></textarea>
+            <div class="field-hint">Semakin detail laporan Anda, semakin cepat tim LaQris dapat menindaklanjutinya.</div>
+        </div>
+
+        <div class="field-group">
+            <label class="field-label" for="fbTxRef">
+                Nomor Referensi Transaksi
+                <span class="badge-optional">Opsional</span>
+            </label>
+            <input type="text" id="fbTxRef" class="form-input" placeholder="Contoh: TRX-9920183">
+            <div class="field-hint">Dapat ditemukan di notifikasi atau riwayat pembayaran Anda.</div>
+        </div>
+
+        <label class="evidence-toggle" for="fbHasEvidence">
+            <input type="checkbox" id="fbHasEvidence">
+            <div class="evidence-text">
+                <strong>Saya memiliki bukti transaksi resmi</strong>
+                <span>Bukti fisik / digital meningkatkan bobot laporan ke Evidence Level 2</span>
+            </div>
+        </label>
+
+        <div class="info-alert blue">
+            <span class="info-alert-icon">&#128737;</span>
+            <div class="info-alert-text">
+                Laporan Anda bersifat <strong>anonim</strong> dan membantu memperbarui
+                <strong>skor reputasi (EMRS)</strong> merchant ini secara real-time di sistem LaQris.
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="action-area fade-in" id="actionArea">
+    <button class="btn-submit" id="btnSubmit" onclick="submitFeedback()">
+        <div class="spinner"></div>
+        <span class="btn-text" style="display:flex;align-items:center;gap:8px;">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/>
+            </svg>
+            Kirim Laporan
+        </span>
+    </button>
+    <button class="btn-cancel" onclick="goBack()">Batal &amp; Kembali</button>
+</div>
+
+<!-- Success Card -->
+<div class="form-card fade-in" id="successCard" style="display:none;">
+    <div class="success-screen visible">
+        <div class="success-circle">&#9989;</div>
+        <div class="success-title">Laporan Terkirim!</div>
+        <div class="success-desc">
+            Terima kasih atas laporan Anda. Tim LaQris akan memverifikasi dan
+            memperbarui skor reputasi merchant ini segera.
+        </div>
+        <button class="btn-back-scan" onclick="goBack()">&#8592; Kembali ke Hasil Scan</button>
+    </div>
+</div>
+
+<script>
+    const params  = new URLSearchParams(window.location.search);
+    const nmid    = params.get('nmid') || '';
+    const backUrl = params.get('back') || 'scan.html';
+
+    document.getElementById('nmidDisplay').textContent = nmid || 'NMID tidak terdeteksi';
+    if (!nmid) document.getElementById('nmidStrip').classList.add('hidden');
+
+    document.getElementById('btnBack').addEventListener('click', goBack);
+
+    function goBack() {
+        window.location.href = backUrl;
+    }
+
+    function selectCategory(el) {
+        document.querySelectorAll('.cat-card').forEach(function(c) { c.classList.remove('selected'); });
+        el.classList.add('selected');
+        document.getElementById('fbCategory').value = el.dataset.value;
+    }
+
+    function updateSeverityStyle(sel) {
+        sel.className = 'form-input level-' + sel.value;
+    }
+
+    async function submitFeedback() {
+        var description = document.getElementById('fbDescription').value.trim();
+        if (!description) {
+            var ta = document.getElementById('fbDescription');
+            ta.focus();
+            ta.style.borderColor = '#ef4444';
+            ta.style.boxShadow   = '0 0 0 3px rgba(239,68,68,0.15)';
+            return;
+        }
+        if (!nmid) {
+            alert('NMID Merchant tidak terdeteksi. Tidak dapat mengirim feedback.');
+            return;
+        }
+
+        var btn = document.getElementById('btnSubmit');
+        btn.classList.add('loading');
+        btn.disabled = true;
+
+        var payload = {
+            nmid:            nmid,
+            category:        document.getElementById('fbCategory').value,
+            severity:        document.getElementById('fbSeverity').value,
+            description:     description,
+            transaction_ref: document.getElementById('fbTxRef').value || null,
+            has_evidence:    document.getElementById('fbHasEvidence').checked
+        };
+
+        try {
+            var res  = await fetch('/api/feedback', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(payload)
+            });
+            var data = await res.json();
+            if (res.ok) {
+                document.getElementById('formCard').style.display  = 'none';
+                document.getElementById('actionArea').style.display = 'none';
+                document.getElementById('nmidStrip').style.display  = 'none';
+                document.querySelector('.hero-banner').style.display = 'none';
+                document.getElementById('successCard').style.display = 'block';
+            } else {
+                alert('Gagal mengirim laporan: ' + (data.detail || data.message || 'Terjadi kesalahan.'));
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            }
+        } catch (e) {
+            alert('Terjadi kesalahan koneksi: ' + e.message);
+            btn.classList.remove('loading');
+            btn.disabled = false;
+        }
+    }
+
+    document.getElementById('fbDescription').addEventListener('input', function() {
+        this.style.borderColor = '';
+        this.style.boxShadow   = '';
+    });
+</script>
+</body>
+</html>
