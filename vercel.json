@@ -1,7 +1,23 @@
 {
   "version": 2,
-  "outputDirectory": "LaQris/frontend",
+  "builds": [
+    {
+      "src": "LaQris/frontend/**",
+      "use": "@vercel/static"
+    }
+  ],
   "routes": [
-    {"src": "/(.*)", "dest": "/LaQris/frontend/$1"}
+    {
+      "src": "/",
+      "dest": "/LaQris/frontend/scan.html"
+    },
+    {
+      "src": "/([^/]+\\.html)",
+      "dest": "/LaQris/frontend/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/LaQris/frontend/$1"
+    }
   ]
 }
