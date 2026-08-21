@@ -1,17 +1,29 @@
-﻿/* ======================================================
+/* ======================================================
    LaQris — API Configuration
    ======================================================
-   Ubah nilai API_BASE sesuai URL backend Anda:
-   - Development lokal : ""  (empty, proxy ke localhost)
-   - Production Vercel : "https://your-backend.railway.app"
+   CARA KONFIGURASI:
+   1. Local dev (FastAPI berjalan di localhost:8000):
+      Ubah baris di bawah menjadi:
+      window.LAQRIS_API_URL = "http://localhost:8000";
+
+   2. Production (backend sudah di-deploy, misal Railway):
+      Ubah baris di bawah menjadi:
+      window.LAQRIS_API_URL = "https://your-backend.railway.app";
+
+   JANGAN pernah biarkan kosong ("") saat deploy ke Vercel,
+   karena Vercel tidak memiliki backend dan akan mengembalikan
+   HTML 404 bukan JSON.
    ====================================================== */
 
-window.API_BASE = (function() {
-    // Jika ada env yang di-inject oleh CI/CD, gunakan itu
-    if (typeof __API_BASE__ !== "undefined") return __API_BASE__;
-    // Deteksi otomatis: jika di Vercel (domain vercel.app), gunakan env dari window
-    if (window.LAQRIS_API_URL) return window.LAQRIS_API_URL;
-    // Default: kosong = relative URL (cocok untuk local dev dengan FastAPI)
-    return "";
-})();
+window.LAQRIS_API_URL = "https://YOUR-BACKEND-URL";
 
+window.API_BASE = (function () {
+    // 1. Prioritas tertinggi: env yang di-inject oleh CI/CD / build tool
+    if (typeof __API_BASE__ !== "undefined" && __API_BASE__) return __API_BASE__;
+    // 2. URL yang di-set manual di atas
+    if (window.LAQRIS_API_URL && window.LAQRIS_API_URL !== "https://YOUR-BACKEND-URL") {
+        return window.LAQRIS_API_URL.replace(/\/$/, ""); // hapus trailing slash
+    }
+    // 3. Fallback: tampilkan placeholder (akan menghasilkan error yang jelas)
+    return "https://YOUR-BACKEND-URL";
+})();

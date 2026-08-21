@@ -3,15 +3,41 @@
    ============================================================================== */
 
 // API_BASE dikonfigurasi melalui js/config.js
-// Ubah nilai di config.js untuk mengarahkan ke backend production
-const API_BASE = window.API_BASE || "";
+// JANGAN ubah baris ini — ubah window.LAQRIS_API_URL di config.js
+const API_BASE = (window.API_BASE || "").replace(/\/$/, "");
 
+// ── API Helper ────────────────────────────────────────────────
+// Semua request ke backend wajib melalui fungsi ini.
+async function apiCall(path, options = {}) {
+    if (!API_BASE || API_BASE === "https://YOUR-BACKEND-URL") {
+        throw new Error(
+            "Backend belum dikonfigurasi.\n" +
+            "Buka js/config.js dan ubah window.LAQRIS_API_URL " +
+            "ke URL backend Anda (Railway, Render, dll)."
+        );
+    }
+    const url = `${API_BASE}${path}`;
+    const response = await fetch(url, options);
+    if (!response.ok) {
+        let detail = `HTTP ${response.status}`;
+        try { const err = await response.json(); detail = err.detail || detail; } catch (_) {}
+        throw new Error(detail);
+    }
+    return response.json();
+}
 
 // State: simpan data NMID aktif untuk feedback modal
 let currentNmid = null;
 
 document.addEventListener("DOMContentLoaded", () => {
     console.log("LaQris EMRS v2.0 Frontend Loaded.");
+    if (!API_BASE || API_BASE === "https://YOUR-BACKEND-URL") {
+        console.warn(
+            "%c[LaQris] Backend belum dikonfigurasi!\n" +
+            "Buka js/config.js dan set window.LAQRIS_API_URL ke URL backend Anda.",
+            "color: #f59e0b; font-weight: bold;"
+        );
+    }
 });
 
 
@@ -27,9 +53,7 @@ async function runScanSample(sampleFilename) {
 
     try {
         await tickSteps();
-        const response = await fetch(`${API_BASE}/api/scan`, { method: "POST", body: formData });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
+        const data = await apiCall("/api/scan", { method: "POST", body: formData });
         finishLoading();
         setTimeout(() => renderScanResults(data), 400);
     } catch (error) {
@@ -50,9 +74,7 @@ async function handleFileSelect(event) {
 
     try {
         await tickSteps();
-        const response = await fetch(`${API_BASE}/api/scan`, { method: "POST", body: formData });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
+        const data = await apiCall("/api/scan", { method: "POST", body: formData });
         finishLoading();
         setTimeout(() => renderScanResults(data), 400);
     } catch (error) {
@@ -333,26 +355,20 @@ async function submitFeedback() {
     };
 
     try {
-        const resp = await fetch(`${API_BASE}/api/feedback`, {
+        const result = await apiCall("/api/feedback", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
-        const result = await resp.json();
         closeFeedbackModal();
-
-        if (resp.ok) {
-            Swal.fire({
-                icon: "success",
-                title: "Laporan Terkirim!",
-                html: `Evidence Level: <strong>${payload.has_evidence ? "2 (Verified)" : "1 (Unverified)"}</strong><br>EMRS baru: <strong>${result.new_reputation_score?.toFixed(1) ?? "—"} / 100</strong>`,
-                background: "#18181b",
-                color: "#fff",
-                confirmButtonColor: "#6366f1"
-            });
-        } else {
-            Swal.fire({ icon: "error", title: "Gagal", text: result.detail || "Error.", background: "#18181b", color: "#fff" });
-        }
+        Swal.fire({
+            icon: "success",
+            title: "Laporan Terkirim!",
+            html: `Evidence Level: <strong>${payload.has_evidence ? "2 (Verified)" : "1 (Unverified)"}</strong><br>EMRS baru: <strong>${result.new_reputation_score?.toFixed(1) ?? "—"} / 100</strong>`,
+            background: "#18181b",
+            color: "#fff",
+            confirmButtonColor: "#6366f1"
+        });
     } catch (e) {
         Swal.fire({ icon: "error", title: "Network Error", text: e.message, background: "#18181b", color: "#fff" });
     }
@@ -365,8 +381,7 @@ async function submitFeedback() {
 
 async function openDatabaseModal() {
     try {
-        const response = await fetch(`${API_BASE}/api/merchants`);
-        const merchants = await response.json();
+        const merchants = await apiCall("/api/merchants");
 
         const tbody = document.getElementById("merchantTableBody");
         tbody.innerHTML = "";
