@@ -6,6 +6,7 @@
     <title>LaQris - Berikan Feedback</title>
     <meta name="description" content="Laporkan potensi kecurangan QRIS atau berikan feedback tentang merchant kepada LaQris.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet">
+    <script src="js/config.js"></script>
     <style>
         * { box-sizing: border-box; font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; }
         :root {
@@ -326,7 +327,7 @@
         };
 
         try {
-            var res  = await fetch('/api/feedback', {
+            var res  = await fetch((window.API_BASE || '') + '/api/feedback', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body:    JSON.stringify(payload)

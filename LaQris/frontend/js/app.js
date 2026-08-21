@@ -2,7 +2,10 @@
    LaQris POC v2.0 — EMRS Frontend Logic
    ============================================================================== */
 
-const API_BASE = "";
+// API_BASE dikonfigurasi melalui js/config.js
+// Ubah nilai di config.js untuk mengarahkan ke backend production
+const API_BASE = window.API_BASE || "";
+
 
 // State: simpan data NMID aktif untuk feedback modal
 let currentNmid = null;

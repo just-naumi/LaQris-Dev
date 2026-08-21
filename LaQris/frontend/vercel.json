@@ -1,0 +1,11 @@
+﻿{
+  "version": 2,
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "routes": [
+    { "src": "^/$", "dest": "/index.html" },
+    { "src": "^/([a-zA-Z0-9_-]+)$", "dest": "/$1.html" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "status": 404, "dest": "/index.html" }
+  ]
+}
