@@ -160,7 +160,7 @@ class MerchantSchema(BaseModel):
 
 class FeedbackSubmitSchema(BaseModel):
     nmid: str
-    category: str           # "QRIS Replacement" | "Additional Fee" | "Merchant Mismatch" | "General Complaint"
+    category: str           # "Verified Authentic" | "QRIS Replacement" | "Additional Fee" | "Merchant Mismatch" | "General Complaint"
     severity: str           # "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
     description: Optional[str] = None
     transaction_ref: Optional[str] = None

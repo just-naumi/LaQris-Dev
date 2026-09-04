@@ -919,16 +919,12 @@
                             <span id="obsLastSeen" class="receipt-val">—</span>
                         </div>
                         <div class="receipt-row">
-                            <span class="receipt-label">Verified Feedback</span>
-                            <span id="obsFeedback" class="receipt-val val-blue">—</span>
+                            <span class="receipt-label">Feedback & Ulasan Komunitas</span>
+                            <span id="obsFeedback" class="receipt-val val-blue">0</span>
                         </div>
                         <div class="receipt-row">
-                            <span class="receipt-label">Complaints</span>
-                            <span id="obsComplaints" class="receipt-val val-danger">—</span>
-                        </div>
-                        <div class="receipt-row">
-                            <span class="receipt-label">Disputes</span>
-                            <span id="obsDisputes" class="receipt-val" style="color:#d97706">—</span>
+                            <span class="receipt-label">Laporan Kendala</span>
+                            <span id="obsComplaints" class="receipt-val val-danger">0</span>
                         </div>
                         <div id="obsNoData" class="d-none" style="text-align:center;color:#94a3b8;font-size:0.82rem;padding:14px 16px;">Merchant ini belum pernah diobservasi di LaQris.</div>
                     </div>
@@ -938,43 +934,35 @@
                         <div class="receipt-section-title">
                             Reputasi Merchant (EMRS)
                         </div>
-                        <div style="font-size:0.76rem;color:#94a3b8;padding:0 16px 10px;" id="emrsSubhead">Berdasarkan data observasi terverifikasi</div>
+                        <div style="font-size:0.76rem;color:#94a3b8;padding:0 16px 10px;" id="emrsSubhead">Skor Kepercayaan Real-time dari Hasil Scan & Laporan Community</div>
 
                         <div class="comp-row">
                             <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.86rem;margin-bottom:5px;">
-                                <span style="color:#64748b;font-weight:500;">Kesesuaian Identitas QRIS</span>
-                                <span style="font-weight:700;color:#0f172a;" id="compA">—</span>
+                                <span style="color:#64748b;font-weight:500;">Autentisitas & Match Identitas</span>
+                                <span style="font-weight:700;color:#0f172a;" id="compA">100 / 100</span>
                             </div>
-                            <div class="comp-bar-track"><div class="comp-bar-fill bar-A" id="barA" style="width:0%"></div></div>
+                            <div class="comp-bar-track"><div class="comp-bar-fill bar-A" id="barA" style="width:100%"></div></div>
                         </div>
 
                         <div class="comp-row">
                             <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.86rem;margin-bottom:5px;">
-                                <span style="color:#64748b;font-weight:500;">Rekam Laporan Masalah</span>
-                                <span style="font-weight:700;color:#0f172a;" id="compC">—</span>
+                                <span style="color:#64748b;font-weight:500;">Rekam Ulasan & Laporan Komunitas</span>
+                                <span style="font-weight:700;color:#0f172a;" id="compC">100 / 100</span>
                             </div>
-                            <div class="comp-bar-track"><div class="comp-bar-fill bar-C" id="barC" style="width:0%"></div></div>
+                            <div class="comp-bar-track"><div class="comp-bar-fill bar-C" id="barC" style="width:100%"></div></div>
                         </div>
 
                         <div class="comp-row">
                             <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.86rem;margin-bottom:5px;">
-                                <span style="color:#64748b;font-weight:500;">Rekam Bebas Sengketa</span>
-                                <span style="font-weight:700;color:#0f172a;" id="compD">—</span>
+                                <span style="color:#64748b;font-weight:500;">Riwayat & Keaktifan Merchant</span>
+                                <span style="font-weight:700;color:#0f172a;" id="compL">80 / 100</span>
                             </div>
-                            <div class="comp-bar-track"><div class="comp-bar-fill bar-D" id="barD" style="width:0%"></div></div>
-                        </div>
-
-                        <div class="comp-row">
-                            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.86rem;margin-bottom:5px;">
-                                <span style="color:#64748b;font-weight:500;">Riwayat Keaktifan Toko</span>
-                                <span style="font-weight:700;color:#0f172a;" id="compL">—</span>
-                            </div>
-                            <div class="comp-bar-track"><div class="comp-bar-fill bar-L" id="barL" style="width:0%"></div></div>
+                            <div class="comp-bar-track"><div class="comp-bar-fill bar-L" id="barL" style="width:80%"></div></div>
                         </div>
 
                         <div class="receipt-row" style="border:none;margin-top:2px;">
                             <span class="receipt-label">Status Histori</span>
-                            <span id="valReputation" class="receipt-val">—</span>
+                            <span id="valReputation" class="receipt-val">Verified Authentic / Aman</span>
                         </div>
                     </div>
 
@@ -1090,7 +1078,7 @@
             setStepState(1, 'active');
 
             // Start API Request in parallel
-            const apiPromise = fetch((window.API_BASE || '') + '/api/scan', { method: 'POST', body: formData });
+            const apiPromise = fetch(window.API_BASE + '/api/scan', { method: 'POST', body: formData });
 
             // Step 2 Active
             await delay(350);
@@ -1209,6 +1197,11 @@
 
             // ── LaQris Observation History ────────────────────────────────────
             const totalObs = obs.total_observations ?? 0;
+            const firstSeenVal = obs.first_observed || rep.first_seen_observed || (rep.registered_at ? new Date(rep.registered_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Belum ada data');
+            const lastSeenVal = obs.last_observed || rep.last_seen_observed || (totalObs > 0 ? 'Hari ini' : '—');
+            document.getElementById('obsFirstSeen').textContent = firstSeenVal;
+            document.getElementById('obsLastSeen').textContent = lastSeenVal;
+
             if (totalObs === 0) {
                 document.getElementById('obsNoData').classList.remove('d-none');
                 document.getElementById('obsTotalObs').textContent = '0';
@@ -1217,8 +1210,6 @@
                 document.getElementById('obsMismatchCount').textContent = '0';
                 document.getElementById('obsMatchRate').textContent = '0%';
                 document.getElementById('obsMatchBarFill').style.width = '0%';
-                document.getElementById('obsFirstSeen').textContent = 'Belum ada data';
-                document.getElementById('obsLastSeen').textContent = '—';
                 document.getElementById('obsFeedback').textContent = '0';
                 document.getElementById('obsComplaints').textContent = '0';
                 document.getElementById('obsDisputes').textContent = '0';
@@ -1231,11 +1222,8 @@
                 const matchRate = obs.identity_match_rate ?? 0;
                 document.getElementById('obsMatchRate').textContent = `${matchRate.toFixed(1)}%`;
                 document.getElementById('obsMatchBarFill').style.width = `${matchRate}%`;
-                document.getElementById('obsFirstSeen').textContent = obs.first_observed || '—';
-                document.getElementById('obsLastSeen').textContent = obs.last_observed || '—';
-                document.getElementById('obsFeedback').textContent = obs.verified_feedback ?? 0;
+                document.getElementById('obsFeedback').textContent = (obs.complaints ?? 0) + (obs.verified_feedback ?? 0);
                 document.getElementById('obsComplaints').textContent = obs.complaints ?? 0;
-                document.getElementById('obsDisputes').textContent = obs.disputes ?? 0;
             }
 
             // ── Merchant Reputation (EMRS) ────────────────────────────────────
@@ -1251,24 +1239,18 @@
                 document.getElementById('emrsSubhead').textContent = `Skor: ${score.toFixed(0)}/100 · ${grade} · Confidence: ${confLabel}`;
             }
 
-            const setComp = (id, val) => {
-                if (!isRegistered) {
-                    document.getElementById(`comp${id}`).textContent = 'N/A';
-                    document.getElementById(`bar${id}`).style.width = '0%';
-                } else {
-                    const v = val ?? 0;
-                    document.getElementById(`comp${id}`).textContent = `${v.toFixed(0)} / 100`;
-                    document.getElementById(`bar${id}`).style.width = `${v}%`;
-                }
+            const setComp = (id, val, defaultVal) => {
+                const v = (val !== null && val !== undefined) ? val : defaultVal;
+                document.getElementById(`comp${id}`).textContent = `${v.toFixed(0)} / 100`;
+                document.getElementById(`bar${id}`).style.width = `${v}%`;
             };
-            setComp('A', comps.A);
-            setComp('C', comps.C);
-            setComp('D', comps.D);
-            setComp('L', comps.L);
+            setComp('A', comps.A, 100);
+            setComp('C', comps.C, 100);
+            setComp('L', comps.L, 80);
 
-            const repStatus = isRegistered
+            const repStatus = (isRegistered && rep.grade)
                 ? `${grade} (Confidence: ${rep.confidence_level || 'LOW'})`
-                : 'Belum ada laporan atau sengketa sebelumnya.';
+                : (qr.is_mismatch ? 'Perlu Perhatian (Indikasi Ketidaksesuaian)' : 'Verified Authentic / Belum Ada Masalah');
             document.getElementById('valReputation').textContent = repStatus;
 
             // ── EMVCo Analysis ────────────────────────────────────────────────
@@ -1326,7 +1308,7 @@
             const has_evidence = document.getElementById('fbHasEvidence').checked;
 
             try {
-                const res = await fetch((window.API_BASE || '') + '/api/feedback', {
+                const res = await fetch(window.API_BASE + '/api/feedback', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1344,6 +1326,7 @@
                     closeFeedbackModal();
                     document.getElementById('fbDescription').value = '';
                     document.getElementById('fbTxRef').value = '';
+                    window.location.href = 'select_scan.html';
                 } else {
                     alert('⚠️ Gagal mengirim feedback: ' + (data.detail || data.message || 'Terjadi kesalahan'));
                 }

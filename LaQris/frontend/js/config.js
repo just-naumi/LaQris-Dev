@@ -1,29 +1,25 @@
 /* ======================================================
    LaQris — API Configuration
    ======================================================
-   CARA KONFIGURASI:
-   1. Local dev (FastAPI berjalan di localhost:8000):
-      Ubah baris di bawah menjadi:
-      window.LAQRIS_API_URL = "http://localhost:8000";
+   SATU-SATUNYA file yang perlu diubah untuk konfigurasi API.
 
-   2. Production (backend sudah di-deploy, misal Railway):
-      Ubah baris di bawah menjadi:
-      window.LAQRIS_API_URL = "https://your-backend.railway.app";
-
-   JANGAN pernah biarkan kosong ("") saat deploy ke Vercel,
-   karena Vercel tidak memiliki backend dan akan mengembalikan
-   HTML 404 bukan JSON.
+   LOCAL DEV  → tidak perlu ubah apapun (auto-detect localhost)
+   PRODUCTION → ubah baris LAQRIS_API_URL di bawah:
+                window.LAQRIS_API_URL = "https://nama-app.railway.app";
    ====================================================== */
 
 window.LAQRIS_API_URL = "https://YOUR-BACKEND-URL";
 
 window.API_BASE = (function () {
-    // 1. Prioritas tertinggi: env yang di-inject oleh CI/CD / build tool
-    if (typeof __API_BASE__ !== "undefined" && __API_BASE__) return __API_BASE__;
-    // 2. URL yang di-set manual di atas
-    if (window.LAQRIS_API_URL && window.LAQRIS_API_URL !== "https://YOUR-BACKEND-URL") {
-        return window.LAQRIS_API_URL.replace(/\/$/, ""); // hapus trailing slash
+    // Lokal: FastAPI serve frontend & backend di port yang sama
+    if (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1") {
+        return window.location.origin; // e.g. "http://localhost:5000"
     }
-    // 3. Fallback: tampilkan placeholder (akan menghasilkan error yang jelas)
+    // Production: wajib set LAQRIS_API_URL di atas
+    if (window.LAQRIS_API_URL && window.LAQRIS_API_URL !== "https://YOUR-BACKEND-URL") {
+        return window.LAQRIS_API_URL.replace(/\/$/, "");
+    }
+    // Belum dikonfigurasi — kembalikan placeholder agar error jelas
     return "https://YOUR-BACKEND-URL";
 })();

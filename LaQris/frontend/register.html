@@ -265,7 +265,7 @@ async function handleRegister(e) {
     btn.textContent = 'Memproses Pendaftaran...';
 
     try {
-        const res = await fetch((window.API_BASE || '') + '/api/register', {
+        const res = await fetch(window.API_BASE + '/api/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

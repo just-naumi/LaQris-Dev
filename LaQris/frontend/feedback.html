@@ -161,7 +161,12 @@
     </div>
     <div class="form-body">
         <div class="category-grid" id="categoryGrid">
-            <div class="cat-card selected" data-value="Merchant Mismatch" onclick="selectCategory(this)">
+            <div class="cat-card selected" data-value="Verified Authentic" onclick="selectCategory(this)">
+                <span class="cat-emoji">&#9989;</span>
+                <span class="cat-label">QRIS Asli & Sesuai</span>
+                <span class="cat-desc">Transaksi lancar, identitas stiker fisik & digital cocok</span>
+            </div>
+            <div class="cat-card" data-value="Merchant Mismatch" onclick="selectCategory(this)">
                 <span class="cat-emoji">&#128978;</span>
                 <span class="cat-label">Nama Merchant Tidak Sesuai</span>
                 <span class="cat-desc">Nama fisik berbeda dengan data QRIS</span>
@@ -183,6 +188,7 @@
             </div>
         </div>
         <select id="fbCategory" style="display:none;">
+            <option value="Verified Authentic" selected>QRIS Asli & Sesuai (Positif)</option>
             <option value="Merchant Mismatch">Ketidaksesuaian Nama Merchant</option>
             <option value="QRIS Replacement">Indikasi Stiker Ditimpa (Palsu)</option>
             <option value="Additional Fee">Biaya Tambahan Tidak Sah</option>
@@ -204,9 +210,9 @@
     </div>
     <div class="form-body">
         <div class="field-group">
-            <select id="fbSeverity" class="form-input level-MEDIUM" onchange="updateSeverityStyle(this)">
-                <option value="LOW">Rendah - Info saja, tidak mendesak</option>
-                <option value="MEDIUM" selected>Sedang - Perlu perhatian</option>
+            <select id="fbSeverity" class="form-input level-LOW" onchange="updateSeverityStyle(this)">
+                <option value="LOW" selected>Positif / Aman - Konfirmasi Keamanan</option>
+                <option value="MEDIUM">Sedang - Perlu perhatian</option>
                 <option value="HIGH">Tinggi - Potensi kerugian besar</option>
                 <option value="CRITICAL">Kritis - Penipuan aktif / darurat</option>
             </select>
@@ -232,12 +238,21 @@
         </div>
 
         <label class="evidence-toggle" for="fbHasEvidence">
-            <input type="checkbox" id="fbHasEvidence">
+            <input type="checkbox" id="fbHasEvidence" onchange="toggleEvidenceUpload(this)">
             <div class="evidence-text">
                 <strong>Saya memiliki bukti transaksi resmi</strong>
                 <span>Bukti fisik / digital meningkatkan bobot laporan ke Evidence Level 2</span>
             </div>
         </label>
+
+        <div id="evidenceUploadGroup" class="field-group" style="display:none; margin-top:12px; padding:12px; background:#f0f9ff; border:1px dashed #0284c7; border-radius:10px;">
+            <label class="field-label" for="fbEvidenceFile" style="color:#0369a1; font-weight:600;">
+                Lampirkan Foto Bukti Transaksi (Struk / Screenshot)
+                <span class="badge-optional">Format Image</span>
+            </label>
+            <input type="file" id="fbEvidenceFile" class="form-input" accept="image/*" style="background:#fff;">
+            <div class="field-hint" style="color:#0284c7;">Dokumentasi bukti fisik/digital memperkuat validasi tim LaQris.</div>
+        </div>
 
         <div class="info-alert blue">
             <span class="info-alert-icon">&#128737;</span>
@@ -271,7 +286,7 @@
             Terima kasih atas laporan Anda. Tim LaQris akan memverifikasi dan
             memperbarui skor reputasi merchant ini segera.
         </div>
-        <button class="btn-back-scan" onclick="goBack()">&#8592; Kembali ke Hasil Scan</button>
+        <button class="btn-back-scan" onclick="window.location.href='select_scan.html'">&#8592; Kembali ke Halaman Scan</button>
     </div>
 </div>
 
@@ -290,9 +305,18 @@
     }
 
     function selectCategory(el) {
-        document.querySelectorAll('.cat-card').forEach(function(c) { c.classList.remove('selected'); });
+        document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('selected'));
         el.classList.add('selected');
         document.getElementById('fbCategory').value = el.dataset.value;
+    }
+
+    function toggleEvidenceUpload(checkboxEl) {
+        var uploadBox = document.getElementById('evidenceUploadGroup');
+        if (checkboxEl.checked) {
+            uploadBox.style.display = 'block';
+        } else {
+            uploadBox.style.display = 'none';
+        }
     }
 
     function updateSeverityStyle(sel) {
@@ -327,7 +351,7 @@
         };
 
         try {
-            var res  = await fetch((window.API_BASE || '') + '/api/feedback', {
+            var res  = await fetch(window.API_BASE + '/api/feedback', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body:    JSON.stringify(payload)
@@ -339,6 +363,9 @@
                 document.getElementById('nmidStrip').style.display  = 'none';
                 document.querySelector('.hero-banner').style.display = 'none';
                 document.getElementById('successCard').style.display = 'block';
+                setTimeout(function() {
+                    window.location.href = 'select_scan.html';
+                }, 1800);
             } else {
                 alert('Gagal mengirim laporan: ' + (data.detail || data.message || 'Terjadi kesalahan.'));
                 btn.classList.remove('loading');

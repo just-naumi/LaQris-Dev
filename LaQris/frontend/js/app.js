@@ -2,25 +2,22 @@
    LaQris POC v2.0 — EMRS Frontend Logic
    ============================================================================== */
 
-// API_BASE dikonfigurasi melalui js/config.js
-// JANGAN ubah baris ini — ubah window.LAQRIS_API_URL di config.js
-const API_BASE = (window.API_BASE || "").replace(/\/$/, "");
+// API_BASE dikonfigurasi melalui js/config.js — JANGAN ubah di sini
+const API_BASE = window.API_BASE || "";
 
-// ── API Helper ────────────────────────────────────────────────
-// Semua request ke backend wajib melalui fungsi ini.
+// ── API Helper: semua request backend wajib lewat sini ────────────────────────
 async function apiCall(path, options = {}) {
     if (!API_BASE || API_BASE === "https://YOUR-BACKEND-URL") {
         throw new Error(
             "Backend belum dikonfigurasi.\n" +
             "Buka js/config.js dan ubah window.LAQRIS_API_URL " +
-            "ke URL backend Anda (Railway, Render, dll)."
+            "ke URL backend kamu (contoh: https://laqris.railway.app)."
         );
     }
-    const url = `${API_BASE}${path}`;
-    const response = await fetch(url, options);
+    const response = await fetch(API_BASE + path, options);
     if (!response.ok) {
         let detail = `HTTP ${response.status}`;
-        try { const err = await response.json(); detail = err.detail || detail; } catch (_) {}
+        try { detail = (await response.json()).detail || detail; } catch (_) {}
         throw new Error(detail);
     }
     return response.json();
@@ -30,14 +27,7 @@ async function apiCall(path, options = {}) {
 let currentNmid = null;
 
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("LaQris EMRS v2.0 Frontend Loaded.");
-    if (!API_BASE || API_BASE === "https://YOUR-BACKEND-URL") {
-        console.warn(
-            "%c[LaQris] Backend belum dikonfigurasi!\n" +
-            "Buka js/config.js dan set window.LAQRIS_API_URL ke URL backend Anda.",
-            "color: #f59e0b; font-weight: bold;"
-        );
-    }
+    console.log("LaQris EMRS v2.0 Frontend Loaded. API_BASE:", API_BASE);
 });
 
 

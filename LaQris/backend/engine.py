@@ -548,6 +548,8 @@ def calculate_emrs(merchant: Merchant, reports: list, disputes: list) -> dict:
     # 2. Komponen C: Complaint Score (30%)
     C = 100.0
     for rpt in reports:
+        if rpt.category == "Verified Authentic":
+            continue  # Laporan positif / pujian tidak mengikis skor C
         sev_penalty = SEVERITY_PENALTY.get(rpt.severity, 5)
         ev_weight = 1.0 if rpt.evidence_level >= 2 else 0.5
         td = time_decay_weight(rpt.created_at)
@@ -592,8 +594,16 @@ def calculate_emrs(merchant: Merchant, reports: list, disputes: list) -> dict:
     R = max(0.0, min(100.0, R))
 
     # Hitung Jumlah Bukti & Tingkat Kepercayaan Data (Confidence Level)
-    total_evidence = total_identity + merchant.verified_transactions + len(reports) + len(disputes)
-    confidence_score = min(100.0, round((total_evidence / 20.0) * 100.0, 1))
+    db_tmp = SessionLocal()
+    try:
+        session_count = db_tmp.query(VerificationSession).filter(VerificationSession.nmid == merchant.nmid).count()
+    except Exception:
+        session_count = 0
+    finally:
+        db_tmp.close()
+
+    total_evidence = total_identity + session_count + len(reports) + len(disputes)
+    confidence_score = min(100.0, round((total_evidence / 15.0) * 100.0, 1))
 
     if total_evidence >= 20:
         confidence_level = "HIGH"
@@ -646,33 +656,45 @@ def calculate_emrs(merchant: Merchant, reports: list, disputes: list) -> dict:
 # =============================================================================
 # FUNGSI 9B: Ambil LaQris Observation History per NMID (get_observation_history_by_nmid)
 # =============================================================================
-def get_observation_history_by_nmid(nmid: str, merchant: Merchant = None, reports: list = None, disputes: list = None) -> dict:
+def get_observation_history_by_nmid(nmid: str, reports: list = None, disputes: list = None, merchant: Merchant = None) -> dict:
     """
-    Mengambil LaQris Observation History berdasarkan data real dari tabel verification_sessions.
+    Mengambil LaQris Observation History berdasarkan data real dari tabel verification_sessions, reports, dan merchant.
     Ini adalah rekam jejak observasi QRIS — BUKAN histori transaksi.
     """
     db = SessionLocal()
     try:
+        if not merchant and nmid:
+            merchant = db.query(Merchant).filter(Merchant.nmid == nmid).first()
+
         # Query semua sesi scan yang NMID-nya cocok (digital atau fisik)
         sessions = db.query(VerificationSession).filter(
             VerificationSession.nmid == nmid
-        ).all()
+        ).all() if nmid else []
 
-        total_obs = len(sessions)
+        total_reports_count = len(reports) if reports else 0
+        total_obs = len(sessions) + total_reports_count
         unique_obs = len(set(s.user_id for s in sessions if s.user_id))
-        identity_match = sum(1 for s in sessions if s.status == "MATCH")
+        if total_reports_count > 0 and unique_obs == 0:
+            unique_obs = 1
+        identity_match = sum(1 for s in sessions if s.status == "MATCH") + total_reports_count
         identity_mismatch = sum(1 for s in sessions if s.status == "MISMATCH")
         physical_anomaly = sum(1 for s in sessions if s.risk_level in ["DANGER", "WARNING", "HIGH_RISK", "MODERATE_RISK"])
 
         identity_match_rate = round((identity_match / total_obs * 100.0), 1) if total_obs > 0 else 0.0
 
+        dates = []
+        if sessions:
+            dates.extend([s.scanned_at for s in sessions if s.scanned_at])
+        if reports:
+            dates.extend([r.created_at for r in reports if r.created_at])
+        if merchant and merchant.registered_at:
+            dates.append(merchant.registered_at)
+
         first_obs = None
         last_obs = None
-        if sessions:
-            dates = [s.scanned_at for s in sessions if s.scanned_at]
-            if dates:
-                first_obs = min(dates).strftime("%d %b %Y")
-                last_obs = max(dates).strftime("%d %b %Y")
+        if dates:
+            first_obs = min(dates).strftime("%d %b %Y")
+            last_obs = max(dates).strftime("%d %b %Y")
 
         # Hitung complaint rate berdasarkan evidence
         verified_reports_count = len([r for r in (reports or []) if r.evidence_level >= 2]) if reports else 0
@@ -1166,7 +1188,7 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
     # 4B. Ambil data observasi real dari verification_sessions untuk merchant ini
     nmid_for_obs = dig_nmid if (dig_nmid and dig_nmid != "Tidak ditemukan") else phys_nmid
     obs_history_pre = get_observation_history_by_nmid(nmid_for_obs or "")
-    total_obs_pre = obs_history_pre.get("total_observations", 0)
+    total_obs_pre = obs_history_pre.get("total_observations", 0) + 1  # Hitung termasuk sesi scan aktif saat ini
     complaint_rate_pre = obs_history_pre.get("complaint_rate", None)
     verified_complaints_pre = obs_history_pre.get("verified_feedback", 0)
 
@@ -1275,7 +1297,16 @@ def submit_feedback_to_db(nmid: str, category: str, severity: str,
     try:
         m = db.query(Merchant).filter(Merchant.nmid == nmid).first()
         if not m:
-            return {"success": False, "message": f"Merchant NMID '{nmid}' tidak ditemukan.", "evidence_level": 0, "new_reputation_score": 0.0}
+            # Otomatis buat merchant baru jika belum terdaftar di DB
+            m = Merchant(
+                nmid=nmid,
+                merchant_name=f"Merchant ({nmid})",
+                acquirer="QRIS Merchant",
+                reputation_score=75.0,
+                registered_at=datetime.utcnow()
+            )
+            db.add(m)
+            db.flush() # Ambil m.id baru
 
         # Level 2 jika melampirkan bukti transaksi, Level 1 jika laporan tanpa bukti
         evidence_level = 2 if has_evidence else 1
