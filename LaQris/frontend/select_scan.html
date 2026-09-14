@@ -817,6 +817,40 @@
             requestAnimationFrame(tickRealtimeScanner);
         }
 
+        let consecutiveSharpFrames = 0;
+        const REQUIRED_SHARP_FRAMES = 2; // Membutuhkan minimal 2 frame berturut-turut yang jernih & stabil
+        const MIN_SHARPNESS_SCORE = 9.5;  // Ambang batas ketajaman (dibawah ini dianggap buram/goyang)
+
+        // Mengukur tingkat ketajaman gambar (Laplacian edge gradient)
+        function evaluateFrameSharpness(ctx, width, height) {
+            const startX = Math.floor(width * 0.2);
+            const startY = Math.floor(height * 0.2);
+            const sampleW = Math.floor(width * 0.6);
+            const sampleH = Math.floor(height * 0.6);
+
+            const imgData = ctx.getImageData(startX, startY, sampleW, sampleH);
+            const data = imgData.data;
+            const len = data.length;
+
+            let edgeSum = 0;
+            let samples = 0;
+
+            // Sample edge gradients untuk mendeteksi kontras & fokus tinggi
+            for (let i = 0; i < len - (sampleW * 4 * 2); i += 16) {
+                const currentLuma = (data[i] * 3 + data[i + 1] * 6 + data[i + 2]) / 10;
+                const rightLuma = (data[i + 4] * 3 + data[i + 4 + 1] * 6 + data[i + 4 + 2]) / 10;
+                const bottomLuma = (data[i + sampleW * 4] * 3 + data[i + sampleW * 4 + 1] * 6 + data[i + sampleW * 4 + 2]) / 10;
+
+                const gradX = Math.abs(currentLuma - rightLuma);
+                const gradY = Math.abs(currentLuma - bottomLuma);
+
+                edgeSum += (gradX + gradY);
+                samples++;
+            }
+
+            return samples > 0 ? (edgeSum / samples) : 0;
+        }
+
         // Frame tick loop
         async function tickRealtimeScanner(timestamp) {
             if (!isScanningActive || isScanLocked) return;
@@ -834,14 +868,29 @@
             }
         }
 
-        // Detect QR from current video frame
+        // Detect QR from current video frame dengan validasi ketajaman & stabilitas
         async function scanFrameForQR(videoEl) {
             if (isScanLocked) return;
 
             let qrDetected = false;
             let detectedData = '';
+            const vw = videoEl.videoWidth;
+            const vh = videoEl.videoHeight;
+            if (vw <= 0 || vh <= 0) return;
 
-            // 1. Try Native BarcodeDetector (Fastest, zero CPU overhead on mobile)
+            // Siapkan offscreen canvas
+            const scale = Math.min(1, 560 / vw);
+            const targetW = Math.floor(vw * scale);
+            const targetH = Math.floor(vh * scale);
+
+            if (scanCanvas.width !== targetW || scanCanvas.height !== targetH) {
+                scanCanvas.width = targetW;
+                scanCanvas.height = targetH;
+            }
+
+            scanCtx.drawImage(videoEl, 0, 0, targetW, targetH);
+
+            // 1. Coba Native BarcodeDetector
             if (barcodeDetectorInstance) {
                 try {
                     const barcodes = await barcodeDetectorInstance.detect(videoEl);
@@ -849,45 +898,61 @@
                         qrDetected = true;
                         detectedData = barcodes[0].rawValue || '';
                     }
-                } catch (e) {
-                    // Fall back to jsQR
-                }
+                } catch (e) {}
             }
 
-            // 2. Fallback to jsQR engine
+            // 2. Fallback ke jsQR engine
             if (!qrDetected && typeof jsQR === 'function') {
-                const vw = videoEl.videoWidth;
-                const vh = videoEl.videoHeight;
-                if (vw > 0 && vh > 0) {
-                    // Downscale frame to ~540px width for near-instant 15ms decoding
-                    const scale = Math.min(1, 540 / vw);
-                    const targetW = Math.floor(vw * scale);
-                    const targetH = Math.floor(vh * scale);
+                const imgData = scanCtx.getImageData(0, 0, targetW, targetH);
+                const code = jsQR(imgData.data, targetW, targetH, {
+                    inversionAttempts: 'dontInvert'
+                });
 
-                    if (scanCanvas.width !== targetW || scanCanvas.height !== targetH) {
-                        scanCanvas.width = targetW;
-                        scanCanvas.height = targetH;
-                    }
-
-                    scanCtx.drawImage(videoEl, 0, 0, targetW, targetH);
-                    const imgData = scanCtx.getImageData(0, 0, targetW, targetH);
-                    const code = jsQR(imgData.data, targetW, targetH, {
-                        inversionAttempts: 'dontInvert'
-                    });
-
-                    if (code && code.data) {
-                        qrDetected = true;
-                        detectedData = code.data;
-                    }
+                if (code && code.data) {
+                    qrDetected = true;
+                    detectedData = code.data;
                 }
             }
+
+            const scanHint = document.querySelector('.scan-hint-text');
 
             if (qrDetected) {
-                onQRCodeAutoDetected(videoEl, detectedData);
+                // UJI KUALITAS GAMBAR: Pastikan gambar tajam & fokus
+                const sharpness = evaluateFrameSharpness(scanCtx, targetW, targetH);
+
+                if (sharpness < MIN_SHARPNESS_SCORE) {
+                    // Gambar masih blur / tangan goyang
+                    consecutiveSharpFrames = 0;
+                    if (scanHint) {
+                        scanHint.textContent = "Fokuskan & Tahan Stabil...";
+                        scanHint.style.background = "rgba(202, 138, 4, 0.5)";
+                        scanHint.style.color = "#FEF08A";
+                    }
+                    return; // Tunggu sampai fokus jernih
+                }
+
+                consecutiveSharpFrames++;
+                if (scanHint) {
+                    scanHint.textContent = "Kualitas Bagus! Mengunci...";
+                    scanHint.style.background = "rgba(16, 185, 129, 0.6)";
+                    scanHint.style.color = "#FFFFFF";
+                }
+
+                // Butuh minimal 2 frame jernih berturut-turut agar foto sempurna
+                if (consecutiveSharpFrames >= REQUIRED_SHARP_FRAMES) {
+                    onQRCodeAutoDetected(videoEl, detectedData);
+                }
+            } else {
+                consecutiveSharpFrames = 0;
+                if (scanHint) {
+                    scanHint.textContent = "Arahkan kamera ke kode QRIS";
+                    scanHint.style.background = "rgba(0, 0, 0, 0.35)";
+                    scanHint.style.color = "rgba(255, 255, 255, 0.75)";
+                }
             }
         }
 
-        // Handle successful automatic detection
+        // Handle successful automatic detection saat gambar sudah sangat jernih
         function onQRCodeAutoDetected(videoEl, qrData) {
             if (isScanLocked) return;
             isScanLocked = true;
@@ -898,7 +963,7 @@
                 try { navigator.vibrate([70, 40, 70]); } catch (e) {}
             }
 
-            // Audio chime
+            // Audio chime bank
             playScanSuccessSound();
 
             // Visual feedback: Green crosshair & glowing badge
@@ -906,32 +971,40 @@
             if (crosshair) crosshair.classList.add('detected');
 
             const badge = document.getElementById('detectedBadge');
-            if (badge) badge.style.display = 'flex';
+            if (badge) {
+                badge.innerHTML = `
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>Kualitas Tajam! Memverifikasi...</span>
+                `;
+                badge.style.display = 'flex';
+            }
 
             const laser = document.getElementById('scanLaserLine');
             if (laser) laser.style.animationPlayState = 'paused';
 
-            // High resolution snapshot capture from camera
+            // Ambil foto snapshot resolusi tinggi tertinggi dari kamera (96% JPEG quality)
             const canvas = document.getElementById('captureCanvas');
             canvas.width = videoEl.videoWidth || 1280;
             canvas.height = videoEl.videoHeight || 720;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
 
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.94);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.96);
 
             if (qrData) {
                 sessionStorage.setItem('laqris_detected_qr_payload', qrData);
             }
 
-            // Brief 280ms pause to let user see the green locked-on confirmation
+            // Jeda 250ms agar pengguna melihat konfirmasi visual kunci hijau
             setTimeout(() => {
                 showLoading();
                 sessionStorage.setItem('laqris_pending_file', dataUrl);
-                sessionStorage.setItem('laqris_pending_filename', 'auto_qris_' + Date.now() + '.jpg');
+                sessionStorage.setItem('laqris_pending_filename', 'auto_qris_hd_' + Date.now() + '.jpg');
                 stopCameraStream();
                 location.href = 'scan.html';
-            }, 280);
+            }, 250);
         }
 
         // Toggle flashlight / torch

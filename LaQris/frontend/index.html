@@ -284,6 +284,25 @@
                     }
                 } catch (e) {}
             }
+
+            // Minta izin kamera langsung di awal saat masuk web
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+                    .then(stream => {
+                        // Izin diberikan! Langsung matikan kamera agar tidak menyala terus
+                        stream.getTracks().forEach(track => track.stop());
+                        localStorage.setItem('laqris_cam_permission', 'granted');
+                    })
+                    .catch(err => {
+                        // Coba izin umum jika environment belum didukung
+                        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+                            .then(stream => {
+                                stream.getTracks().forEach(track => track.stop());
+                                localStorage.setItem('laqris_cam_permission', 'granted');
+                            })
+                            .catch(() => {});
+                    });
+            }
         });
     </script>
 </body>

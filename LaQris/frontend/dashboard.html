@@ -1321,6 +1321,16 @@
 
             // Muat data riwayat transaksi real dari database
             loadScanHistory();
+
+            // Minta izin kamera langsung di awal saat di dashboard
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+                    .then(stream => {
+                        stream.getTracks().forEach(track => track.stop());
+                        localStorage.setItem('laqris_cam_permission', 'granted');
+                    })
+                    .catch(() => {});
+            }
         });
 
 
