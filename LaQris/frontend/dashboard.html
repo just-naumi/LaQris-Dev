@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>wondr by BNI - Dashboard</title>
+    <title>LaQris - E-Banking Dashboard</title>
     <!-- Modern Geometric Rounded Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,22 +12,24 @@
     <script src="js/config.js"></script>
     <style>
         :root {
-            --wondr-orange: #FF6600;
-            --wondr-orange-dark: #EA580C;
-            --wondr-orange-card-start: #FF7322;
-            --wondr-orange-card-end: #FF8F3D;
-            --wondr-cyan: #00D1C5;
-            --wondr-mint: #B5F0E5;
-            --wondr-lime: #D0F252;
-            --wondr-dark: #121214;
-            --wondr-card-text: #FFFFFF;
-            --gray-50: #F9FAFB;
-            --gray-100: #F3F4F6;
-            --gray-200: #E5E7EB;
-            --gray-400: #9CA3AF;
-            --gray-500: #6B7280;
-            --gray-800: #1F2937;
-            --gray-900: #111827;
+            /* LaQris Brand Color Palette */
+            --laqris-blue: #2563EB;
+            --laqris-blue-dark: #1D4ED8;
+            --laqris-blue-light: #3B82F6;
+            --laqris-cyan: #0284C7;
+            --laqris-sky: #38BDF8;
+            --laqris-indigo: #4F46E5;
+            --laqris-card-start: #0F172A;
+            --laqris-card-mid: #1E3A8A;
+            --laqris-card-end: #2563EB;
+            --laqris-card-text: #FFFFFF;
+            --gray-50: #F8FAFC;
+            --gray-100: #F1F5F9;
+            --gray-200: #E2E8F0;
+            --gray-400: #94A3B8;
+            --gray-500: #64748B;
+            --gray-800: #1E293B;
+            --gray-900: #0F172A;
         }
 
         * {
@@ -74,36 +76,55 @@
             flex-direction: column;
         }
 
-        .logo-wondr-row {
+        .logo-laqris-row {
             display: flex;
-            align-items: baseline;
-            gap: 4px;
+            align-items: center;
+            gap: 6px;
         }
 
-        .logo-wondr {
+        .logo-laqris-la {
             font-size: 1.85rem;
             font-weight: 900;
-            color: var(--wondr-orange);
+            color: #0F172A;
             letter-spacing: -0.04em;
             line-height: 1;
-            position: relative;
         }
 
-        .logo-curve {
-            width: 28px;
-            height: 4px;
-            background: var(--wondr-cyan);
-            border-radius: 3px;
-            margin-top: 1px;
-            margin-left: 2px;
+        .logo-laqris-qris {
+            font-size: 1.85rem;
+            font-weight: 900;
+            color: var(--laqris-blue);
+            letter-spacing: -0.04em;
+            line-height: 1;
         }
 
-        .logo-by-bni {
+        .logo-shield-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            background: linear-gradient(135deg, #0284C7 0%, #2563EB 100%);
+            border-radius: 50%;
+            color: #FFFFFF;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+        }
+
+        .logo-accent-line {
+            width: 34px;
+            height: 3.5px;
+            background: var(--laqris-blue);
+            border-radius: 2px;
+            margin-top: 3px;
+        }
+
+        .logo-by-laqris {
             font-size: 0.62rem;
             font-weight: 800;
-            color: #334155;
-            letter-spacing: 0.02em;
-            margin-top: -2px;
+            color: #64748B;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-top: 1px;
         }
 
         .header-actions {
@@ -117,27 +138,27 @@
             align-items: center;
             gap: 6px;
             padding: 6px 14px;
-            border: 1px solid #E2E8F0;
+            border: 1.5px solid #DBEAFE;
             border-radius: 24px;
-            background: #FFFFFF;
+            background: #EFF6FF;
             font-size: 0.8rem;
             font-weight: 700;
-            color: #1E293B;
+            color: #1D4ED8;
             cursor: pointer;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+            box-shadow: 0 1px 3px rgba(37, 99, 235, 0.08);
             transition: all 0.15s ease;
         }
 
         .pill-poin-btn:active {
             transform: scale(0.96);
-            background: #F8FAFC;
+            background: #DBEAFE;
         }
 
         .poin-target-icon {
             width: 16px;
             height: 16px;
             border-radius: 50%;
-            border: 2px solid #1E293B;
+            border: 2px solid #2563EB;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -147,7 +168,7 @@
             width: 4px;
             height: 4px;
             border-radius: 50%;
-            background: #1E293B;
+            background: #2563EB;
         }
 
         .pill-exit-btn {
@@ -230,7 +251,7 @@
             right: -2px;
             width: 9px;
             height: 9px;
-            background: #FF6600;
+            background: var(--laqris-blue);
             border-radius: 50%;
             border: 2px solid #FFFFFF;
         }
@@ -268,10 +289,10 @@
         }
 
         .segment-pill.active {
-            background: var(--wondr-lime);
-            color: #111827;
+            background: linear-gradient(135deg, #0284C7 0%, #2563EB 100%);
+            color: #FFFFFF;
             font-weight: 800;
-            box-shadow: 0 4px 14px rgba(208, 242, 82, 0.4);
+            box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
         }
 
         /* ── Section: Rekening Transaksi Kamu ── */
@@ -296,12 +317,14 @@
         .section-link {
             font-size: 0.82rem;
             font-weight: 700;
-            color: var(--wondr-orange);
+            color: var(--laqris-cyan);
             text-decoration: none;
             cursor: pointer;
+            transition: color 0.15s ease;
         }
 
         .section-link:hover {
+            color: var(--laqris-blue);
             text-decoration: underline;
         }
 
@@ -317,7 +340,8 @@
         /* Left Mint Portfolio Card */
         .card-portfolio-peek {
             width: 80px;
-            background: var(--wondr-mint);
+            background: #EFF6FF;
+            border: 1.5px solid #DBEAFE;
             border-radius: 20px;
             padding: 14px 10px;
             display: flex;
@@ -340,27 +364,27 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #0D9488;
-            box-shadow: 0 2px 6px rgba(13, 148, 136, 0.15);
+            color: var(--laqris-blue);
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.18);
         }
 
         .portfolio-text {
             font-size: 0.72rem;
             font-weight: 800;
-            color: #0F766E;
+            color: var(--laqris-blue-dark);
             line-height: 1.25;
         }
 
-        /* Main Orange Account Card */
+        /* Main LaQris Premium Account Card */
         .card-main-orange {
             flex: 1;
-            background: linear-gradient(135deg, var(--wondr-orange-card-start) 0%, var(--wondr-orange-card-end) 100%);
+            background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 55%, #2563EB 100%);
             border-radius: 20px;
             padding: 18px 18px 16px 18px;
             color: #FFFFFF;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 10px 24px rgba(255, 115, 34, 0.28);
+            box-shadow: 0 10px 28px rgba(37, 99, 235, 0.28);
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -375,7 +399,7 @@
             bottom: -35px;
             width: 150px;
             height: 150px;
-            background: rgba(255, 255, 255, 0.14);
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.22) 0%, rgba(255, 255, 255, 0) 70%);
             border-radius: 50%;
             pointer-events: none;
         }
@@ -385,9 +409,9 @@
             position: absolute;
             right: 40px;
             top: -40px;
-            width: 100px;
-            height: 100px;
-            background: rgba(255, 255, 255, 0.08);
+            width: 110px;
+            height: 110px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, rgba(255, 255, 255, 0) 70%);
             border-radius: 50%;
             pointer-events: none;
         }
@@ -448,27 +472,33 @@
         .balance-amount-text {
             font-size: 1.25rem;
             font-weight: 900;
-            letter-spacing: -0.02em;
             color: #FFFFFF;
+            letter-spacing: -0.01em;
         }
 
         .btn-toggle-eye {
-            background: none;
+            background: rgba(255, 255, 255, 0.2);
             border: none;
-            color: #FFFFFF;
-            cursor: pointer;
-            padding: 4px;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
             display: flex;
             align-items: center;
             justify-content: center;
-            opacity: 0.9;
+            color: #FFFFFF;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .btn-toggle-eye:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
 
         /* Right Card Edge Peek (Subtle visual continuity) */
         .card-edge-peek {
             width: 14px;
-            border: 1.5px dashed #FF9E66;
-            background: #FFF7ED;
+            border: 1.5px dashed #93C5FD;
+            background: #EFF6FF;
             border-radius: 12px 0 0 12px;
             flex-shrink: 0;
         }
@@ -491,9 +521,9 @@
         }
 
         .dot.active {
-            width: 7px;
-            height: 7px;
-            background: #0F172A;
+            width: 16px;
+            border-radius: 4px;
+            background: var(--laqris-blue);
         }
 
         /* ── Section: Fitur Pilihan Kamu (8 Grid Icons) ── */
@@ -1000,17 +1030,23 @@
 
     <div class="app-container">
 
-        <!-- Wondr Header (Logo + Poin + Exit) -->
+        <!-- LaQris Header (Logo + Poin + Exit) -->
         <div class="app-header">
             <div class="logo-group">
-                <div class="logo-wondr-row">
-                    <span class="logo-wondr">wondr</span>
+                <div class="logo-laqris-row">
+                    <span class="logo-laqris-la">La</span><span class="logo-laqris-qris">Qris</span>
+                    <div class="logo-shield-badge">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            <polyline points="9 11 12 14 22 4"></polyline>
+                        </svg>
+                    </div>
                 </div>
-                <div class="logo-curve"></div>
-                <span class="logo-by-bni">by BNI</span>
+                <div class="logo-accent-line"></div>
+                <span class="logo-by-laqris">Verified &amp; Safe</span>
             </div>
             <div class="header-actions">
-                <button class="pill-poin-btn" onclick="alert('Fitur Poin BNI: Anda memiliki 1.250 Poin!')">
+                <button class="pill-poin-btn" onclick="alert('Fitur Poin LaQris: Anda memiliki 1.250 Poin!')">
                     <div class="poin-target-icon">
                         <div class="poin-target-dot"></div>
                     </div>
@@ -1068,7 +1104,7 @@
         <div class="section-container">
             <div class="section-header">
                 <div class="section-title">Rekening transaksi kamu</div>
-                <a class="section-link" onclick="alert('Menampilkan daftar seluruh rekening BNI.')">Lihat Semua</a>
+                <a class="section-link" onclick="alert('Menampilkan daftar seluruh rekening dan dompet LaQris.')">Lihat Semua</a>
             </div>
 
             <!-- Card Layout: Mint Portfolio peek + Main Orange Card -->
@@ -1084,11 +1120,11 @@
                     <div class="portfolio-text">Lihat Portfolio</div>
                 </div>
 
-                <!-- Main Orange TAPLUS Card -->
+                <!-- Main LaQris Account Card -->
                 <div class="card-main-orange">
                     <div class="card-top-row">
                         <div>
-                            <div class="account-type-label">TAPLUS</div>
+                            <div class="account-type-label">LAQRIS PAY</div>
                             <div class="account-number-text" id="accNumber">1858868768</div>
                         </div>
                         <div class="badge-utama">Utama</div>
@@ -1194,7 +1230,7 @@
                 </div>
 
                 <!-- 8. Lihat Semua -->
-                <div class="feature-item" onclick="alert('Menampilkan semua 20+ fitur wondr by BNI.')">
+                <div class="feature-item" onclick="alert('Menampilkan semua 20+ fitur LaQris.')">
                     <div class="feature-squircle sq-all">
                         <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24">
                             <rect x="4" y="4" width="6" height="6" rx="2" />
@@ -1212,7 +1248,7 @@
         <div class="section-container">
             <div class="section-header">
                 <div class="section-title">Promo buat kamu</div>
-                <a class="section-link" onclick="alert('Menampilkan seluruh katalog promo menarik BNI.')">Lihat Semua</a>
+                <a class="section-link" onclick="alert('Menampilkan seluruh katalog promo menarik LaQris.')">Lihat Semua</a>
             </div>
 
             <div class="promo-scroll-container">
@@ -1233,7 +1269,7 @@
                     <div class="promo-badge-teal">Hingga 31 Des</div>
                     <div>
                         <div class="promo-discount-title">Diskon 20% Makan Bareng Keluarga</div>
-                        <div class="promo-discount-sub">QRIS wondr by BNI</div>
+                        <div class="promo-discount-sub">QRIS LaQris Verified</div>
                     </div>
                 </div>
             </div>
