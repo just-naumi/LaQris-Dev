@@ -11,3 +11,5 @@ torch
 pillow
 python-multipart
 pyyaml
+optimum[onnxruntime]
+onnxruntime

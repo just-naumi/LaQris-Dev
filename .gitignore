@@ -26,3 +26,14 @@ datasets/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Large Model Weights & Checkpoints (>100MB exceeds GitHub limit)
+*.onnx
+*.safetensors
+optimizer.pt
+**/models/
+**/base_model/
+**/weights/*_onnx/
+
+# Generated Test Visualizations
+LaQris/backend/static/vis_output/*.jpg
