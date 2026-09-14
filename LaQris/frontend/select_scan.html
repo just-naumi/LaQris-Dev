@@ -11,6 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="js/config.js"></script>
+    <script src="js/jsqr.min.js"></script>
     <style>
         :root {
             --laqris-blue: #2563EB;
@@ -177,6 +178,50 @@
             border-bottom: 3px solid #FFFFFF;
             border-left: 3px solid #FFFFFF;
             border-radius: 0 0 0 6px;
+        }
+
+        /* Success / Detected State */
+        .viewfinder-crosshair.detected::before,
+        .viewfinder-crosshair.detected::after,
+        .viewfinder-crosshair.detected .corner-tr,
+        .viewfinder-crosshair.detected .corner-bl {
+            border-color: #10B981 !important;
+            filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.85));
+            transition: border-color 0.2s ease, filter 0.2s ease;
+        }
+
+        .viewfinder-crosshair.detected {
+            box-shadow: inset 0 0 25px rgba(16, 185, 129, 0.15);
+            border-radius: 12px;
+            animation: pulseDetected 0.3s ease-in-out;
+        }
+
+        @keyframes pulseDetected {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .detected-badge {
+            position: absolute;
+            top: 42%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(16, 185, 129, 0.95);
+            color: #FFFFFF;
+            font-size: 0.85rem;
+            font-weight: 800;
+            padding: 8px 18px;
+            border-radius: 30px;
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.45);
+            display: none;
+            align-items: center;
+            gap: 8px;
+            z-index: 10;
+            white-space: nowrap;
+            backdrop-filter: blur(8px);
+            letter-spacing: 0.02em;
+            pointer-events: none;
         }
 
         .scan-hint-text {
@@ -501,13 +546,21 @@
             </div>
 
             <!-- Viewfinder Crosshairs -->
-            <div class="viewfinder-crosshair">
+            <div class="viewfinder-crosshair" id="viewfinderCrosshair">
                 <div class="corner-tr"></div>
                 <div class="corner-bl"></div>
             </div>
 
+            <!-- Detected Success Badge -->
+            <div class="detected-badge" id="detectedBadge">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>QRIS Terdeteksi!</span>
+            </div>
+
             <!-- Animated Glowing Laser Beam -->
-            <div class="scan-laser-line"></div>
+            <div class="scan-laser-line" id="scanLaserLine"></div>
         </div>
 
         <!-- 3. Floating Viewfinder Controls (Torch & Gallery) -->
@@ -601,10 +654,49 @@
         let currentStream = null;
         let isTorchOn = false;
         let videoTrack = null;
+        let isScanningActive = false;
+        let isScanLocked = false;
+        let barcodeDetectorInstance = null;
+
+        // Offscreen canvas for ultra-fast QR decoding
+        const scanCanvas = document.createElement('canvas');
+        const scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true });
+        let lastScanTimestamp = 0;
+        const SCAN_INTERVAL_MS = 130; // Check ~7-8 times per second (smooth UI, instant detection)
 
         window.addEventListener('DOMContentLoaded', () => {
             initCamera();
         });
+
+        // Play crisp banking-style success chime via Web Audio API
+        function playScanSuccessSound() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const audioCtx = new AudioContext();
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                // Pleasant two-tone high frequency ping
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(950, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1400, audioCtx.currentTime + 0.1);
+
+                gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.18);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.2);
+            } catch (e) {
+                // Ignore if audio policy prevents autoplay
+            }
+        }
 
         // Initialize user media camera
         async function initCamera() {
@@ -615,9 +707,9 @@
                 if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                     const stream = await navigator.mediaDevices.getUserMedia({
                         video: {
-                            facingMode: 'environment',
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 }
+                            facingMode: { ideal: 'environment' },
+                            width: { ideal: 1920, min: 640 },
+                            height: { ideal: 1080, min: 480 }
                         }
                     });
 
@@ -626,17 +718,167 @@
                     videoEl.style.display = 'block';
                     ambientEl.style.display = 'none';
 
-                    // Track torch
+                    // Track torch and continuous autofocus
                     const tracks = stream.getVideoTracks();
                     if (tracks && tracks.length > 0) {
                         videoTrack = tracks[0];
+                        if (videoTrack.getCapabilities) {
+                            const capabilities = videoTrack.getCapabilities();
+                            if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
+                                try {
+                                    await videoTrack.applyConstraints({
+                                        advanced: [{ focusMode: 'continuous' }]
+                                    });
+                                } catch (e) {}
+                            }
+                        }
                     }
+
+                    videoEl.onloadedmetadata = () => {
+                        videoEl.play();
+                        startRealtimeScanner();
+                    };
                 }
             } catch (err) {
-                console.warn("Kamera tidak dapat diakses langsung, menggunakan mode tampilan responsif.", err);
+                console.warn("Kamera tidak dapat diakses langsung, menggunakan mode fallback input.", err);
                 videoEl.style.display = 'none';
                 ambientEl.style.display = 'flex';
             }
+        }
+
+        // Start automatic continuous real-time scanner loop
+        function startRealtimeScanner() {
+            if (isScanningActive) return;
+            isScanningActive = true;
+            isScanLocked = false;
+
+            // Initialize native hardware-accelerated BarcodeDetector if available
+            if ('BarcodeDetector' in window) {
+                try {
+                    barcodeDetectorInstance = new BarcodeDetector({ formats: ['qr_code'] });
+                } catch (e) {
+                    barcodeDetectorInstance = null;
+                }
+            }
+
+            requestAnimationFrame(tickRealtimeScanner);
+        }
+
+        // Frame tick loop
+        async function tickRealtimeScanner(timestamp) {
+            if (!isScanningActive || isScanLocked) return;
+
+            const videoEl = document.getElementById('videoFeed');
+            if (videoEl && videoEl.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && videoEl.videoWidth > 0) {
+                if (!lastScanTimestamp || timestamp - lastScanTimestamp >= SCAN_INTERVAL_MS) {
+                    lastScanTimestamp = timestamp;
+                    await scanFrameForQR(videoEl);
+                }
+            }
+
+            if (isScanningActive && !isScanLocked) {
+                requestAnimationFrame(tickRealtimeScanner);
+            }
+        }
+
+        // Detect QR from current video frame
+        async function scanFrameForQR(videoEl) {
+            if (isScanLocked) return;
+
+            let qrDetected = false;
+            let detectedData = '';
+
+            // 1. Try Native BarcodeDetector (Fastest, zero CPU overhead on mobile)
+            if (barcodeDetectorInstance) {
+                try {
+                    const barcodes = await barcodeDetectorInstance.detect(videoEl);
+                    if (barcodes && barcodes.length > 0) {
+                        qrDetected = true;
+                        detectedData = barcodes[0].rawValue || '';
+                    }
+                } catch (e) {
+                    // Fall back to jsQR
+                }
+            }
+
+            // 2. Fallback to jsQR engine
+            if (!qrDetected && typeof jsQR === 'function') {
+                const vw = videoEl.videoWidth;
+                const vh = videoEl.videoHeight;
+                if (vw > 0 && vh > 0) {
+                    // Downscale frame to ~540px width for near-instant 15ms decoding
+                    const scale = Math.min(1, 540 / vw);
+                    const targetW = Math.floor(vw * scale);
+                    const targetH = Math.floor(vh * scale);
+
+                    if (scanCanvas.width !== targetW || scanCanvas.height !== targetH) {
+                        scanCanvas.width = targetW;
+                        scanCanvas.height = targetH;
+                    }
+
+                    scanCtx.drawImage(videoEl, 0, 0, targetW, targetH);
+                    const imgData = scanCtx.getImageData(0, 0, targetW, targetH);
+                    const code = jsQR(imgData.data, targetW, targetH, {
+                        inversionAttempts: 'dontInvert'
+                    });
+
+                    if (code && code.data) {
+                        qrDetected = true;
+                        detectedData = code.data;
+                    }
+                }
+            }
+
+            if (qrDetected) {
+                onQRCodeAutoDetected(videoEl, detectedData);
+            }
+        }
+
+        // Handle successful automatic detection
+        function onQRCodeAutoDetected(videoEl, qrData) {
+            if (isScanLocked) return;
+            isScanLocked = true;
+            isScanningActive = false;
+
+            // Haptic vibration feedback
+            if (navigator.vibrate) {
+                try { navigator.vibrate([70, 40, 70]); } catch (e) {}
+            }
+
+            // Audio chime
+            playScanSuccessSound();
+
+            // Visual feedback: Green crosshair & glowing badge
+            const crosshair = document.getElementById('viewfinderCrosshair');
+            if (crosshair) crosshair.classList.add('detected');
+
+            const badge = document.getElementById('detectedBadge');
+            if (badge) badge.style.display = 'flex';
+
+            const laser = document.getElementById('scanLaserLine');
+            if (laser) laser.style.animationPlayState = 'paused';
+
+            // High resolution snapshot capture from camera
+            const canvas = document.getElementById('captureCanvas');
+            canvas.width = videoEl.videoWidth || 1280;
+            canvas.height = videoEl.videoHeight || 720;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.94);
+
+            if (qrData) {
+                sessionStorage.setItem('laqris_detected_qr_payload', qrData);
+            }
+
+            // Brief 280ms pause to let user see the green locked-on confirmation
+            setTimeout(() => {
+                showLoading();
+                sessionStorage.setItem('laqris_pending_file', dataUrl);
+                sessionStorage.setItem('laqris_pending_filename', 'auto_qris_' + Date.now() + '.jpg');
+                stopCameraStream();
+                location.href = 'scan.html';
+            }, 280);
         }
 
         // Toggle flashlight / torch
@@ -676,7 +918,7 @@
             document.getElementById('fileInputGallery').click();
         }
 
-        // Handle Image Selection from file inputs
+        // Handle Image Selection from file inputs (Gallery / Camera fallback)
         function handleImageSelection(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -693,8 +935,9 @@
             reader.readAsDataURL(file);
         }
 
-        // Trigger snapshot from video or open camera file picker
+        // Trigger snapshot from video or open camera file picker (Manual tap)
         function triggerSnapshotOrPicker() {
+            if (isScanLocked) return;
             const videoEl = document.getElementById('videoFeed');
 
             if (currentStream && videoEl && videoEl.videoWidth > 0) {
@@ -705,7 +948,7 @@
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
 
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.94);
                 showLoading();
                 sessionStorage.setItem('laqris_pending_file', dataUrl);
                 sessionStorage.setItem('laqris_pending_filename', 'kamera_laqris_' + Date.now() + '.jpg');
@@ -718,6 +961,7 @@
         }
 
         function stopCameraStream() {
+            isScanningActive = false;
             if (currentStream) {
                 currentStream.getTracks().forEach(track => track.stop());
             }
