@@ -705,23 +705,6 @@
 
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 console.warn("navigator.mediaDevices.getUserMedia not available (non-HTTPS or blocked).");
-                const httpsUrl = (window.HTTPS_LIVE_URL || "https://accountability-mariah-constant-personality.trycloudflare.com") + "/select_scan.html";
-                ambientEl.innerHTML = `
-                    <div style="text-align:center; padding: 22px 16px; max-width: 320px; z-index: 10;">
-                        <div style="font-size: 2.2rem; margin-bottom: 6px;">📷</div>
-                        <div style="font-size: 1.05rem; font-weight: 800; color: #FFFFFF; margin-bottom: 6px;">Aktifkan Kamera Live</div>
-                        <div style="font-size: 0.78rem; color: rgba(255,255,255,0.75); line-height: 1.45; margin-bottom: 16px;">
-                            Browser Chrome HP memblokir kamera di alamat IP HTTP biasa (tanda ⚠️).<br>
-                            Tekan tombol di bawah untuk beralih ke <b>Mode HTTPS Resmi</b>:
-                        </div>
-                        <a href="${httpsUrl}" style="display: block; width: 100%; background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: #FFFFFF; text-decoration: none; border-radius: 24px; padding: 13px 20px; font-weight: 800; font-size: 0.9rem; box-shadow: 0 4px 18px rgba(16, 185, 129, 0.45); margin-bottom: 12px;">
-                            🚀 Buka Kamera (Mode HTTPS)
-                        </a>
-                        <button onclick="event.stopPropagation(); triggerSnapshotOrPicker();" style="background: rgba(255,255,255,0.12); color: #FFF; border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 8px 18px; font-weight: 600; font-size: 0.78rem; cursor: pointer;">
-                            Atau Buka Kamera Bawaan HP
-                        </button>
-                    </div>
-                `;
                 videoEl.style.display = 'none';
                 ambientEl.style.display = 'flex';
                 return;
@@ -748,16 +731,6 @@
 
             if (!stream) {
                 console.error("Camera access failed completely:", lastErr);
-                ambientEl.innerHTML = `
-                    <div style="text-align:center; padding: 20px; max-width: 300px;">
-                        <div style="font-size: 2rem; margin-bottom: 6px;">🔒</div>
-                        <div style="font-size: 0.9rem; font-weight: 800; color: #FFFFFF; margin-bottom: 4px;">Izin Kamera Diperlukan</div>
-                        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.7); margin-bottom: 12px;">Ketuk tombol di bawah untuk meminta izin kamera browser.</div>
-                        <button onclick="event.stopPropagation(); initCamera();" style="background: #10B981; color: #FFF; border: none; border-radius: 20px; padding: 8px 16px; font-weight: 700; font-size: 0.8rem;">
-                            Izinkan Kamera
-                        </button>
-                    </div>
-                `;
                 videoEl.style.display = 'none';
                 ambientEl.style.display = 'flex';
                 return;
