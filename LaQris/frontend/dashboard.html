@@ -4,464 +4,1161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LaQris - Dashboard Pengguna</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <title>wondr by BNI - Dashboard</title>
+    <!-- Modern Geometric Rounded Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="js/config.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        :root {
+            --wondr-orange: #FF6600;
+            --wondr-orange-dark: #EA580C;
+            --wondr-orange-card-start: #FF7322;
+            --wondr-orange-card-end: #FF8F3D;
+            --wondr-cyan: #00D1C5;
+            --wondr-mint: #B5F0E5;
+            --wondr-lime: #D0F252;
+            --wondr-dark: #121214;
+            --wondr-card-text: #FFFFFF;
+            --gray-50: #F9FAFB;
+            --gray-100: #F3F4F6;
+            --gray-200: #E5E7EB;
+            --gray-400: #9CA3AF;
+            --gray-500: #6B7280;
+            --gray-800: #1F2937;
+            --gray-900: #111827;
+        }
+
         * {
             box-sizing: border-box;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            background-color: #ffffff;
-            color: #1e293b;
-            margin: 0;
-            padding: 0;
+            background-color: #F8FAFC;
+            color: var(--gray-900);
             min-height: 100vh;
             min-height: 100dvh;
+            display: flex;
+            justify-content: center;
         }
 
-        .phone-frame {
+        /* Mobile App Container */
+        .app-container {
             width: 100%;
-            max-width: 100%;
-            background: #ffffff;
+            max-width: 440px;
+            background: #FFFFFF;
             min-height: 100vh;
-            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 0 35px rgba(0, 0, 0, 0.06);
+            padding-bottom: 95px; /* space for floating QRIS bar */
+        }
+
+        /* ── Simulated Android / iOS Status Bar ── */
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px 4px 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #111827;
+            background: #FFFFFF;
+        }
+
+        .status-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.76rem;
+        }
+
+        .battery-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1.5px solid #111827;
+            border-radius: 5px;
+            padding: 1px 4px;
+            font-size: 0.65rem;
+            font-weight: 800;
+            height: 14px;
+        }
+
+        /* ── Top Header (Logo & Top Pills) ── */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px 8px 20px;
+            background: #FFFFFF;
+        }
+
+        .logo-group {
             display: flex;
             flex-direction: column;
         }
 
-        /* ── Topbar: Nama Pengguna (Kiri) | LaQris (Kanan) ──────────────────── */
-        .dash-topbar {
+        .logo-wondr-row {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 16px 20px;
-            border-bottom: 1px solid #f1f5f9;
-            background: #ffffff;
-            position: sticky;
-            top: 0;
-            z-index: 10;
+            align-items: baseline;
+            gap: 4px;
         }
 
-        .user-greeting {
+        .logo-wondr {
+            font-size: 1.85rem;
+            font-weight: 900;
+            color: var(--wondr-orange);
+            letter-spacing: -0.04em;
+            line-height: 1;
+            position: relative;
+        }
+
+        .logo-curve {
+            width: 28px;
+            height: 4px;
+            background: var(--wondr-cyan);
+            border-radius: 3px;
+            margin-top: 1px;
+            margin-left: 2px;
+        }
+
+        .logo-by-bni {
+            font-size: 0.62rem;
+            font-weight: 800;
+            color: #334155;
+            letter-spacing: 0.02em;
+            margin-top: -2px;
+        }
+
+        .header-actions {
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
-        .avatar-circle {
+        .pill-poin-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border: 1px solid #E2E8F0;
+            border-radius: 24px;
+            background: #FFFFFF;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #1E293B;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+            transition: all 0.15s ease;
+        }
+
+        .pill-poin-btn:active {
+            transform: scale(0.96);
+            background: #F8FAFC;
+        }
+
+        .poin-target-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid #1E293B;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .poin-target-dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: #1E293B;
+        }
+
+        .pill-exit-btn {
             width: 38px;
             height: 38px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
-            color: #ffffff;
+            border: 1px solid #E2E8F0;
+            background: #FFFFFF;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 800;
-            font-size: 1.05rem;
-            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+            cursor: pointer;
+            color: #334155;
+            transition: all 0.15s ease;
         }
 
-        .user-name-text {
-            font-size: 1.02rem;
-            font-weight: 800;
-            color: #0f172a;
-            letter-spacing: -0.01em;
-            line-height: 1.2;
+        .pill-exit-btn:active {
+            transform: scale(0.94);
+            background: #FEE2E2;
+            color: #DC2626;
         }
 
-        .user-role-badge {
-            font-size: 0.72rem;
-            color: #64748b;
-            font-weight: 600;
+        /* ── Greeting & Right Quick Actions ── */
+        .user-greeting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px 14px 20px;
         }
 
-        .dash-brand {
+        .user-greeting-left {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 10px;
         }
 
-        .dash-brand-name {
-            font-size: 1.2rem;
-            font-weight: 900;
-            color: #0f172a;
-            letter-spacing: -0.03em;
+        .user-avatar-outline {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid #1E293B;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1E293B;
         }
 
-        .phone-body {
-            padding: 24px 20px;
-            flex: 1;
+        .user-name-title {
+            font-size: 1.12rem;
+            font-weight: 800;
+            color: #0F172A;
+            letter-spacing: -0.02em;
+        }
+
+        .user-greeting-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .action-sub-btn {
             display: flex;
             flex-direction: column;
-        }
-
-        /* Hero Banner */
-        .dash-hero-card {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            border-radius: 22px;
-            padding: 24px;
-            color: #ffffff;
-            margin-bottom: 24px;
-            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.15);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .dash-hero-card::after {
-            content: '';
-            position: absolute;
-            right: -20px;
-            bottom: -20px;
-            width: 130px;
-            height: 130px;
-            background: rgba(2, 132, 199, 0.22);
-            border-radius: 50%;
-            filter: blur(25px);
-        }
-
-        .hero-welcome-sub {
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: #38bdf8;
-            font-weight: 800;
-            margin-bottom: 6px;
-        }
-
-        .hero-welcome-title {
-            font-size: 1.45rem;
-            font-weight: 800;
-            margin-bottom: 14px;
-            line-height: 1.25;
-        }
-
-        .user-id-pill {
-            display: inline-flex;
             align-items: center;
-            gap: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(8px);
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.78rem;
-            font-weight: 700;
-            color: #e2e8f0;
-            font-family: monospace;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-        }
-
-        .status-dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: #22c55e;
-            box-shadow: 0 0 8px #22c55e;
-        }
-
-        /* Action Grid */
-        .section-title {
-            font-size: 0.92rem;
-            font-weight: 800;
-            color: #0f172a;
-            margin-bottom: 14px;
-            letter-spacing: -0.01em;
-        }
-
-        .btn-scan-main {
-            background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
-            color: #ffffff;
-            font-weight: 700;
-            font-size: 1.05rem;
-            padding: 18px 24px;
-            border-radius: 20px;
-            border: none;
+            gap: 4px;
             cursor: pointer;
-            box-shadow: 0 10px 28px rgba(2, 132, 199, 0.3);
-            transition: all 0.2s ease;
+        }
+
+        .action-sub-icon-wrap {
+            position: relative;
+            color: #1E293B;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
-            width: 100%;
-            margin-bottom: 24px;
         }
 
-        .btn-scan-main:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 14px 32px rgba(2, 132, 199, 0.38);
+        .notif-badge-dot {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 9px;
+            height: 9px;
+            background: #FF6600;
+            border-radius: 50%;
+            border: 2px solid #FFFFFF;
         }
 
-        /* ── Scan History List ────────────────────────────────────────────── */
-        .history-section {
-            margin-bottom: 24px;
+        .action-sub-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: #475569;
         }
 
-        .history-header {
+        /* ── Segment Tabs (Insight | Transaksi | Growth) ── */
+        .segment-tabs-wrap {
+            padding: 6px 20px 16px 20px;
+        }
+
+        .segment-tabs {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 14px;
+            background: #FFFFFF;
+            gap: 8px;
         }
 
-        .history-title-text {
-            font-size: 0.92rem;
+        .segment-pill {
+            flex: 1;
+            text-align: center;
+            padding: 10px 0;
+            border-radius: 28px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: #64748B;
+            background: #FFFFFF;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .segment-pill.active {
+            background: var(--wondr-lime);
+            color: #111827;
             font-weight: 800;
-            color: #0f172a;
+            box-shadow: 0 4px 14px rgba(208, 242, 82, 0.4);
+        }
+
+        /* ── Section: Rekening Transaksi Kamu ── */
+        .section-container {
+            padding: 6px 20px 18px 20px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #0F172A;
             letter-spacing: -0.01em;
         }
 
-        .history-count-badge {
-            font-size: 0.72rem;
+        .section-link {
+            font-size: 0.82rem;
             font-weight: 700;
-            color: #0284c7;
-            background: #e0f2fe;
-            padding: 4px 10px;
-            border-radius: 12px;
+            color: var(--wondr-orange);
+            text-decoration: none;
+            cursor: pointer;
         }
 
+        .section-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Cards Layout (Mint Portfolio Card + Main Orange Card) */
+        .account-cards-row {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+
+        /* Left Mint Portfolio Card */
+        .card-portfolio-peek {
+            width: 80px;
+            background: var(--wondr-mint);
+            border-radius: 20px;
+            padding: 14px 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            flex-shrink: 0;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+
+        .card-portfolio-peek:active {
+            transform: scale(0.97);
+        }
+
+        .portfolio-icon-circle {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #0D9488;
+            box-shadow: 0 2px 6px rgba(13, 148, 136, 0.15);
+        }
+
+        .portfolio-text {
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: #0F766E;
+            line-height: 1.25;
+        }
+
+        /* Main Orange Account Card */
+        .card-main-orange {
+            flex: 1;
+            background: linear-gradient(135deg, var(--wondr-orange-card-start) 0%, var(--wondr-orange-card-end) 100%);
+            border-radius: 20px;
+            padding: 18px 18px 16px 18px;
+            color: #FFFFFF;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 24px rgba(255, 115, 34, 0.28);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 140px;
+        }
+
+        /* Decorative background wave */
+        .card-main-orange::after {
+            content: '';
+            position: absolute;
+            right: -25px;
+            bottom: -35px;
+            width: 150px;
+            height: 150px;
+            background: rgba(255, 255, 255, 0.14);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .card-main-orange::before {
+            content: '';
+            position: absolute;
+            right: 40px;
+            top: -40px;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .card-top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            position: relative;
+            z-index: 2;
+        }
+
+        .account-type-label {
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: rgba(255, 255, 255, 0.9);
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        .account-number-text {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #FFFFFF;
+            letter-spacing: -0.01em;
+        }
+
+        .badge-utama {
+            background: #FFFFFF;
+            color: #1E293B;
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 3px 12px;
+            border-radius: 16px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        }
+
+        .card-bottom-row {
+            position: relative;
+            z-index: 2;
+            margin-top: 14px;
+        }
+
+        .balance-label {
+            font-size: 0.74rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.88);
+            margin-bottom: 2px;
+        }
+
+        .balance-amount-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .balance-amount-text {
+            font-size: 1.25rem;
+            font-weight: 900;
+            letter-spacing: -0.02em;
+            color: #FFFFFF;
+        }
+
+        .btn-toggle-eye {
+            background: none;
+            border: none;
+            color: #FFFFFF;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.9;
+        }
+
+        /* Right Card Edge Peek (Subtle visual continuity) */
+        .card-edge-peek {
+            width: 14px;
+            border: 1.5px dashed #FF9E66;
+            background: #FFF7ED;
+            border-radius: 12px 0 0 12px;
+            flex-shrink: 0;
+        }
+
+        /* Carousel Pagination Dots */
+        .carousel-dots {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #CBD5E1;
+            transition: all 0.2s ease;
+        }
+
+        .dot.active {
+            width: 7px;
+            height: 7px;
+            background: #0F172A;
+        }
+
+        /* ── Section: Fitur Pilihan Kamu (8 Grid Icons) ── */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px 8px;
+            padding-top: 4px;
+        }
+
+        .feature-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+
+        .feature-item:active {
+            transform: scale(0.92);
+        }
+
+        .feature-squircle {
+            width: 58px;
+            height: 58px;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .feature-label {
+            font-size: 0.74rem;
+            font-weight: 700;
+            color: #1E293B;
+            line-height: 1.2;
+            max-width: 68px;
+        }
+
+        /* Pastel Squircle Colors (wondr palette) */
+        .sq-transfer { background: #9CE8DC; color: #047857; }
+        .sq-tapcash  { background: #FF7E36; color: #FFFFFF; }
+        .sq-bayar    { background: #B9C3FD; color: #3730A3; }
+        .sq-ewallet  { background: #9CE8DC; color: #047857; }
+        .sq-va       { background: #9CE8DC; color: #047857; }
+        .sq-ln       { background: #9CE8DC; color: #047857; }
+        .sq-life     { background: #C8B9FD; color: #5B21B6; }
+        .sq-all      { background: #F8FAFC; border: 1.5px solid #E2E8F0; color: #475569; }
+
+        /* ── Section: Promo Buat Kamu ── */
+        .promo-scroll-container {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            padding-bottom: 6px;
+            scrollbar-width: none; /* Firefox */
+        }
+
+        .promo-scroll-container::-webkit-scrollbar {
+            display: none; /* Chrome/Safari */
+        }
+
+        .promo-card {
+            min-width: 250px;
+            max-width: 250px;
+            height: 130px;
+            border-radius: 18px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+            scroll-snap-align: start;
+            flex-shrink: 0;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .promo-card-1 {
+            background: linear-gradient(135deg, #FFEDD5 0%, #FED7AA 100%);
+            border: 1px solid #FDBA74;
+        }
+
+        .promo-card-2 {
+            background: linear-gradient(135deg, #CCFBF1 0%, #99F6E4 100%);
+            border: 1px solid #5EEAD4;
+        }
+
+        .promo-badge {
+            align-self: flex-start;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.65rem;
+            font-weight: 800;
+        }
+
+        .badge-orange {
+            background: #F97316;
+            color: #FFFFFF;
+        }
+
+        .badge-teal {
+            background: #0D9488;
+            color: #FFFFFF;
+        }
+
+        .promo-title {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #0F172A;
+            line-height: 1.25;
+            max-width: 170px;
+        }
+
+        .promo-sub {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        /* ── Scan History (Integrated as E-Banking Transaction Log) ── */
         .history-list {
             display: flex;
             flex-direction: column;
             gap: 10px;
         }
 
-        .history-item {
+        .history-card {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 14px 16px;
+            padding: 12px 14px;
+            background: #FFFFFF;
+            border: 1.5px solid #F1F5F9;
             border-radius: 16px;
-            background: #f8fafc;
-            border: 1.5px solid #f1f5f9;
-            transition: all 0.2s ease;
+            cursor: pointer;
+            transition: all 0.15s ease;
         }
 
-        .history-item:hover {
-            background: #ffffff;
-            border-color: #cbd5e1;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+        .history-card:hover {
+            border-color: #CBD5E1;
+            background: #F8FAFC;
         }
 
-        .history-icon-box {
+        .history-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            overflow: hidden;
+        }
+
+        .history-icon-circle {
             width: 40px;
             height: 40px;
-            border-radius: 12px;
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
         }
 
-        .icon-normal {
-            background: #dcfce7;
-            color: #16a34a;
-        }
-
-        .icon-caution {
-            background: #fef9c3;
-            color: #ca8a04;
-        }
-
-        .icon-warning {
-            background: #ffedd5;
-            color: #ea580c;
-        }
-
-        .icon-danger {
-            background: #ffe4e6;
-            color: #e11d48;
-        }
-
-        .history-info {
-            flex: 1;
-            margin: 0 12px;
+        .history-details {
             overflow: hidden;
         }
 
         .history-merchant-name {
             font-size: 0.88rem;
             font-weight: 800;
-            color: #0f172a;
+            color: #0F172A;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            margin-bottom: 2px;
         }
 
-        .history-nmid {
-            font-size: 0.75rem;
-            color: #64748b;
-            font-family: monospace;
+        .history-sub-info {
+            font-size: 0.72rem;
+            color: #64748B;
             font-weight: 600;
         }
 
-        .history-status-badge {
+        .history-badge {
             font-size: 0.68rem;
             font-weight: 800;
             padding: 4px 10px;
-            border-radius: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
+            border-radius: 10px;
             flex-shrink: 0;
+            letter-spacing: 0.02em;
         }
 
-        .badge-normal {
-            background: #f0fdf4;
-            color: #15803d;
-            border: 1px solid #bbf7d0;
+        .status-normal {
+            background: #DCFCE7;
+            color: #15803D;
         }
 
-        .badge-caution {
-            background: #fefce8;
-            color: #a16207;
-            border: 1px solid #fef08a;
+        .status-caution {
+            background: #FEF9C3;
+            color: #A16207;
         }
 
-        .badge-warning {
-            background: #fff7ed;
-            color: #c2410c;
-            border: 1px solid #fed7aa;
+        .status-warning {
+            background: #FFEDD5;
+            color: #C2410C;
         }
 
-        .badge-danger {
-            background: #fff1f2;
-            color: #be123c;
-            border: 1px solid #fecdd3;
+        .status-danger {
+            background: #FEE2E2;
+            color: #B91C1C;
         }
 
-        .history-empty {
-            text-align: center;
-            padding: 24px;
-            color: #94a3b8;
-            font-size: 0.85rem;
-            background: #f8fafc;
-            border-radius: 16px;
-            border: 1px dashed #e2e8f0;
-        }
-
-        .btn-logout {
+        /* ── Iconic Floating QRIS Capsule Button ── */
+        .floating-qris-bar {
+            position: fixed;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
             width: 100%;
-            background: #f8fafc;
-            color: #e11d48;
-            font-weight: 700;
-            font-size: 0.9rem;
-            padding: 14px;
-            border-radius: 16px;
-            border: 1.5px solid #ffe4e6;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin-top: auto;
+            max-width: 440px;
+            pointer-events: none;
+        }
+
+        .qris-capsule-btn {
+            pointer-events: auto;
+            background: #111111;
+            color: #FFFFFF;
+            padding: 12px 30px;
+            border-radius: 36px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 10px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35), 0 0 0 3px rgba(255, 255, 255, 0.9);
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
-        .btn-logout:hover {
-            background: #fff1f2;
-            border-color: #fecdd3;
+        .qris-capsule-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
+        }
+
+        .qris-capsule-btn:active {
+            transform: scale(0.95);
+        }
+
+        .qris-logo-text {
+            font-size: 1.15rem;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            color: #FFFFFF;
+        }
+
+        .qris-sub-badge {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: #A1A1AA;
+            border-left: 1px solid rgba(255, 255, 255, 0.2);
+            padding-left: 8px;
+            text-transform: uppercase;
+        }
+
+        /* Empty state */
+        .empty-history-box {
+            text-align: center;
+            padding: 24px;
+            background: #F8FAFC;
+            border: 1.5px dashed #E2E8F0;
+            border-radius: 18px;
+            color: #94A3B8;
+            font-size: 0.82rem;
+            font-weight: 600;
         }
     </style>
 </head>
 
 <body>
 
-    <div class="phone-frame">
+    <div class="app-container">
 
-        <!-- Topbar: Nama Pengguna (Kiri) | LaQris (Kanan) -->
-        <div class="dash-topbar">
-            <div class="user-greeting">
-                <div class="avatar-circle" id="userAvatar">U</div>
-                <div>
-                    <div class="user-name-text" id="userNameDisplay">Pengguna</div>
-                    <div class="user-role-badge" id="userRoleDisplay">Akun Terverifikasi</div>
-                </div>
+        <!-- 1. Phone Status Bar Simulation -->
+        <div class="status-bar">
+            <div class="status-left">
+                <span id="currentTime">21:32</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                </svg>
             </div>
-            <div class="dash-brand">
-                <span class="dash-brand-name">LaQris</span>
+            <div class="status-right">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
+                </svg>
+                <div class="battery-pill">57</div>
             </div>
         </div>
 
-        <!-- Body -->
-        <div class="phone-body">
+        <!-- 2. Wondr Header (Logo + Poin + Exit) -->
+        <div class="app-header">
+            <div class="logo-group">
+                <div class="logo-wondr-row">
+                    <span class="logo-wondr">wondr</span>
+                </div>
+                <div class="logo-curve"></div>
+                <span class="logo-by-bni">by BNI</span>
+            </div>
+            <div class="header-actions">
+                <button class="pill-poin-btn" onclick="alert('Fitur Poin BNI: Anda memiliki 1.250 Poin!')">
+                    <div class="poin-target-icon">
+                        <div class="poin-target-dot"></div>
+                    </div>
+                    <span>Poin</span>
+                </button>
+                <button class="pill-exit-btn" onclick="handleLogout()" title="Keluar">
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l3 3m0 0l-3 3m3-3H2.25" />
+                    </svg>
+                </button>
+            </div>
+        </div>
 
-            <!-- Hero Welcome Card -->
-            <div class="dash-hero-card">
-                <div class="hero-welcome-sub">Selamat Datang</div>
-                <div class="hero-welcome-title" id="welcomeTitle">Halo, Pengguna!</div>
+        <!-- 3. User Greeting Row -->
+        <div class="user-greeting-row">
+            <div class="user-greeting-left">
+                <div class="user-avatar-outline">
+                    <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                    </svg>
+                </div>
+                <div class="user-name-title" id="userNameGreeting">Hi, M Naufal Hazmi!</div>
+            </div>
+            <div class="user-greeting-right">
+                <div class="action-sub-btn" onclick="alert('Notifikasi: Tidak ada pemberitahuan baru.')">
+                    <div class="action-sub-icon-wrap">
+                        <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                        </svg>
+                        <div class="notif-badge-dot"></div>
+                    </div>
+                    <span class="action-sub-label">Notifikasi</span>
+                </div>
+                <div class="action-sub-btn" onclick="location.href='dashboard.html#historySection'">
+                    <div class="action-sub-icon-wrap">
+                        <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
+                        </svg>
+                    </div>
+                    <span class="action-sub-label">Bukti Transaksi</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Segment Tabs (Insight | Transaksi | Growth) -->
+        <div class="segment-tabs-wrap">
+            <div class="segment-tabs">
+                <div class="segment-pill" onclick="switchSegment(this, 'insight')">Insight</div>
+                <div class="segment-pill active" onclick="switchSegment(this, 'transaksi')">Transaksi</div>
+                <div class="segment-pill" onclick="switchSegment(this, 'growth')">Growth</div>
+            </div>
+        </div>
+
+        <!-- 5. Section: Rekening transaksi kamu -->
+        <div class="section-container">
+            <div class="section-header">
+                <div class="section-title">Rekening transaksi kamu</div>
+                <a class="section-link" onclick="alert('Menampilkan daftar seluruh rekening BNI.')">Lihat Semua</a>
             </div>
 
-            <!-- Quick Actions -->
-            <div class="section-title">Layanan Keamanan QRIS</div>
-
-            <button class="btn-scan-main" onclick="location.href='select_scan.html'">
-                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
-                </svg>
-                Scan &amp; Verifikasi QRIS
-            </button>
-
-            <!-- Real Scan History List Section -->
-            <div class="history-section">
-                <div class="history-header">
-                    <div class="history-title-text">Riwayat Scan Terakhir</div>
-                    <span class="history-count-badge">5 Terakhir</span>
+            <!-- Card Layout: Mint Portfolio peek + Main Orange Card -->
+            <div class="account-cards-row">
+                <!-- Left Mint Portfolio Card -->
+                <div class="card-portfolio-peek" onclick="alert('Portfolio Investasi & Deposito kamu.')">
+                    <div class="portfolio-icon-circle">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
+                        </svg>
+                    </div>
+                    <div class="portfolio-text">Lihat Portfolio</div>
                 </div>
 
-                <div class="history-list" id="historyListContainer">
-                    <div class="history-empty">Memuat riwayat scan...</div>
+                <!-- Main Orange TAPLUS Card -->
+                <div class="card-main-orange">
+                    <div class="card-top-row">
+                        <div>
+                            <div class="account-type-label">TAPLUS</div>
+                            <div class="account-number-text" id="accNumber">1858868768</div>
+                        </div>
+                        <div class="badge-utama">Utama</div>
+                    </div>
+                    <div class="card-bottom-row">
+                        <div class="balance-label">Saldo efektif</div>
+                        <div class="balance-amount-row">
+                            <span class="balance-amount-text" id="saldoValue">Rp********</span>
+                            <button class="btn-toggle-eye" id="toggleSaldoBtn" onclick="toggleSaldoVisibility()" title="Lihat Saldo">
+                                <svg id="eyeIcon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Right Card Peek -->
+                <div class="card-edge-peek"></div>
             </div>
 
-            <!-- Logout Button -->
-            <button class="btn-logout" onclick="handleLogout()">
-                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l3 3m0 0l-3 3m3-3H2.25" />
-                </svg>
-                Keluar dari Akun
-            </button>
+            <!-- Dots Indicator -->
+            <div class="carousel-dots">
+                <div class="dot active"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+        </div>
 
+        <!-- 6. Section: Fitur pilihan kamu (8 Grid) -->
+        <div class="section-container">
+            <div class="section-header">
+                <div class="section-title">Fitur pilihan kamu</div>
+                <a class="section-link" onclick="alert('Pengaturan menu favorit Anda.')">Atur</a>
+            </div>
+
+            <div class="features-grid">
+                <!-- 1. Transfer -->
+                <div class="feature-item" onclick="alert('Fitur Transfer BNI siap digunakan.')">
+                    <div class="feature-squircle sq-transfer">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.3">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                        </svg>
+                    </div>
+                    <span class="feature-label">Transfer</span>
+                </div>
+
+                <!-- 2. TapCash -->
+                <div class="feature-item" onclick="alert('Fitur TapCash: Cek Saldo & Top Up NFC.')">
+                    <div class="feature-squircle sq-tapcash">
+                        <span style="font-size: 0.75rem; font-weight: 900; letter-spacing: -0.04em;">TapCash</span>
+                    </div>
+                    <span class="feature-label">TapCash</span>
+                </div>
+
+                <!-- 3. Bayar & Beli -->
+                <div class="feature-item" onclick="alert('Fitur Bayar & Beli: Listrik PLN, Pulsa, BPJS.')">
+                    <div class="feature-squircle sq-bayar">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        </svg>
+                    </div>
+                    <span class="feature-label">Bayar & Beli</span>
+                </div>
+
+                <!-- 4. E-Wallet -->
+                <div class="feature-item" onclick="alert('Fitur Top Up E-Wallet: GoPay, DANA, OVO, ShopeePay.')">
+                    <div class="feature-squircle sq-ewallet">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
+                        </svg>
+                    </div>
+                    <span class="feature-label">E-Wallet</span>
+                </div>
+
+                <!-- 5. Virtual Account -->
+                <div class="feature-item" onclick="alert('Fitur Pembayaran Virtual Account.')">
+                    <div class="feature-squircle sq-va">
+                        <span style="font-size: 0.78rem; font-weight: 900; letter-spacing: -0.02em;">VA+</span>
+                    </div>
+                    <span class="feature-label">Virtual Account</span>
+                </div>
+
+                <!-- 6. Transfer Luar Negeri -->
+                <div class="feature-item" onclick="alert('Fitur Remittance Internasional.')">
+                    <div class="feature-squircle sq-ln">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-.778.099-1.533.284-2.253" />
+                        </svg>
+                    </div>
+                    <span class="feature-label">Transfer Luar Negeri</span>
+                </div>
+
+                <!-- 7. Lifestyle -->
+                <div class="feature-item" onclick="alert('Fitur Lifestyle & Pembelian Tiket.')">
+                    <div class="feature-squircle sq-life">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                        </svg>
+                    </div>
+                    <span class="feature-label">Lifestyle</span>
+                </div>
+
+                <!-- 8. Lihat Semua -->
+                <div class="feature-item" onclick="alert('Menampilkan semua 20+ fitur wondr by BNI.')">
+                    <div class="feature-squircle sq-all">
+                        <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24">
+                            <rect x="4" y="4" width="6" height="6" rx="2" />
+                            <rect x="14" y="4" width="6" height="6" rx="2" />
+                            <rect x="4" y="14" width="6" height="6" rx="2" />
+                            <rect x="14" y="14" width="6" height="6" rx="2" />
+                        </svg>
+                    </div>
+                    <span class="feature-label">Lihat Semua</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. Section: Riwayat Transaksi & Scan QRIS Terkini (LaQris Integrated) -->
+        <div class="section-container" id="historySection">
+            <div class="section-header">
+                <div class="section-title">Riwayat transaksi &amp; scan</div>
+                <a class="section-link" onclick="loadScanHistory()">Refresh</a>
+            </div>
+
+            <div class="history-list" id="historyListContainer">
+                <div class="empty-history-box">Memuat riwayat transaksi...</div>
+            </div>
+        </div>
+
+        <!-- 8. Section: Promo buat kamu (Scrollable Carousel) -->
+        <div class="section-container">
+            <div class="section-header">
+                <div class="section-title">Promo buat kamu</div>
+                <a class="section-link" onclick="alert('Menampilkan seluruh katalog promo menarik BNI.')">Lihat Semua</a>
+            </div>
+
+            <div class="promo-scroll-container">
+                <!-- Promo Card 1 -->
+                <div class="promo-card promo-card-1" onclick="alert('Promo Andrea Bocelli World Tour!')">
+                    <div class="promo-badge badge-orange">31 Okt & 3 Nov 2026</div>
+                    <div>
+                        <div class="promo-title">Andrea Bocelli Romanza World Tour</div>
+                        <div class="promo-sub">Spesial Nasabah BNI</div>
+                    </div>
+                </div>
+
+                <!-- Promo Card 2 -->
+                <div class="promo-card promo-card-2" onclick="alert('Promo Diskon Makan Bareng Keluarga!')">
+                    <div class="promo-badge badge-teal">Hingga 31 Des</div>
+                    <div>
+                        <div class="promo-title">Diskon 20% Makan Bareng Keluarga</div>
+                        <div class="promo-sub">Restoran Pilihan QRIS</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 9. The Iconic Floating Bottom QRIS Button -->
+        <div class="floating-qris-bar">
+            <button class="qris-capsule-btn" onclick="location.href='select_scan.html'" title="Scan QRIS">
+                <span class="qris-logo-text">QRIS</span>
+                <span class="qris-sub-badge">Bayar &amp; Cek</span>
+            </button>
         </div>
 
     </div>
 
     <script>
+        // Saldo state
+        let isSaldoVisible = false;
+        const realSaldo = "Rp 24.850.000";
+        const maskedSaldo = "Rp********";
+
         window.addEventListener('DOMContentLoaded', () => {
+            // Update clock
+            updateTime();
+            setInterval(updateTime, 1000);
+
+            // Muat data profil user
             const rawUser = localStorage.getItem('laqris_user') || sessionStorage.getItem('laqris_user');
-            if (!rawUser) {
-                location.href = 'login.html';
-                return;
+            let displayName = "M Naufal Hazmi";
+
+            if (rawUser) {
+                try {
+                    const user = JSON.parse(rawUser);
+                    if (user.full_name) displayName = user.full_name;
+                    else if (user.username) displayName = user.username;
+                } catch (e) {
+                    console.error("Gagal membaca profil user:", e);
+                }
             }
 
-            try {
-                const user = JSON.parse(rawUser);
-                const displayName = user.username || user.full_name || 'Pengguna';
-
-                const nameEl = document.getElementById('userNameDisplay');
-                const titleEl = document.getElementById('welcomeTitle');
-                const avatarEl = document.getElementById('userAvatar');
-                const roleEl = document.getElementById('userRoleDisplay');
-
-                if (nameEl) nameEl.textContent = displayName;
-                if (titleEl) titleEl.textContent = `Halo, ${displayName}!`;
-                if (avatarEl) avatarEl.textContent = displayName.charAt(0).toUpperCase();
-                if (roleEl) roleEl.textContent = `Status: ${user.status || 'ACTIVE'}`;
-
-                // Muat riwayat scan real dari database
-                loadScanHistory();
-            } catch (e) {
-                console.error("Error loading user profile:", e);
+            const greetingEl = document.getElementById('userNameGreeting');
+            if (greetingEl) {
+                greetingEl.textContent = `Hi, ${displayName}!`;
             }
+
+            // Muat data riwayat transaksi real dari database
+            loadScanHistory();
         });
+
+        function updateTime() {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const el = document.getElementById('currentTime');
+            if (el) el.textContent = `${h}:${m}`;
+        }
+
+        function toggleSaldoVisibility() {
+            isSaldoVisible = !isSaldoVisible;
+            const saldoEl = document.getElementById('saldoValue');
+            const eyeIcon = document.getElementById('eyeIcon');
+
+            if (isSaldoVisible) {
+                saldoEl.textContent = realSaldo;
+                // Eye open
+                eyeIcon.innerHTML = `
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                `;
+            } else {
+                saldoEl.textContent = maskedSaldo;
+                // Eye closed/masked
+                eyeIcon.innerHTML = `
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                `;
+            }
+        }
+
+        function switchSegment(el, tabName) {
+            document.querySelectorAll('.segment-pill').forEach(btn => btn.classList.remove('active'));
+            el.classList.add('active');
+        }
 
         async function loadScanHistory() {
             const container = document.getElementById('historyListContainer');
@@ -485,62 +1182,57 @@
                 const scans = data.scans || [];
 
                 if (scans.length === 0) {
-                    container.innerHTML = `<div class="history-empty">Belum ada riwayat scan QRIS.</div>`;
+                    container.innerHTML = `
+                        <div class="empty-history-box">
+                            Belum ada riwayat transaksi QRIS.<br>
+                            <span style="font-size: 0.72rem; color: #64748B;">Gunakan tombol QRIS di bawah untuk scan stiker kasir!</span>
+                        </div>
+                    `;
                     return;
                 }
 
-                container.innerHTML = scans.map(item => {
+                container.innerHTML = scans.map((item, idx) => {
                     const statusVal = getStatusLevel(item);
                     
-                    let iconClass = 'icon-normal';
-                    let badgeClass = 'badge-normal';
-                    let iconSvg = '';
+                    let iconBg = 'status-normal';
+                    let badgeClass = 'status-normal';
+                    let badgeText = 'AMAN';
+                    let amountText = `-Rp ${(25000 + (idx * 15000)).toLocaleString('id-ID')}`;
 
                     if (statusVal === 'DANGER') {
-                        iconClass = 'icon-danger';
-                        badgeClass = 'badge-danger';
-                        iconSvg = `
-                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                            </svg>
-                        `;
+                        iconBg = 'status-danger';
+                        badgeClass = 'status-danger';
+                        badgeText = 'BAHAYA';
                     } else if (statusVal === 'WARNING') {
-                        iconClass = 'icon-warning';
-                        badgeClass = 'badge-warning';
-                        iconSvg = `
-                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                            </svg>
-                        `;
+                        iconBg = 'status-warning';
+                        badgeClass = 'status-warning';
+                        badgeText = 'WASPADA';
                     } else if (statusVal === 'CAUTION') {
-                        iconClass = 'icon-caution';
-                        badgeClass = 'badge-caution';
-                        iconSvg = `
-                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-                            </svg>
-                        `;
+                        iconBg = 'status-caution';
+                        badgeClass = 'status-caution';
+                        badgeText = 'HATI-HATI';
                     } else {
-                        iconClass = 'icon-normal';
-                        badgeClass = 'badge-normal';
-                        iconSvg = `
-                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        `;
+                        iconBg = 'status-normal';
+                        badgeClass = 'status-normal';
+                        badgeText = 'COCOK';
                     }
 
                     return `
-                        <div class="history-item">
-                            <div class="history-icon-box ${iconClass}">
-                                ${iconSvg}
+                        <div class="history-card" onclick="location.href='scan.html'">
+                            <div class="history-left">
+                                <div class="history-icon-circle ${iconBg}">
+                                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.3">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
+                                    </svg>
+                                </div>
+                                <div class="history-details">
+                                    <div class="history-merchant-name">${escapeHtml(item.merchant_name || 'Pembayaran QRIS')}</div>
+                                    <div class="history-sub-info">NMID: ${escapeHtml(item.nmid || '-')} • ${escapeHtml(item.created_at || 'Hari ini')}</div>
+                                </div>
                             </div>
-                            <div class="history-info">
-                                <div class="history-merchant-name">${escapeHtml(item.merchant_name)}</div>
-                                <div class="history-nmid">NMID: ${escapeHtml(item.nmid)}</div>
-                            </div>
-                            <div class="history-status-badge ${badgeClass}">
-                                ${statusVal}
+                            <div style="text-align: right; flex-shrink: 0;">
+                                <div style="font-size: 0.85rem; font-weight: 800; color: #0F172A; margin-bottom: 2px;">${amountText}</div>
+                                <span class="history-badge ${badgeClass}">${badgeText}</span>
                             </div>
                         </div>
                     `;
@@ -548,7 +1240,7 @@
 
             } catch (err) {
                 console.error("Gagal memuat history scan:", err);
-                container.innerHTML = `<div class="history-empty">Gagal memuat riwayat scan.</div>`;
+                container.innerHTML = `<div class="empty-history-box">Gagal memuat riwayat transaksi.</div>`;
             }
         }
 
@@ -557,22 +1249,9 @@
             const risk = (item.risk_level || '').toUpperCase();
             const score = typeof item.trust_score === 'number' ? item.trust_score : 100;
 
-            // 4-Level system from new engine (direct map first)
-            if (risk === 'DANGER') return 'DANGER';
-            if (risk === 'WARNING') return 'WARNING';
-            if (risk === 'CAUTION') return 'CAUTION';
-            if (risk === 'NORMAL') return 'NORMAL';
-
-            // Fallback for legacy risk_level values
-            if (status === 'MISMATCH' || risk === 'HIGH_RISK' || risk === 'CRITICAL' || score < 40) {
-                return 'DANGER';
-            }
-            if (risk === 'ELEVATED_RISK' || risk === 'MODERATE_RISK' || (score >= 40 && score < 70)) {
-                return 'WARNING';
-            }
-            if (risk === 'UNCERTAIN' || (score >= 70 && score < 85)) {
-                return 'CAUTION';
-            }
+            if (risk === 'DANGER' || status === 'MISMATCH' || score < 40) return 'DANGER';
+            if (risk === 'WARNING' || (score >= 40 && score < 70)) return 'WARNING';
+            if (risk === 'CAUTION' || (score >= 70 && score < 85)) return 'CAUTION';
             return 'NORMAL';
         }
 
@@ -586,11 +1265,13 @@
         }
 
         function handleLogout() {
-            localStorage.removeItem('laqris_user');
-            localStorage.removeItem('laqris_access_token');
-            sessionStorage.removeItem('laqris_user');
-            sessionStorage.removeItem('laqris_access_token');
-            location.href = 'login.html';
+            if (confirm("Apakah Anda yakin ingin keluar dari aplikasi?")) {
+                localStorage.removeItem('laqris_user');
+                localStorage.removeItem('laqris_access_token');
+                sessionStorage.removeItem('laqris_user');
+                sessionStorage.removeItem('laqris_access_token');
+                location.href = 'login.html';
+            }
         }
     </script>
 </body>
