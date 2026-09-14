@@ -698,52 +698,100 @@
             }
         }
 
-        // Initialize user media camera
+        // Initialize user media camera with resilient mobile fallbacks
         async function initCamera() {
             const videoEl = document.getElementById('videoFeed');
             const ambientEl = document.getElementById('cameraAmbientBg');
 
-            try {
-                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                    const stream = await navigator.mediaDevices.getUserMedia({
-                        video: {
-                            facingMode: { ideal: 'environment' },
-                            width: { ideal: 1920, min: 640 },
-                            height: { ideal: 1080, min: 480 }
-                        }
-                    });
-
-                    currentStream = stream;
-                    videoEl.srcObject = stream;
-                    videoEl.style.display = 'block';
-                    ambientEl.style.display = 'none';
-
-                    // Track torch and continuous autofocus
-                    const tracks = stream.getVideoTracks();
-                    if (tracks && tracks.length > 0) {
-                        videoTrack = tracks[0];
-                        if (videoTrack.getCapabilities) {
-                            const capabilities = videoTrack.getCapabilities();
-                            if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
-                                try {
-                                    await videoTrack.applyConstraints({
-                                        advanced: [{ focusMode: 'continuous' }]
-                                    });
-                                } catch (e) {}
-                            }
-                        }
-                    }
-
-                    videoEl.onloadedmetadata = () => {
-                        videoEl.play();
-                        startRealtimeScanner();
-                    };
-                }
-            } catch (err) {
-                console.warn("Kamera tidak dapat diakses langsung, menggunakan mode fallback input.", err);
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                console.warn("navigator.mediaDevices.getUserMedia not available (non-HTTPS or blocked).");
+                ambientEl.innerHTML = `
+                    <div style="text-align:center; padding: 20px; max-width: 320px;">
+                        <div style="font-size: 2.2rem; margin-bottom: 8px;">📷</div>
+                        <div style="font-size: 0.95rem; font-weight: 800; color: #FFFFFF; margin-bottom: 6px;">Kamera Memerlukan HTTPS</div>
+                        <div style="font-size: 0.76rem; color: rgba(255,255,255,0.7); line-height: 1.4; margin-bottom: 14px;">
+                            Browser Chrome memblokir kamera jika dibuka lewat IP HTTP (tanda ⚠️). Silakan buka lewat link HTTPS aman.
+                        </div>
+                        <button onclick="event.stopPropagation(); triggerSnapshotOrPicker();" style="background: #2563EB; color: #FFF; border: none; border-radius: 20px; padding: 8px 18px; font-weight: 700; font-size: 0.8rem; cursor: pointer;">
+                            Buka Kamera Manual
+                        </button>
+                    </div>
+                `;
                 videoEl.style.display = 'none';
                 ambientEl.style.display = 'flex';
+                return;
             }
+
+            const constraintOptions = [
+                { video: { facingMode: { ideal: 'environment' } }, audio: false },
+                { video: { facingMode: 'environment' }, audio: false },
+                { video: true, audio: false }
+            ];
+
+            let stream = null;
+            let lastErr = null;
+
+            for (const constraint of constraintOptions) {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia(constraint);
+                    if (stream) break;
+                } catch (err) {
+                    lastErr = err;
+                    console.warn("Constraint attempt failed:", constraint, err);
+                }
+            }
+
+            if (!stream) {
+                console.error("Camera access failed completely:", lastErr);
+                ambientEl.innerHTML = `
+                    <div style="text-align:center; padding: 20px; max-width: 300px;">
+                        <div style="font-size: 2rem; margin-bottom: 6px;">🔒</div>
+                        <div style="font-size: 0.9rem; font-weight: 800; color: #FFFFFF; margin-bottom: 4px;">Izin Kamera Diperlukan</div>
+                        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.7); margin-bottom: 12px;">Ketuk tombol di bawah untuk meminta izin kamera browser.</div>
+                        <button onclick="event.stopPropagation(); initCamera();" style="background: #10B981; color: #FFF; border: none; border-radius: 20px; padding: 8px 16px; font-weight: 700; font-size: 0.8rem;">
+                            Izinkan Kamera
+                        </button>
+                    </div>
+                `;
+                videoEl.style.display = 'none';
+                ambientEl.style.display = 'flex';
+                return;
+            }
+
+            currentStream = stream;
+            videoEl.srcObject = stream;
+            videoEl.setAttribute('playsinline', 'true');
+            videoEl.setAttribute('webkit-playsinline', 'true');
+            videoEl.setAttribute('autoplay', 'true');
+            videoEl.setAttribute('muted', 'true');
+            videoEl.muted = true;
+
+            videoEl.style.display = 'block';
+            ambientEl.style.display = 'none';
+
+            try {
+                await videoEl.play();
+            } catch (e) {
+                console.warn("Autoplay notice:", e);
+            }
+
+            // Continuous autofocus & torch tracking
+            const tracks = stream.getVideoTracks();
+            if (tracks && tracks.length > 0) {
+                videoTrack = tracks[0];
+                if (videoTrack.getCapabilities) {
+                    const capabilities = videoTrack.getCapabilities();
+                    if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
+                        try {
+                            await videoTrack.applyConstraints({
+                                advanced: [{ focusMode: 'continuous' }]
+                            });
+                        } catch (e) {}
+                    }
+                }
+            }
+
+            startRealtimeScanner();
         }
 
         // Start automatic continuous real-time scanner loop
