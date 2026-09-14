@@ -11,15 +11,14 @@
 window.LAQRIS_API_URL = "https://YOUR-BACKEND-URL";
 
 window.API_BASE = (function () {
-    // Lokal: FastAPI serve frontend & backend di port yang sama
-    if (window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1") {
-        return window.location.origin; // e.g. "http://localhost:5000"
+    // Jika diakses via browser (localhost, 127.0.0.1, atau IP Wi-Fi HP seperti 192.168.x.x):
+    // FastAPI menyajikan frontend & API di origin yang sama
+    if (window.location.origin && window.location.origin.startsWith("http")) {
+        return window.location.origin;
     }
-    // Production: wajib set LAQRIS_API_URL di atas
+    // Production override jika frontend di-hosting terpisah:
     if (window.LAQRIS_API_URL && window.LAQRIS_API_URL !== "https://YOUR-BACKEND-URL") {
         return window.LAQRIS_API_URL.replace(/\/$/, "");
     }
-    // Belum dikonfigurasi — kembalikan placeholder agar error jelas
-    return "https://YOUR-BACKEND-URL";
+    return "http://localhost:5000";
 })();
