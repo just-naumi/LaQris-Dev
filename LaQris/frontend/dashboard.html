@@ -547,13 +547,15 @@
         .sq-all      { background: #F8FAFC; border: 1.5px solid #E2E8F0; color: #475569; }
 
         /* ── Section: Promo Buat Kamu ── */
+        /* ── Section: Promo Buat Kamu ── */
         .promo-scroll-container {
             display: flex;
             gap: 12px;
             overflow-x: auto;
             scroll-snap-type: x mandatory;
-            padding-bottom: 6px;
+            padding-bottom: 4px;
             scrollbar-width: none; /* Firefox */
+            -webkit-overflow-scrolling: touch;
         }
 
         .promo-scroll-container::-webkit-scrollbar {
@@ -561,11 +563,11 @@
         }
 
         .promo-card {
-            min-width: 250px;
-            max-width: 250px;
-            height: 130px;
-            border-radius: 18px;
-            padding: 14px;
+            min-width: 290px;
+            max-width: 290px;
+            height: 165px;
+            border-radius: 20px;
+            padding: 16px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -574,49 +576,277 @@
             scroll-snap-align: start;
             flex-shrink: 0;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+            transition: transform 0.15s ease;
         }
 
-        .promo-card-1 {
-            background: linear-gradient(135deg, #FFEDD5 0%, #FED7AA 100%);
-            border: 1px solid #FDBA74;
+        .promo-card:active {
+            transform: scale(0.98);
         }
 
-        .promo-card-2 {
-            background: linear-gradient(135deg, #CCFBF1 0%, #99F6E4 100%);
-            border: 1px solid #5EEAD4;
+        /* Andrea Bocelli Promo Card */
+        .promo-card-bocelli {
+            background: #FDE8D7;
+            border: 1px solid #FED7AA;
         }
 
-        .promo-badge {
-            align-self: flex-start;
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 0.65rem;
+        .promo-badge-bocelli {
+            background: #FED7AA;
+            color: #9A3412;
+            font-size: 0.68rem;
             font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 12px;
+            align-self: flex-start;
+            z-index: 2;
         }
 
-        .badge-orange {
-            background: #F97316;
-            color: #FFFFFF;
+        .promo-bocelli-text {
+            z-index: 2;
+            max-width: 140px;
+            margin-top: 8px;
         }
 
-        .badge-teal {
-            background: #0D9488;
-            color: #FFFFFF;
-        }
-
-        .promo-title {
+        .promo-bocelli-title {
             font-size: 0.95rem;
             font-weight: 800;
             color: #0F172A;
             line-height: 1.25;
-            max-width: 170px;
+            letter-spacing: -0.01em;
         }
 
-        .promo-sub {
+        .promo-bocelli-sub {
             font-size: 0.72rem;
             font-weight: 600;
             color: #475569;
+            margin-top: 14px;
+        }
+
+        .bocelli-visual-wrap {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 155px;
+            border-radius: 50% 0 0 50%;
+            overflow: hidden;
+            background: #111111;
+            box-shadow: -4px 0 16px rgba(0, 0, 0, 0.12);
+        }
+
+        .bocelli-visual-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
+
+        /* Discount Promo Card */
+        .promo-card-discount {
+            background: #99F6E4;
+            border: 1px solid #5EEAD4;
+        }
+
+        .promo-badge-teal {
+            background: #0D9488;
+            color: #FFFFFF;
+            font-size: 0.68rem;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 12px;
+            align-self: flex-start;
+        }
+
+        .promo-discount-title {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #0F172A;
+            line-height: 1.25;
+            max-width: 160px;
+        }
+
+        .promo-discount-sub {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #047857;
+            margin-top: 8px;
+        }
+
+        /* 5 Pagination Dots */
+        .promo-dots {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            margin-top: 12px;
+        }
+
+        .pdot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #CBD5E1;
+            transition: all 0.2s ease;
+        }
+
+        .pdot.active {
+            background: #0F172A;
+            width: 7px;
+            height: 7px;
+        }
+
+        /* ── Section: Top-up Kamu ── */
+        .topup-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .card-topup-gopay {
+            border-radius: 20px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 175px;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+            transition: transform 0.15s ease;
+        }
+
+        .card-topup-gopay:active {
+            transform: scale(0.97);
+        }
+
+        .gopay-top {
+            background: #7BE1D0;
+            padding: 14px;
+            height: 72px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .gopay-icon-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #00AED6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FFFFFF;
+            box-shadow: 0 2px 8px rgba(0, 174, 214, 0.25);
+        }
+
+        .gopay-bottom {
+            background: #C7F6EE;
+            flex: 1;
+            padding: 12px 14px 14px 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        .gopay-name {
+            font-size: 1.02rem;
+            font-weight: 800;
+            color: #0F172A;
+            letter-spacing: -0.02em;
+        }
+
+        .gopay-sub-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #334155;
+            margin-top: 2px;
+        }
+
+        .gopay-balance {
+            font-size: 1.15rem;
+            font-weight: 900;
+            color: #0F172A;
+            letter-spacing: -0.02em;
+            margin-top: 1px;
+        }
+
+        .card-topup-linkaja {
+            background: #FFFFFF;
+            border: 2px dashed #2DD4BF;
+            border-radius: 20px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 175px;
+            box-sizing: border-box;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+
+        .card-topup-linkaja:active {
+            transform: scale(0.97);
+        }
+
+        .linkaja-top {
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .linkaja-badge {
+            width: 42px;
+            height: 42px;
+            background: #E31837;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #FFFFFF;
+            line-height: 1.05;
+            box-shadow: 0 3px 8px rgba(227, 24, 55, 0.25);
+        }
+
+        .linkaja-text-link {
+            font-size: 0.70rem;
+            letter-spacing: -0.02em;
+            font-style: italic;
+            font-weight: 900;
+        }
+
+        .linkaja-text-aja {
+            font-size: 0.74rem;
+            letter-spacing: -0.03em;
+            font-style: italic;
+            font-weight: 900;
+        }
+
+        .linkaja-desc {
+            font-size: 0.82rem;
+            color: #0F172A;
+            line-height: 1.35;
+            margin: 6px 0;
+            font-weight: 500;
+        }
+
+        .linkaja-desc b {
+            font-weight: 800;
+        }
+
+        .linkaja-btn {
+            width: 100%;
+            background: #5EEAD4;
+            color: #0F172A;
+            font-size: 0.8rem;
+            font-weight: 800;
+            border-radius: 22px;
+            padding: 8px 0;
+            border: none;
+            cursor: pointer;
+            text-align: center;
+            transition: background 0.15s ease;
+        }
+
+        .linkaja-btn:hover {
+            background: #2DD4BF;
         }
 
         /* ── Scan History (Integrated as E-Banking Transaction Log) ── */
@@ -711,56 +941,45 @@
         /* ── Iconic Floating QRIS Capsule Button ── */
         .floating-qris-bar {
             position: fixed;
-            bottom: 18px;
+            bottom: 22px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 100;
             display: flex;
             justify-content: center;
-            width: 100%;
-            max-width: 440px;
             pointer-events: none;
         }
 
         .qris-capsule-btn {
             pointer-events: auto;
-            background: #111111;
+            background: #0A0A0A;
             color: #FFFFFF;
-            padding: 12px 30px;
-            border-radius: 36px;
+            width: 92px;
+            height: 46px;
+            border-radius: 9999px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
             border: none;
             cursor: pointer;
-            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35), 0 0 0 3px rgba(255, 255, 255, 0.9);
-            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
 
         .qris-capsule-btn:hover {
             transform: scale(1.05);
-            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
         }
 
         .qris-capsule-btn:active {
-            transform: scale(0.95);
+            transform: scale(0.93);
         }
 
-        .qris-logo-text {
-            font-size: 1.15rem;
-            font-weight: 900;
-            letter-spacing: 0.08em;
-            color: #FFFFFF;
-        }
-
-        .qris-sub-badge {
-            font-size: 0.65rem;
-            font-weight: 700;
-            color: #A1A1AA;
-            border-left: 1px solid rgba(255, 255, 255, 0.2);
-            padding-left: 8px;
-            text-transform: uppercase;
+        .qris-capsule-logo {
+            height: 18px;
+            width: auto;
+            display: block;
+            filter: brightness(0) invert(1);
         }
 
         /* Empty state */
@@ -989,7 +1208,84 @@
             </div>
         </div>
 
-        <!-- 7. Section: Riwayat Transaksi & Scan QRIS Terkini (LaQris Integrated) -->
+        <!-- 7. Section: Promo buat kamu (Scrollable Carousel) -->
+        <div class="section-container">
+            <div class="section-header">
+                <div class="section-title">Promo buat kamu</div>
+                <a class="section-link" onclick="alert('Menampilkan seluruh katalog promo menarik BNI.')">Lihat Semua</a>
+            </div>
+
+            <div class="promo-scroll-container">
+                <!-- Promo Card 1: Andrea Bocelli Romanza World Tour -->
+                <div class="promo-card promo-card-bocelli" onclick="alert('Promo Andrea Bocelli Romanza World Tour!')">
+                    <div class="promo-badge-bocelli">31 Okt &amp; 3 Nov 2026</div>
+                    <div class="promo-bocelli-text">
+                        <div class="promo-bocelli-title">Andrea Bocelli<br>Romanza World<br>Tour</div>
+                        <div class="promo-bocelli-sub">Jangan lewatkan!</div>
+                    </div>
+                    <div class="bocelli-visual-wrap">
+                        <img src="assets/bocelli_promo.jpg" alt="Andrea Bocelli Romanza World Tour">
+                    </div>
+                </div>
+
+                <!-- Promo Card 2: Diskon 20% Makan Bareng Keluarga -->
+                <div class="promo-card promo-card-discount" onclick="alert('Promo Diskon Makan Bareng Keluarga!')">
+                    <div class="promo-badge-teal">Hingga 31 Des</div>
+                    <div>
+                        <div class="promo-discount-title">Diskon 20% Makan Bareng Keluarga</div>
+                        <div class="promo-discount-sub">QRIS wondr by BNI</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5 Pagination Dots -->
+            <div class="promo-dots">
+                <div class="pdot active"></div>
+                <div class="pdot"></div>
+                <div class="pdot"></div>
+                <div class="pdot"></div>
+                <div class="pdot"></div>
+            </div>
+        </div>
+
+        <!-- 8. Section: Top-up kamu (GoPay & LinkAja) -->
+        <div class="section-container">
+            <div class="section-header">
+                <div class="section-title">Top-up kamu</div>
+            </div>
+
+            <div class="topup-grid">
+                <!-- GoPay Card -->
+                <div class="card-topup-gopay" onclick="alert('Fitur Top up GoPay')">
+                    <div class="gopay-top">
+                        <div class="gopay-icon-circle">
+                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.3">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="gopay-bottom">
+                        <div class="gopay-name">GoPay</div>
+                        <div class="gopay-sub-label">Saldo:</div>
+                        <div class="gopay-balance">Rp0</div>
+                    </div>
+                </div>
+
+                <!-- LinkAja Card -->
+                <div class="card-topup-linkaja" onclick="alert('Hubungkan LinkAja')">
+                    <div class="linkaja-top">
+                        <div class="linkaja-badge">
+                            <span class="linkaja-text-link">Link</span>
+                            <span class="linkaja-text-aja">Aja!</span>
+                        </div>
+                    </div>
+                    <div class="linkaja-desc">Top-up <b>LinkAja</b> kamu di sini!</div>
+                    <button class="linkaja-btn" onclick="event.stopPropagation(); alert('Menghubungkan akun LinkAja...');">Sambungin</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 9. Section: Riwayat Transaksi & Scan QRIS Terkini (LaQris Integrated) -->
         <div class="section-container" id="historySection">
             <div class="section-header">
                 <div class="section-title">Riwayat transaksi &amp; scan</div>
@@ -1001,39 +1297,10 @@
             </div>
         </div>
 
-        <!-- 8. Section: Promo buat kamu (Scrollable Carousel) -->
-        <div class="section-container">
-            <div class="section-header">
-                <div class="section-title">Promo buat kamu</div>
-                <a class="section-link" onclick="alert('Menampilkan seluruh katalog promo menarik BNI.')">Lihat Semua</a>
-            </div>
-
-            <div class="promo-scroll-container">
-                <!-- Promo Card 1 -->
-                <div class="promo-card promo-card-1" onclick="alert('Promo Andrea Bocelli World Tour!')">
-                    <div class="promo-badge badge-orange">31 Okt & 3 Nov 2026</div>
-                    <div>
-                        <div class="promo-title">Andrea Bocelli Romanza World Tour</div>
-                        <div class="promo-sub">Spesial Nasabah BNI</div>
-                    </div>
-                </div>
-
-                <!-- Promo Card 2 -->
-                <div class="promo-card promo-card-2" onclick="alert('Promo Diskon Makan Bareng Keluarga!')">
-                    <div class="promo-badge badge-teal">Hingga 31 Des</div>
-                    <div>
-                        <div class="promo-title">Diskon 20% Makan Bareng Keluarga</div>
-                        <div class="promo-sub">Restoran Pilihan QRIS</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 9. The Iconic Floating Bottom QRIS Button -->
+        <!-- 10. The Iconic Floating Stadium QRIS Capsule Button -->
         <div class="floating-qris-bar">
             <button class="qris-capsule-btn" onclick="location.href='select_scan.html'" title="Scan QRIS">
-                <span class="qris-logo-text">QRIS</span>
-                <span class="qris-sub-badge">Bayar &amp; Cek</span>
+                <img src="assets/qris_white.svg" alt="QRIS" class="qris-capsule-logo">
             </button>
         </div>
 
