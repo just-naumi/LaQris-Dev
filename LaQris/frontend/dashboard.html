@@ -566,17 +566,16 @@
             max-width: 68px;
         }
 
-        /* Pastel Squircle Colors (wondr palette) */
-        .sq-transfer { background: #9CE8DC; color: #047857; }
-        .sq-tapcash  { background: #FF7E36; color: #FFFFFF; }
-        .sq-bayar    { background: #B9C3FD; color: #3730A3; }
-        .sq-ewallet  { background: #9CE8DC; color: #047857; }
-        .sq-va       { background: #9CE8DC; color: #047857; }
-        .sq-ln       { background: #9CE8DC; color: #047857; }
-        .sq-life     { background: #C8B9FD; color: #5B21B6; }
-        .sq-all      { background: #F8FAFC; border: 1.5px solid #E2E8F0; color: #475569; }
+        /* LaQris Harmonious Feature Squircle Colors */
+        .sq-transfer { background: #E0F2FE; color: #0284C7; }
+        .sq-tapcash  { background: #EEF2FF; color: #4F46E5; }
+        .sq-bayar    { background: #DBEAFE; color: #2563EB; }
+        .sq-ewallet  { background: #E0F7FA; color: #0891B2; }
+        .sq-va       { background: #DBEAFE; color: #1D4ED8; }
+        .sq-ln       { background: #E0E7FF; color: #4338CA; }
+        .sq-life     { background: #EDE9FE; color: #7C3AED; }
+        .sq-all      { background: #F8FAFC; border: 1.5px solid #CBD5E1; color: #475569; }
 
-        /* ── Section: Promo Buat Kamu ── */
         /* ── Section: Promo Buat Kamu ── */
         .promo-scroll-container {
             display: flex;
@@ -671,20 +670,21 @@
             object-position: center;
         }
 
-        /* Discount Promo Card */
+        /* Discount Promo Card (LaQris Sky/Electric Theme) */
         .promo-card-discount {
-            background: #99F6E4;
-            border: 1px solid #5EEAD4;
+            background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+            border: 1px solid #BFDBFE;
         }
 
         .promo-badge-teal {
-            background: #0D9488;
+            background: var(--laqris-blue);
             color: #FFFFFF;
             font-size: 0.68rem;
             font-weight: 800;
             padding: 4px 10px;
             border-radius: 12px;
             align-self: flex-start;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
         }
 
         .promo-discount-title {
@@ -697,8 +697,8 @@
 
         .promo-discount-sub {
             font-size: 0.72rem;
-            font-weight: 600;
-            color: #047857;
+            font-weight: 700;
+            color: var(--laqris-cyan);
             margin-top: 8px;
         }
 
@@ -725,7 +725,7 @@
             height: 7px;
         }
 
-        /* ── Section: Top-up Kamu ── */
+        /* ── Section: Top-up Kamu (LaQris Unified Theme) ── */
         .topup-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -739,7 +739,8 @@
             flex-direction: column;
             height: 175px;
             cursor: pointer;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+            border: 1.5px solid #BAE6FD;
+            box-shadow: 0 4px 14px rgba(2, 132, 199, 0.08);
             transition: transform 0.15s ease;
         }
 
@@ -748,7 +749,7 @@
         }
 
         .gopay-top {
-            background: #7BE1D0;
+            background: #BAE6FD;
             padding: 14px;
             height: 72px;
             display: flex;
@@ -764,11 +765,11 @@
             align-items: center;
             justify-content: center;
             color: #FFFFFF;
-            box-shadow: 0 2px 8px rgba(0, 174, 214, 0.25);
+            box-shadow: 0 2px 8px rgba(0, 174, 214, 0.3);
         }
 
         .gopay-bottom {
-            background: #C7F6EE;
+            background: #F0F9FF;
             flex: 1;
             padding: 12px 14px 14px 14px;
             display: flex;
@@ -786,7 +787,7 @@
         .gopay-sub-label {
             font-size: 0.72rem;
             font-weight: 600;
-            color: #334155;
+            color: #64748B;
             margin-top: 2px;
         }
 
@@ -800,7 +801,7 @@
 
         .card-topup-linkaja {
             background: #FFFFFF;
-            border: 2px dashed #2DD4BF;
+            border: 2px dashed #60A5FA;
             border-radius: 20px;
             padding: 14px;
             display: flex;
@@ -809,6 +810,7 @@
             height: 175px;
             box-sizing: border-box;
             cursor: pointer;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.05);
             transition: transform 0.15s ease;
         }
 
@@ -863,8 +865,8 @@
 
         .linkaja-btn {
             width: 100%;
-            background: #5EEAD4;
-            color: #0F172A;
+            background: linear-gradient(135deg, #0284C7 0%, #2563EB 100%);
+            color: #FFFFFF;
             font-size: 0.8rem;
             font-weight: 800;
             border-radius: 22px;
@@ -872,11 +874,13 @@
             border: none;
             cursor: pointer;
             text-align: center;
-            transition: background 0.15s ease;
+            box-shadow: 0 3px 10px rgba(37, 99, 235, 0.28);
+            transition: all 0.15s ease;
         }
 
         .linkaja-btn:hover {
-            background: #2DD4BF;
+            filter: brightness(1.08);
+            box-shadow: 0 5px 14px rgba(37, 99, 235, 0.38);
         }
 
         /* ── Scan History (Integrated as E-Banking Transaction Log) ── */
