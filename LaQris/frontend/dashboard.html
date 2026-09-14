@@ -73,58 +73,15 @@
 
         .logo-group {
             display: flex;
-            flex-direction: column;
-        }
-
-        .logo-laqris-row {
-            display: flex;
             align-items: center;
-            gap: 6px;
         }
 
-        .logo-laqris-la {
-            font-size: 1.85rem;
+        .logo-laqris-brand {
+            font-size: 1.75rem;
             font-weight: 900;
-            color: #0F172A;
-            letter-spacing: -0.04em;
+            color: #0A192F;
+            letter-spacing: -0.03em;
             line-height: 1;
-        }
-
-        .logo-laqris-qris {
-            font-size: 1.85rem;
-            font-weight: 900;
-            color: var(--laqris-blue);
-            letter-spacing: -0.04em;
-            line-height: 1;
-        }
-
-        .logo-shield-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 22px;
-            height: 22px;
-            background: linear-gradient(135deg, #0284C7 0%, #2563EB 100%);
-            border-radius: 50%;
-            color: #FFFFFF;
-            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
-        }
-
-        .logo-accent-line {
-            width: 34px;
-            height: 3.5px;
-            background: var(--laqris-blue);
-            border-radius: 2px;
-            margin-top: 3px;
-        }
-
-        .logo-by-laqris {
-            font-size: 0.62rem;
-            font-weight: 800;
-            color: #64748B;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-            margin-top: 1px;
         }
 
         .header-actions {
@@ -1037,17 +994,7 @@
         <!-- LaQris Header (Logo + Poin + Exit) -->
         <div class="app-header">
             <div class="logo-group">
-                <div class="logo-laqris-row">
-                    <span class="logo-laqris-la">La</span><span class="logo-laqris-qris">Qris</span>
-                    <div class="logo-shield-badge">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                            <polyline points="9 11 12 14 22 4"></polyline>
-                        </svg>
-                    </div>
-                </div>
-                <div class="logo-accent-line"></div>
-                <span class="logo-by-laqris">Verified &amp; Safe</span>
+                <span class="logo-laqris-brand">LaQris</span>
             </div>
             <div class="header-actions">
                 <button class="pill-poin-btn" onclick="alert('Fitur Poin LaQris: Anda memiliki 1.250 Poin!')">
