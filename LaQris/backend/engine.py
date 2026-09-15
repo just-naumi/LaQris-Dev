@@ -1091,24 +1091,58 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
         new_w, new_h = int(w_orig * scale), int(h_orig * scale)
         gambar_input = cv2.resize(gambar_input, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
-    # 1B. Evaluasi Posisi & Fisik QRIS dengan Model YOLO26 Nano Positioning
+    # 1B. Evaluasi Posisi & Deteksi Fisik QRIS dengan Model YOLO26 Nano Positioning
     positioning_analysis = evaluasi_posisi_qris(gambar_input)
 
-    # 2. Predict dengan YOLO pada gambar yang sudah disesuaikan ukurannya
-    res_barcode = model_barcode.predict(gambar_input, conf=0.18, verbose=False)[0]
-    res_ocr = model_ocr.predict(gambar_input, conf=0.10, verbose=False)[0]
-
-    gambar_vis = gambar_input.copy()
     tinggi_foto, lebar_foto = gambar_input.shape[:2]
+    gambar_vis = gambar_input.copy()
 
-    # Gambar kotak deteksi fisik QRIS Positioning jika terdeteksi
+    # 1C. CROP FISIK QRIS SEUKURAN KOTAK HASIL DETEKSI (Targeted QRIS Crop)
+    # Memastikan model Barcode dan OCR bekerja pada gambar terfokus beresolusi tinggi tanpa gangguan background
+    is_qris_cropped = False
+    offset_x, offset_y = 0, 0
+    gambar_proses = gambar_input
+
+    if positioning_analysis.get("detected") and positioning_analysis.get("box"):
+        px1, py1, px2, py2 = positioning_analysis["box"]
+        # Beri padding pengaman (~2.5% atau 12px) agar tepian fisik/stiker tidak terpotong
+        pad_px = max(10, int((px2 - px1) * 0.025))
+        pad_py = max(10, int((py2 - py1) * 0.025))
+        crop_x1 = max(0, px1 - pad_px)
+        crop_y1 = max(0, py1 - pad_py)
+        crop_x2 = min(lebar_foto, px2 + pad_px)
+        crop_y2 = min(tinggi_foto, py2 + pad_py)
+
+        crop_w = crop_x2 - crop_x1
+        crop_h = crop_y2 - crop_y1
+
+        if crop_w > 80 and crop_h > 80:
+            gambar_proses = gambar_input[crop_y1:crop_y2, crop_x1:crop_x2]
+            offset_x, offset_y = crop_x1, crop_y1
+            is_qris_cropped = True
+            print(f"[LOG] Crop Fisik QRIS Berhasil: {crop_w}x{crop_h}px dari offset ({offset_x}, {offset_y})")
+
+    # 2. Predict dengan YOLO Barcode & YOLO OCR pada gambar fisik QRIS (cropped)
+    res_barcode = model_barcode.predict(gambar_proses, conf=0.18, verbose=False)[0]
+    res_ocr = model_ocr.predict(gambar_proses, conf=0.10, verbose=False)[0]
+
+    # Fallback ke gambar penuh jika crop terlalu ketat sehingga tidak ada barcode/ocr terdeteksi
+    if is_qris_cropped and len(res_barcode.boxes) == 0 and len(res_ocr.boxes) == 0:
+        print("[LOG] Fallback ke gambar penuh karena crop tidak menemukan objek...")
+        res_barcode = model_barcode.predict(gambar_input, conf=0.18, verbose=False)[0]
+        res_ocr = model_ocr.predict(gambar_input, conf=0.10, verbose=False)[0]
+        gambar_proses = gambar_input
+        offset_x, offset_y = 0, 0
+        is_qris_cropped = False
+
+    # Gambar outline kotak fisik QRIS Positioning pada foto visualisasi
     if positioning_analysis.get("detected") and positioning_analysis.get("box"):
         px1, py1, px2, py2 = positioning_analysis["box"]
         warna_pos = (0, 230, 115) if positioning_analysis.get("is_optimal") else (0, 165, 255)
-        cv2.rectangle(gambar_vis, (px1, py1), (px2, py2), warna_pos, 2)
-        label_pos = f"Fisik QRIS: {positioning_analysis.get('status')} ({positioning_analysis.get('confidence')*100:.0f}%)"
-        cv2.putText(gambar_vis, label_pos, (px1, max(22, py1 - 8)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, warna_pos, 2)
+        cv2.rectangle(gambar_vis, (px1, py1), (px2, py2), warna_pos, 3)
+        label_pos = f"Fisik QRIS (Crop Fokus AI): {positioning_analysis.get('status')} ({positioning_analysis.get('confidence')*100:.0f}%)"
+        cv2.putText(gambar_vis, label_pos, (px1, max(24, py1 - 10)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, warna_pos, 2)
 
     # 1. Dekode QR Code Digital HANYA dari Potongan Kotak Barcode (Targeted Bounding Box Crop)
     teks_qr_mentah = None
@@ -1129,18 +1163,21 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
             calon_kotak_qr.append(box.xyxy[0].tolist())
 
     # Dekode HANYA pada potongan gambar kotak QR Code
+    h_proc, w_proc = gambar_proses.shape[:2]
     for (bx1, by1, bx2, by2) in calon_kotak_qr:
         px1 = max(0, int(bx1) - 10)
         py1 = max(0, int(by1) - 10)
-        px2 = min(lebar_foto, int(bx2) + 10)
-        py2 = min(tinggi_foto, int(by2) + 10)
-        potongan_qr = gambar_input[py1:py2, px1:px2]
+        px2 = min(w_proc, int(bx2) + 10)
+        py2 = min(h_proc, int(by2) + 10)
+        potongan_qr = gambar_proses[py1:py2, px1:px2]
         teks_qr_mentah = scan_qr_code_digital(potongan_qr)
         if teks_qr_mentah:
             break
 
     # Fallback terakhir jika potongan kotak miring/gagal
     if not teks_qr_mentah:
+        teks_qr_mentah = scan_qr_code_digital(gambar_proses)
+    if not teks_qr_mentah and is_qris_cropped:
         teks_qr_mentah = scan_qr_code_digital(gambar_input)
 
     # 2. Parse payload EMVCo QRIS digital
@@ -1160,33 +1197,35 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
         conf_score = float(box.conf[0].item())
         nama_kelas = model_ocr.names[cls_id]
         label_std = PEMETAAN_LABEL_ROBOFLOW.get(nama_kelas.lower().strip(), nama_kelas.lower().strip())
-        x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-        
+        lx1, ly1, lx2, ly2 = map(int, box.xyxy[0].tolist())
+
+        # Koordinat global pada foto utuh (gambar_vis)
+        gx1, gy1 = lx1 + offset_x, ly1 + offset_y
+        gx2, gy2 = lx2 + offset_x, ly2 + offset_y
+
         # Abaikan TrOCR hanya untuk objek grafik/barcode (qrcode, logo, gpn)
         if label_std in ["qrcode", "logo", "gpn", "logo_gpn", "logo_qris"]:
             if label_std == "qrcode" and target_qr_box is None:
-                target_qr_box = (x1, y1, x2, y2)
+                target_qr_box = (gx1, gy1, gx2, gy2)
             warna = DAFTAR_WARNA_LABEL[cls_id % len(DAFTAR_WARNA_LABEL)]
-            cv2.rectangle(gambar_vis, (x1, y1), (x2, y2), warna, 2)
-            cv2.putText(gambar_vis, f"{label_std}", (x1, max(15, y1 - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.45, warna, 1)
+            cv2.rectangle(gambar_vis, (gx1, gy1), (gx2, gy2), warna, 2)
+            cv2.putText(gambar_vis, f"{label_std}", (gx1, max(15, gy1 - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.45, warna, 1)
             continue
 
         if label_std == "nmid" and target_nmid_box is None:
-            target_nmid_box = (x1, y1, x2, y2)
+            target_nmid_box = (gx1, gy1, gx2, gy2)
 
-        # Beri padding (margin 8%) pada potongan area agar huruf di pinggir tidak terpotong
-        pad_x = max(5, int((x2 - x1) * 0.08))
-        pad_y = max(5, int((y2 - y1) * 0.08))
-        cx1 = max(0, x1 - pad_x)
-        cy1 = max(0, y1 - pad_y)
-        cx2 = min(lebar_foto, x2 + pad_x)
-        cy2 = min(tinggi_foto, y2 + pad_y)
+        # Beri padding (margin 8%) pada potongan area gambar_proses
+        pad_x = max(5, int((lx2 - lx1) * 0.08))
+        pad_y = max(5, int((ly2 - ly1) * 0.08))
+        cx1 = max(0, lx1 - pad_x)
+        cy1 = max(0, ly1 - pad_y)
+        cx2 = min(w_proc, lx2 + pad_x)
+        cy2 = min(h_proc, ly2 + pad_y)
 
-        potongan_teks = gambar_input[cy1:cy2, cx1:cx2]
+        potongan_teks = gambar_proses[cy1:cy2, cx1:cx2]
 
         # Routing model berdasarkan label:
-        # - nama_merchant -> model ONNX fine-tuned merchant (akurat untuk nama toko)
-        # - label lain (nmid, acquirer, tid, dll) -> model ONNX fine-tuned general
         if label_std == "nama_merchant":
             teks_ocr = ocr_trocr_merchant(potongan_teks, proc_trocr, model_trocr)
         else:
@@ -1196,13 +1235,13 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
             "label": label_std,
             "text": teks_ocr,
             "conf": conf_score,
-            "box": (x1, y1, x2, y2)
+            "box": (gx1, gy1, gx2, gy2)
         })
 
         # Gambar kotak warna-warni + hasil bacaan teks lengkap pada foto visualisasi
         warna = DAFTAR_WARNA_LABEL[cls_id % len(DAFTAR_WARNA_LABEL)]
-        cv2.rectangle(gambar_vis, (x1, y1), (x2, y2), warna, 2)
-        cv2.putText(gambar_vis, f"{label_std}: {teks_ocr}", (x1, max(15, y1 - 5)),
+        cv2.rectangle(gambar_vis, (gx1, gy1), (gx2, gy2), warna, 2)
+        cv2.putText(gambar_vis, f"{label_std}: {teks_ocr}", (gx1, max(15, gy1 - 5)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45, warna, 1)
 
     # ── Ekstraksi & Validasi NMID Fisik ─────────────────────────────────────────
