@@ -1,4 +1,4 @@
-# LaQris-Dev 🚀
+# LaQris-Dev 
 
 **LaQris (QRIS Fraud Detection & Evidence-Based Merchant Reputation System)**
 
@@ -13,3 +13,4 @@ Sistem deteksi kecurangan stiker QRIS yang ditimpa (physical vs digital identity
 ## Kontributor
 - Naufal Hazmi (`just-naumi`)
 - Aksa (`aksuyyyyyyy`)
+- Ghifar (Giprojectongit)
