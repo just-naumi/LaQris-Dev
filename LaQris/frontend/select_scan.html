@@ -87,20 +87,21 @@
         }
 
         /* Laser Scan Beam Animation */
+        /* Laser Scan Beam Animation - LaQris Electric Cyan */
         .scan-laser-line {
             position: absolute;
             left: 0;
             right: 0;
             top: 25%;
-            height: 4px;
-            background: #2DD4BF;
+            height: 3.5px;
+            background: #00E5FF;
             box-shadow: 
-                0 0 16px 5px rgba(45, 212, 191, 0.85),
-                0 0 32px 10px rgba(45, 212, 191, 0.45);
+                0 0 16px 5px rgba(0, 229, 255, 0.85),
+                0 0 32px 10px rgba(37, 99, 235, 0.55);
             border-radius: 2px;
             pointer-events: none;
             z-index: 5;
-            animation: laserScanMove 3s ease-in-out infinite alternate;
+            animation: laserScanMove 2.8s ease-in-out infinite alternate;
         }
 
         @keyframes laserScanMove {
@@ -180,26 +181,134 @@
             border-radius: 0 0 0 6px;
         }
 
-        /* Success / Detected State */
+        /* Success / Detected State - LaQris Electric Cyan & Royal Blue */
         .viewfinder-crosshair.detected::before,
         .viewfinder-crosshair.detected::after,
         .viewfinder-crosshair.detected .corner-tr,
         .viewfinder-crosshair.detected .corner-bl {
-            border-color: #10B981 !important;
-            filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.85));
+            border-color: #00E5FF !important;
+            filter: drop-shadow(0 0 10px rgba(0, 229, 255, 0.95)) drop-shadow(0 0 4px #2563EB);
             transition: border-color 0.2s ease, filter 0.2s ease;
         }
 
         .viewfinder-crosshair.detected {
-            box-shadow: inset 0 0 25px rgba(16, 185, 129, 0.15);
+            box-shadow: inset 0 0 35px rgba(0, 229, 255, 0.2);
             border-radius: 12px;
-            animation: pulseDetected 0.3s ease-in-out;
+            animation: pulseDetected 0.5s ease-in-out infinite alternate;
         }
 
         @keyframes pulseDetected {
             0% { transform: translate(-50%, -50%) scale(1); }
-            50% { transform: translate(-50%, -50%) scale(1.05); }
-            100% { transform: translate(-50%, -50%) scale(1); }
+            100% { transform: translate(-50%, -50%) scale(1.03); }
+        }
+
+        /* Futuristic Circular Spinning Radar / Target Lock (1 Detik Animasi) */
+        .qr-radar-lock {
+            position: absolute;
+            top: 42%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.85);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 12;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .qr-radar-lock.active {
+            display: flex;
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .radar-spinner-ring {
+            position: absolute;
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            border: 2px dashed rgba(0, 229, 255, 0.75);
+            animation: spinRadarRing 1.8s linear infinite;
+            box-shadow: 0 0 25px rgba(0, 229, 255, 0.35);
+        }
+
+        @keyframes spinRadarRing {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .radar-progress-svg-wrap {
+            position: relative;
+            width: 105px;
+            height: 105px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .radar-svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .radar-bg-circle {
+            fill: rgba(11, 15, 25, 0.82);
+            stroke: rgba(255, 255, 255, 0.15);
+            stroke-width: 5;
+        }
+
+        .radar-bar-circle {
+            fill: transparent;
+            stroke: #00E5FF;
+            stroke-width: 5.5;
+            stroke-linecap: round;
+            stroke-dasharray: 264;
+            stroke-dashoffset: 264;
+            filter: drop-shadow(0 0 8px #00E5FF);
+            transition: stroke-dashoffset 1s cubic-bezier(0.1, 0.7, 0.2, 1);
+        }
+
+        .radar-center-icon {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulseRadarIcon 0.8s ease-in-out infinite;
+        }
+
+        @keyframes pulseRadarIcon {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.15); opacity: 1; filter: drop-shadow(0 0 8px #00E5FF); }
+        }
+
+        .radar-lock-label {
+            margin-top: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(11, 15, 25, 0.88);
+            backdrop-filter: blur(10px);
+            padding: 7px 18px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 229, 255, 0.4);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55);
+        }
+
+        .radar-title {
+            font-size: 0.85rem;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            color: #00E5FF;
+            text-shadow: 0 0 10px rgba(0, 229, 255, 0.7);
+        }
+
+        .radar-sub {
+            font-size: 0.72rem;
+            color: rgba(255, 255, 255, 0.85);
+            margin-top: 2px;
         }
 
         .detected-badge {
@@ -207,13 +316,13 @@
             top: 42%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(16, 185, 129, 0.95);
+            background: rgba(2, 132, 199, 0.95);
             color: #FFFFFF;
             font-size: 0.85rem;
             font-weight: 800;
             padding: 8px 18px;
             border-radius: 30px;
-            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.45);
+            box-shadow: 0 8px 24px rgba(2, 132, 199, 0.45);
             display: none;
             align-items: center;
             gap: 8px;
@@ -357,20 +466,21 @@
             box-shadow: 0 -10px 35px rgba(0, 0, 0, 0.35);
         }
 
-        /* Top Lime Banner */
+        /* Top Banner - LaQris Royal Electric Blue */
         .sheet-banner-lime {
-            background: var(--laqris-lime);
+            background: linear-gradient(135deg, #1E40AF 0%, #2563EB 100%);
             border-radius: 24px 24px 0 0;
-            padding: 12px 20px;
+            padding: 13px 20px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             cursor: pointer;
             transition: filter 0.15s ease;
+            box-shadow: 0 -3px 14px rgba(37, 99, 235, 0.25);
         }
 
         .sheet-banner-lime:active {
-            filter: brightness(0.94);
+            filter: brightness(0.92);
         }
 
         .banner-left {
@@ -383,29 +493,31 @@
             width: 26px;
             height: 26px;
             border-radius: 8px;
-            background: #FFFFFF;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
             display: flex;
             align-items: center;
             justify-content: center;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-            color: #0F172A;
+            color: #FFFFFF;
             flex-shrink: 0;
         }
 
         .banner-text {
             font-size: 0.78rem;
             font-weight: 700;
-            color: #0F172A;
+            color: #FFFFFF;
             line-height: 1.25;
         }
 
         .banner-text b {
             font-weight: 900;
             letter-spacing: 0.02em;
+            color: #93C5FD;
         }
 
         .banner-chevron {
-            color: #0F172A;
+            color: #FFFFFF;
             flex-shrink: 0;
             margin-left: 6px;
         }
@@ -451,21 +563,21 @@
 
         .mode-squircle.active {
             border-color: #2563EB;
-            box-shadow: 0 4px 18px rgba(37, 99, 235, 0.15);
-            background: #F8FAFC;
+            box-shadow: 0 4px 18px rgba(37, 99, 235, 0.2);
+            background: #EFF6FF;
         }
 
         .badge-mode-baru {
             position: absolute;
             top: -9px;
             right: -9px;
-            background: var(--laqris-lime);
-            color: #0F172A;
+            background: linear-gradient(135deg, #0284C7 0%, #2563EB 100%);
+            color: #FFFFFF;
             font-size: 0.65rem;
             font-weight: 900;
             padding: 2px 8px;
             border-radius: 12px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
         }
 
         .mode-label-text {
@@ -478,7 +590,8 @@
         }
 
         .mode-option-wrap.active .mode-label-text {
-            color: #0F172A;
+            color: #2563EB;
+            font-weight: 900;
         }
 
         /* Loading Overlay */
@@ -551,6 +664,27 @@
                 <div class="corner-bl"></div>
             </div>
 
+            <!-- Futuristic Spinning Radar/Target Lock Ring (Active for 1s on detection) -->
+            <div class="qr-radar-lock" id="qrRadarLock">
+                <div class="radar-spinner-ring"></div>
+                <div class="radar-progress-svg-wrap">
+                    <svg class="radar-svg" viewBox="0 0 100 100">
+                        <circle class="radar-bg-circle" cx="50" cy="50" r="42"></circle>
+                        <circle class="radar-bar-circle" id="radarBarCircle" cx="50" cy="50" r="42"></circle>
+                    </svg>
+                    <div class="radar-center-icon">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#00E5FF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            <polyline points="9 11 12 14 22 4"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="radar-lock-label">
+                    <span class="radar-title">QRIS TERKUNCI</span>
+                    <span class="radar-sub">Memverifikasi AI LaQris...</span>
+                </div>
+            </div>
+
             <!-- Detected Success Badge -->
             <div class="detected-badge" id="detectedBadge">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -611,12 +745,12 @@
                     <!-- 1. Mode Kode QR -->
                     <div class="mode-option-wrap active" id="modeOptionQR" onclick="selectMode('qr')">
                         <div class="mode-squircle active" id="modeSquircleQR">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#EAB308" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M4 8V5a1 1 0 0 1 1-1h3" />
                                 <path d="M16 4h3a1 1 0 0 1 1 1v3" />
                                 <path d="M20 16v3a1 1 0 0 1-1 1h-3" />
                                 <path d="M8 20H5a1 1 0 0 1-1-1v-3" />
-                                <rect x="8" y="8" width="8" height="8" rx="1.5" fill="#FACC15" fill-opacity="0.35" stroke="#CA8A04" stroke-width="2" />
+                                <rect x="8" y="8" width="8" height="8" rx="1.5" fill="#3B82F6" fill-opacity="0.25" stroke="#2563EB" stroke-width="2" />
                             </svg>
                         </div>
                         <span class="mode-label-text">Kode QR</span>
@@ -626,7 +760,7 @@
                     <div class="mode-option-wrap" id="modeOptionTap" onclick="selectMode('tap')">
                         <div class="mode-squircle" id="modeSquircleTap">
                             <div class="badge-mode-baru">Baru</div>
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#EAB308" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M4 8V5a1 1 0 0 1 1-1h3" />
                                 <path d="M16 4h3a1 1 0 0 1 1 1v3" />
                                 <path d="M20 16v3a1 1 0 0 1-1 1h-3" />
@@ -696,6 +830,31 @@
             } catch (e) {
                 // Ignore if audio policy prevents autoplay
             }
+        }
+
+        // Play futuristic target-acquired lock beep
+        function playTargetLockSound() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const audioCtx = new AudioContext();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(650, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1050, audioCtx.currentTime + 0.08);
+
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.14);
+            } catch (e) {}
         }
 
         // Initialize user media camera with resilient mobile fallbacks
@@ -931,33 +1090,31 @@
             isScanLocked = true;
             isScanningActive = false;
 
-            // Haptic vibration feedback
+            // 1. Initial Target Lock Feedback (Sound & Vibration)
             if (navigator.vibrate) {
-                try { navigator.vibrate([70, 40, 70]); } catch (e) {}
+                try { navigator.vibrate(50); } catch (e) {}
             }
+            playTargetLockSound();
 
-            // Audio chime bank
-            playScanSuccessSound();
-
-            // Visual feedback: Green crosshair & glowing badge
+            // 2. Visual: Viewfinder turns glowing electric blue & cyan
             const crosshair = document.getElementById('viewfinderCrosshair');
             if (crosshair) crosshair.classList.add('detected');
-
-            const badge = document.getElementById('detectedBadge');
-            if (badge) {
-                badge.innerHTML = `
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                    <span>Kualitas Tajam! Memverifikasi...</span>
-                `;
-                badge.style.display = 'flex';
-            }
 
             const laser = document.getElementById('scanLaserLine');
             if (laser) laser.style.animationPlayState = 'paused';
 
-            // Ambil foto snapshot resolusi tinggi tertinggi dari kamera (96% JPEG quality)
+            // 3. Tampilkan Animasi Memutar Keren (HUD Radar Ring)
+            const radar = document.getElementById('qrRadarLock');
+            if (radar) {
+                radar.classList.add('active');
+                // Mulai pengisian lingkaran progress selama tepat 1 detik
+                setTimeout(() => {
+                    const bar = document.getElementById('radarBarCircle');
+                    if (bar) bar.style.strokeDashoffset = '0';
+                }, 30);
+            }
+
+            // 4. Ambil foto snapshot resolusi tinggi tertinggi dari kamera (96% JPEG quality)
             const canvas = document.getElementById('captureCanvas');
             canvas.width = videoEl.videoWidth || 1280;
             canvas.height = videoEl.videoHeight || 720;
@@ -970,14 +1127,20 @@
                 sessionStorage.setItem('laqris_detected_qr_payload', qrData);
             }
 
-            // Jeda 250ms agar pengguna melihat konfirmasi visual kunci hijau
+            // 5. TUNGGU TEPAT 1 DETIK (1000ms) dengan animasi memutar keren!
             setTimeout(() => {
+                // Bunyi sukses akhir & getar mantap
+                playScanSuccessSound();
+                if (navigator.vibrate) {
+                    try { navigator.vibrate([70, 40, 70]); } catch (e) {}
+                }
+
                 showLoading();
                 sessionStorage.setItem('laqris_pending_file', dataUrl);
                 sessionStorage.setItem('laqris_pending_filename', 'auto_qris_hd_' + Date.now() + '.jpg');
                 stopCameraStream();
                 location.href = 'scan.html';
-            }, 250);
+            }, 1000);
         }
 
         // Toggle flashlight / torch
