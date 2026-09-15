@@ -37,3 +37,6 @@ optimizer.pt
 
 # Generated Test Visualizations
 LaQris/backend/static/vis_output/*.jpg
+
+# Executables
+*.exe

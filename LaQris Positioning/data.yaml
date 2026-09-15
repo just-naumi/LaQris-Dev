@@ -1,0 +1,7 @@
+path: "D:/My Project/L\xE0Qris/LaQris-Dev/LaQris Positioning"
+train: train/images
+val: valid/images
+test: test/images
+nc: 1
+names:
+- Qris-Positioning

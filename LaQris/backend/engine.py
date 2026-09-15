@@ -51,6 +51,7 @@ MODEL_YOLO_BARCODE = None
 MODEL_YOLO_OCR = None
 PROCESSOR_TROCR = None
 MODEL_TROCR = None
+MODEL_YOLO_POSITIONING = None
 
 # Model ONNX Resmi Bawaan TrOCR (microsoft/trocr-base-printed)
 # Model asli Microsoft yang diekspor ke ONNX untuk inferensi super cepat (< 500ms) tanpa risiko overfitting
@@ -145,11 +146,12 @@ def load_ai_models():
     2. Model 2: YOLO OCR (Menemukan letak teks Nama Merchant, NMID, Bank)
     3. Model 3: TrOCR Microsoft (Membaca tulisan karakter dari potongan gambar)
     """
-    global MODEL_YOLO_BARCODE, MODEL_YOLO_OCR, PROCESSOR_TROCR, MODEL_TROCR
+    global MODEL_YOLO_BARCODE, MODEL_YOLO_OCR, PROCESSOR_TROCR, MODEL_TROCR, MODEL_YOLO_POSITIONING
 
     folder_backend = os.path.dirname(os.path.abspath(__file__))
     path_barcode = os.path.join(folder_backend, "weights", "yolo_barcode.pt")
     path_ocr = os.path.join(folder_backend, "weights", "yolo_ocr.pt")
+    path_pos = os.path.join(folder_backend, "weights", "yolo_positioning.pt")
 
     # 1. Memuat Model YOLO Barcode
     if MODEL_YOLO_BARCODE is None:
@@ -160,6 +162,11 @@ def load_ai_models():
     if MODEL_YOLO_OCR is None:
         print("[LOG] Memuat Model 2: YOLO OCR dari", path_ocr)
         MODEL_YOLO_OCR = YOLO(path_ocr)
+
+    # 2b. Memuat Model YOLO Positioning (YOLO26 Nano)
+    if MODEL_YOLO_POSITIONING is None and os.path.exists(path_pos):
+        print("[LOG] Memuat Model YOLO Positioning dari", path_pos)
+        MODEL_YOLO_POSITIONING = YOLO(path_pos)
 
     # 3. Memuat Model TrOCR (Transformer OCR) - untuk label umum (NMID, Acquirer, dll)
     if PROCESSOR_TROCR is None or MODEL_TROCR is None:
@@ -206,6 +213,98 @@ def load_ai_models():
 
 
     return MODEL_YOLO_BARCODE, MODEL_YOLO_OCR, PROCESSOR_TROCR, MODEL_TROCR
+
+
+# =============================================================================
+# FUNGSI 1B: Evaluasi Posisi Fisik QRIS (evaluasi_posisi_qris)
+# =============================================================================
+def evaluasi_posisi_qris(gambar_bgr, conf_threshold=0.25):
+    """
+    Mengevaluasi fisik stiker QRIS dan kelayakan posisi/framing gambar:
+    - Mendeteksi apakah stiker / fisik QRIS terlihat di kamera
+    - Menghitung rasio framing, jarak titik tengah (centering), dan batas tepi
+    - Mengembalikan status: 'OPTIMAL', 'TOO_FAR', 'TOO_CLOSE', 'OFF_CENTER', 'NOT_DETECTED'
+    """
+    global MODEL_YOLO_POSITIONING
+    if MODEL_YOLO_POSITIONING is None:
+        folder_backend = os.path.dirname(os.path.abspath(__file__))
+        path_pos = os.path.join(folder_backend, "weights", "yolo_positioning.pt")
+        if os.path.exists(path_pos):
+            MODEL_YOLO_POSITIONING = YOLO(path_pos)
+        else:
+            return {
+                "detected": False,
+                "status": "MODEL_NOT_FOUND",
+                "is_optimal": True,
+                "confidence": 0.0,
+                "message": "Model positioning belum dimuat",
+                "box": None,
+                "coverage_ratio": 0.0,
+                "offset_center": 0.0
+            }
+
+    h_frame, w_frame = gambar_bgr.shape[:2]
+    results = MODEL_YOLO_POSITIONING.predict(gambar_bgr, conf=conf_threshold, verbose=False)[0]
+
+    if len(results.boxes) == 0:
+        return {
+            "detected": False,
+            "status": "NOT_DETECTED",
+            "is_optimal": False,
+            "confidence": 0.0,
+            "message": "Arahkan kamera ke stiker / fisik QRIS",
+            "box": None,
+            "coverage_ratio": 0.0,
+            "offset_center": 0.0
+        }
+
+    # Ambil kotak dengan confidence tertinggi
+    best_box = max(results.boxes, key=lambda b: float(b.conf[0].item()))
+    x1, y1, x2, y2 = [int(v) for v in best_box.xyxy[0].tolist()]
+    conf = float(best_box.conf[0].item())
+
+    bw = max(1, x2 - x1)
+    bh = max(1, y2 - y1)
+    box_area = bw * bh
+    frame_area = w_frame * h_frame
+    coverage_ratio = box_area / frame_area
+
+    cx = (x1 + x2) / 2.0
+    cy = (y1 + y2) / 2.0
+    fcx = w_frame / 2.0
+    fcy = h_frame / 2.0
+    norm_dx = (cx - fcx) / w_frame
+    norm_dy = (cy - fcy) / h_frame
+    offset_center = float(np.sqrt(norm_dx**2 + norm_dy**2))
+
+    # Kriteria kelayakan posisi (Framing & Centering)
+    if coverage_ratio > 0.96:
+        status = "TOO_CLOSE"
+        message = "Mundurkan sedikit agar seluruh fisik QRIS terlihat"
+        is_optimal = False
+    elif coverage_ratio < 0.08:
+        status = "TOO_FAR"
+        message = "Dekatkan kamera ke stiker QRIS"
+        is_optimal = False
+    elif offset_center > 0.30:
+        status = "OFF_CENTER"
+        message = "Posisikan stiker QRIS di tengah kotak bidik"
+        is_optimal = False
+    else:
+        status = "OPTIMAL"
+        message = "Posisi Fisik QRIS Sempurna! Siap dipindai"
+        is_optimal = True
+
+    return {
+        "detected": True,
+        "status": status,
+        "is_optimal": is_optimal,
+        "confidence": round(conf, 4),
+        "message": message,
+        "box": [x1, y1, x2, y2],
+        "coverage_ratio": round(coverage_ratio, 4),
+        "offset_center": round(offset_center, 4)
+    }
 
 
 # =============================================================================
@@ -992,12 +1091,24 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
         new_w, new_h = int(w_orig * scale), int(h_orig * scale)
         gambar_input = cv2.resize(gambar_input, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
+    # 1B. Evaluasi Posisi & Fisik QRIS dengan Model YOLO26 Nano Positioning
+    positioning_analysis = evaluasi_posisi_qris(gambar_input)
+
     # 2. Predict dengan YOLO pada gambar yang sudah disesuaikan ukurannya
     res_barcode = model_barcode.predict(gambar_input, conf=0.18, verbose=False)[0]
     res_ocr = model_ocr.predict(gambar_input, conf=0.10, verbose=False)[0]
 
     gambar_vis = gambar_input.copy()
     tinggi_foto, lebar_foto = gambar_input.shape[:2]
+
+    # Gambar kotak deteksi fisik QRIS Positioning jika terdeteksi
+    if positioning_analysis.get("detected") and positioning_analysis.get("box"):
+        px1, py1, px2, py2 = positioning_analysis["box"]
+        warna_pos = (0, 230, 115) if positioning_analysis.get("is_optimal") else (0, 165, 255)
+        cv2.rectangle(gambar_vis, (px1, py1), (px2, py2), warna_pos, 2)
+        label_pos = f"Fisik QRIS: {positioning_analysis.get('status')} ({positioning_analysis.get('confidence')*100:.0f}%)"
+        cv2.putText(gambar_vis, label_pos, (px1, max(22, py1 - 8)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, warna_pos, 2)
 
     # 1. Dekode QR Code Digital HANYA dari Potongan Kotak Barcode (Targeted Bounding Box Crop)
     teks_qr_mentah = None
@@ -1311,6 +1422,7 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
     # 7. Kembalikan data lengkap dalam bentuk Dictionary JSON
     return {
         "session_id": session_id,
+        "positioning_analysis": positioning_analysis,
         "current_qr_risk": {
             "risk_level": risk_level,
             "risk_label": risk_label,

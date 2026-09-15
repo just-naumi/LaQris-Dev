@@ -15,6 +15,7 @@ from models import Merchant, Report, Dispute, VerificationSession, User
 import schemas
 from engine import (
     process_qris_verification,
+    evaluasi_posisi_qris,
     submit_feedback_to_db,
     get_merchant_reputation_by_nmid,
     calculate_emrs
@@ -114,6 +115,26 @@ async def scan_qris_endpoint(
 
     hasil = process_qris_verification(gambar_input, filename_base=filename_base, user_id=user_id)
     return hasil
+
+
+@app.post("/api/scan/check-position")
+async def check_position_endpoint(
+    file: Optional[UploadFile] = File(None)
+):
+    """
+    Lightweight endpoint untuk deteksi fisik QRIS dan evaluasi posisi/framing
+    sebelum pemicu pemindaian otomatis (auto-capture).
+    """
+    if not file:
+        raise HTTPException(status_code=400, detail="File frame kamera diperlukan.")
+    
+    contents = await file.read()
+    nparr = np.frombuffer(contents, np.uint8)
+    frame_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    if frame_bgr is None:
+        raise HTTPException(status_code=400, detail="Gagal membaca frame gambar.")
+
+    return evaluasi_posisi_qris(frame_bgr)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

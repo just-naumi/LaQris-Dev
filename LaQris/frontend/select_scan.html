@@ -1000,7 +1000,40 @@
             }
         }
 
-        // Detect QR from current video frame dengan validasi ketajaman & stabilitas
+        let isCheckingPosition = false;
+        let lastPositionCheckTime = 0;
+        let lastPositionStatus = null;
+
+        // Pemeriksaan posisi fisik QRIS secara real-time via backend YOLO26 Nano
+        async function checkPositionFromBackend(canvas) {
+            if (isCheckingPosition) return lastPositionStatus;
+            const now = Date.now();
+            if (now - lastPositionCheckTime < 350) return lastPositionStatus;
+            lastPositionCheckTime = now;
+            isCheckingPosition = true;
+
+            try {
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.75));
+                if (!blob) return null;
+                const formData = new FormData();
+                formData.append('file', blob, 'frame.jpg');
+
+                const res = await fetch((window.API_BASE || '') + '/api/scan/check-position', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (res.ok) {
+                    lastPositionStatus = await res.json();
+                }
+            } catch (err) {
+                // Silently fallback jika network lambat
+            } finally {
+                isCheckingPosition = false;
+            }
+            return lastPositionStatus;
+        }
+
+        // Detect QR from current video frame dengan validasi posisi fisik QRIS & ketajaman
         async function scanFrameForQR(videoEl) {
             if (isScanLocked) return;
 
@@ -1049,7 +1082,7 @@
             const scanHint = document.querySelector('.scan-hint-text');
 
             if (qrDetected) {
-                // UJI KUALITAS GAMBAR: Pastikan gambar tajam & fokus
+                // 1. UJI KUALITAS GAMBAR: Pastikan gambar tajam & fokus
                 const sharpness = evaluateFrameSharpness(scanCtx, targetW, targetH);
 
                 if (sharpness < MIN_SHARPNESS_SCORE) {
@@ -1057,16 +1090,32 @@
                     consecutiveSharpFrames = 0;
                     if (scanHint) {
                         scanHint.textContent = "Fokuskan & Tahan Stabil...";
-                        scanHint.style.background = "rgba(202, 138, 4, 0.5)";
+                        scanHint.style.background = "rgba(202, 138, 4, 0.65)";
                         scanHint.style.color = "#FEF08A";
                     }
                     return; // Tunggu sampai fokus jernih
                 }
 
+                // 2. UJI POSISI FISIK DENGAN MODEL YOLO26 NANO POSITIONING
+                const pos = await checkPositionFromBackend(scanCanvas);
+                if (pos && pos.detected && !pos.is_optimal) {
+                    consecutiveSharpFrames = 0;
+                    if (scanHint) {
+                        scanHint.textContent = pos.message || "Posisikan stiker QRIS di tengah...";
+                        scanHint.style.background = "rgba(234, 88, 12, 0.85)";
+                        scanHint.style.color = "#FFFFFF";
+                    }
+                    return; // Tunggu sampai posisi fisik ideal
+                }
+
                 consecutiveSharpFrames++;
                 if (scanHint) {
-                    scanHint.textContent = "Kualitas Bagus! Mengunci...";
-                    scanHint.style.background = "rgba(16, 185, 129, 0.6)";
+                    if (pos && pos.is_optimal) {
+                        scanHint.textContent = "Posisi & Kualitas Sempurna! Mengunci...";
+                    } else {
+                        scanHint.textContent = "Kualitas Bagus! Mengunci...";
+                    }
+                    scanHint.style.background = "rgba(16, 185, 129, 0.8)";
                     scanHint.style.color = "#FFFFFF";
                 }
 
