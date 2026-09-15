@@ -1101,8 +1101,13 @@
                 if (pos && pos.detected && !pos.is_optimal) {
                     consecutiveSharpFrames = 0;
                     if (scanHint) {
-                        scanHint.textContent = pos.message || "Posisikan stiker QRIS di tengah...";
-                        scanHint.style.background = "rgba(234, 88, 12, 0.85)";
+                        if (pos.status === 'TOO_TILTED') {
+                            scanHint.innerHTML = `<i class="fa-solid fa-arrows-rotate me-1"></i> ${pos.message || "Luruskan stiker QRIS atau tegakkan kamera"}`;
+                            scanHint.style.background = "rgba(220, 38, 38, 0.90)";
+                        } else {
+                            scanHint.textContent = pos.message || "Posisikan stiker QRIS di tengah...";
+                            scanHint.style.background = "rgba(234, 88, 12, 0.85)";
+                        }
                         scanHint.style.color = "#FFFFFF";
                     }
                     return; // Tunggu sampai posisi fisik ideal
@@ -1111,11 +1116,15 @@
                 consecutiveSharpFrames++;
                 if (scanHint) {
                     if (pos && pos.is_optimal) {
-                        scanHint.textContent = "Posisi & Kualitas Sempurna! Mengunci...";
+                        if (pos.skew_angle && Math.abs(pos.skew_angle) >= 1.5) {
+                            scanHint.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles me-1"></i> Auto-Deskew (${pos.skew_angle > 0 ? '+' : ''}${pos.skew_angle}°) • Mengunci...`;
+                        } else {
+                            scanHint.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> Posisi Datar & Sempurna! Mengunci...`;
+                        }
                     } else {
                         scanHint.textContent = "Kualitas Bagus! Mengunci...";
                     }
-                    scanHint.style.background = "rgba(16, 185, 129, 0.8)";
+                    scanHint.style.background = "rgba(16, 185, 129, 0.85)";
                     scanHint.style.color = "#FFFFFF";
                 }
 

@@ -216,14 +216,120 @@ def load_ai_models():
 
 
 # =============================================================================
-# FUNGSI 1B: Evaluasi Posisi Fisik QRIS (evaluasi_posisi_qris)
+# FUNGSI 1B: Deteksi Sudut Kemiringan Fisik QRIS (deteksi_kemiringan_qris)
+# =============================================================================
+def deteksi_kemiringan_qris(crop_bgr):
+    """
+    Menemukan kontur persegi panjang dari stiker fisik QRIS menggunakan cv2.minAreaRect,
+    lalu membaca sudut kemiringan rotasinya (rotated bounding box).
+    Mengembalikan: (sudut_derajat, best_rect)
+    - Sudut berkisar antara -45.0 s.d. +45.0 derajat.
+    - 0.0 derajat artinya horizontal tegak lurus sempurna.
+    """
+    if crop_bgr is None or crop_bgr.size == 0:
+        return 0.0, None
+
+    h, w = crop_bgr.shape[:2]
+    crop_area = w * h
+    if crop_area < 100:
+        return 0.0, None
+
+    gray = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+
+    # Deteksi tepi dengan Canny & pelebaran kontur
+    edges = cv2.Canny(blurred, 30, 130)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    dilated = cv2.dilate(edges, kernel, iterations=2)
+
+    contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    valid_rects = []
+    for c in contours:
+        area = cv2.contourArea(c)
+        if area > 0.12 * crop_area:
+            rect = cv2.minAreaRect(c)
+            valid_rects.append((area, rect))
+
+    if not valid_rects:
+        # Fallback menggunakan ambang batas Otsu jika kontur Canny terputus
+        _, otsu = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        contours, _ = cv2.findContours(otsu, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        for c in contours:
+            area = cv2.contourArea(c)
+            if area > 0.12 * crop_area:
+                valid_rects.append((area, cv2.minAreaRect(c)))
+
+    if not valid_rects:
+        return 0.0, None
+
+    # Ambil kontur persegi panjang terluas (stiker fisik QRIS utama)
+    valid_rects.sort(key=lambda x: x[0], reverse=True)
+    best_rect = valid_rects[0][1]
+    (cx, cy), (rw, rh), raw_angle = best_rect
+
+    # Normalisasi sudut minAreaRect OpenCV agar sesuai orientasi horizontal
+    if rw < rh:
+        angle = raw_angle - 90.0 if raw_angle > 0 else raw_angle + 90.0
+    else:
+        angle = raw_angle
+
+    while angle < -45.0:
+        angle += 90.0
+    while angle > 45.0:
+        angle -= 90.0
+
+    return round(float(angle), 2), best_rect
+
+
+# =============================================================================
+# FUNGSI 1C: Auto-Deskew & Reposisi Tegak Lurus (luruskan_dan_reposisi_qris)
+# =============================================================================
+def luruskan_dan_reposisi_qris(crop_bgr, angle):
+    """
+    Merotasi potongan fisik QRIS sebesar angle derajat agar kembali tegak lurus (0 derajat horizontal).
+    Menggunakan cv2.warpAffine dengan borderMode=cv2.BORDER_REPLICATE dan perhitungan dimensi
+    bounding box baru agar tidak ada teks atau tepian stiker yang terpotong.
+    Mengembalikan: (gambar_lurus, matriks_rotasi_M, matriks_rotasi_M_inv)
+    """
+    if abs(angle) < 1.0:
+        return crop_bgr, None, None
+
+    h, w = crop_bgr.shape[:2]
+    center = (w / 2.0, h / 2.0)
+
+    # Matriks rotasi mengoreksi sudut kemiringan (angle derajat)
+    M = cv2.getRotationMatrix2D(center, angle, 1.0)
+
+    # Hitung batas lebar dan tinggi baru setelah rotasi agar sudut gambar tidak terpotong
+    cos = np.abs(M[0, 0])
+    sin = np.abs(M[0, 1])
+    new_w = int((h * sin) + (w * cos))
+    new_h = int((h * cos) + (w * sin))
+
+    M[0, 2] += (new_w / 2.0) - center[0]
+    M[1, 2] += (new_h / 2.0) - center[1]
+
+    M_inv = cv2.invertAffineTransform(M)
+
+    rotated = cv2.warpAffine(
+        crop_bgr, M, (new_w, new_h),
+        flags=cv2.INTER_CUBIC,
+        borderMode=cv2.BORDER_REPLICATE
+    )
+    return rotated, M, M_inv
+
+
+# =============================================================================
+# FUNGSI 1D: Evaluasi Posisi Fisik QRIS (evaluasi_posisi_qris)
 # =============================================================================
 def evaluasi_posisi_qris(gambar_bgr, conf_threshold=0.25):
     """
-    Mengevaluasi fisik stiker QRIS dan kelayakan posisi/framing gambar:
+    Mengevaluasi fisik stiker QRIS dan kelayakan posisi/framing/rotasi gambar:
     - Mendeteksi apakah stiker / fisik QRIS terlihat di kamera
     - Menghitung rasio framing, jarak titik tengah (centering), dan batas tepi
-    - Mengembalikan status: 'OPTIMAL', 'TOO_FAR', 'TOO_CLOSE', 'OFF_CENTER', 'NOT_DETECTED'
+    - Mengukur sudut kemiringan (cv2.minAreaRect)
+    - Mengembalikan status: 'OPTIMAL', 'TOO_TILTED', 'TOO_FAR', 'TOO_CLOSE', 'OFF_CENTER', 'NOT_DETECTED'
     """
     global MODEL_YOLO_POSITIONING
     if MODEL_YOLO_POSITIONING is None:
@@ -239,6 +345,7 @@ def evaluasi_posisi_qris(gambar_bgr, conf_threshold=0.25):
                 "confidence": 0.0,
                 "message": "Model positioning belum dimuat",
                 "box": None,
+                "skew_angle": 0.0,
                 "coverage_ratio": 0.0,
                 "offset_center": 0.0
             }
@@ -254,6 +361,7 @@ def evaluasi_posisi_qris(gambar_bgr, conf_threshold=0.25):
             "confidence": 0.0,
             "message": "Arahkan kamera ke stiker / fisik QRIS",
             "box": None,
+            "skew_angle": 0.0,
             "coverage_ratio": 0.0,
             "offset_center": 0.0
         }
@@ -262,6 +370,10 @@ def evaluasi_posisi_qris(gambar_bgr, conf_threshold=0.25):
     best_box = max(results.boxes, key=lambda b: float(b.conf[0].item()))
     x1, y1, x2, y2 = [int(v) for v in best_box.xyxy[0].tolist()]
     conf = float(best_box.conf[0].item())
+
+    # Potong area fisik QRIS untuk mendeteksi sudut kemiringan rotasi (cv2.minAreaRect)
+    crop_qris = gambar_bgr[max(0, y1):min(h_frame, y2), max(0, x1):min(w_frame, x2)]
+    skew_angle, _ = deteksi_kemiringan_qris(crop_qris)
 
     bw = max(1, x2 - x1)
     bh = max(1, y2 - y1)
@@ -277,8 +389,12 @@ def evaluasi_posisi_qris(gambar_bgr, conf_threshold=0.25):
     norm_dy = (cy - fcy) / h_frame
     offset_center = float(np.sqrt(norm_dx**2 + norm_dy**2))
 
-    # Kriteria kelayakan posisi (Framing & Centering)
-    if coverage_ratio > 0.96:
+    # Kriteria kelayakan posisi (Kemiringan, Framing, & Centering)
+    if abs(skew_angle) > 18.0:
+        status = "TOO_TILTED"
+        message = f"Kemiringan {abs(skew_angle):.1f}° terlalu miring. Tegakkan kamera atau luruskan stiker QRIS"
+        is_optimal = False
+    elif coverage_ratio > 0.96:
         status = "TOO_CLOSE"
         message = "Mundurkan sedikit agar seluruh fisik QRIS terlihat"
         is_optimal = False
@@ -292,7 +408,10 @@ def evaluasi_posisi_qris(gambar_bgr, conf_threshold=0.25):
         is_optimal = False
     else:
         status = "OPTIMAL"
-        message = "Posisi Fisik QRIS Sempurna! Siap dipindai"
+        if abs(skew_angle) >= 1.5:
+            message = f"Posisi Optimal! Auto-Deskew aktif ({skew_angle:+.1f}°)"
+        else:
+            message = "Posisi Fisik QRIS Sempurna! Siap dipindai"
         is_optimal = True
 
     return {
@@ -302,6 +421,7 @@ def evaluasi_posisi_qris(gambar_bgr, conf_threshold=0.25):
         "confidence": round(conf, 4),
         "message": message,
         "box": [x1, y1, x2, y2],
+        "skew_angle": round(skew_angle, 2),
         "coverage_ratio": round(coverage_ratio, 4),
         "offset_center": round(offset_center, 4)
     }
@@ -1122,7 +1242,22 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
             is_qris_cropped = True
             print(f"[LOG] Crop Fisik QRIS Berhasil: {crop_w}x{crop_h}px dari offset ({offset_x}, {offset_y})")
 
-    # 2. Predict dengan YOLO Barcode & YOLO OCR pada gambar fisik QRIS (cropped)
+    # AUTO-DESKEW (Straightening): Jika terdeteksi kemiringan wajar (1.5° s.d. 18.0°), luruskan otomatis
+    deskew_applied = False
+    deskew_M = None
+    deskew_M_inv = None
+    skew_angle = positioning_analysis.get("skew_angle", 0.0)
+
+    if is_qris_cropped and 1.5 <= abs(skew_angle) <= 18.0:
+        deskewed_img, deskew_M, deskew_M_inv = luruskan_dan_reposisi_qris(gambar_proses, skew_angle)
+        if deskewed_img is not None:
+            gambar_proses = deskewed_img
+            deskew_applied = True
+            print(f"[LOG] Auto-Deskew Fisik QRIS Berhasil: Koreksi rotasi {skew_angle:+.2f}° diterapkan.")
+
+    positioning_analysis["deskew_applied"] = deskew_applied
+
+    # 2. Predict dengan YOLO Barcode & YOLO OCR pada gambar fisik QRIS (cropped & deskewed)
     res_barcode = model_barcode.predict(gambar_proses, conf=0.18, verbose=False)[0]
     res_ocr = model_ocr.predict(gambar_proses, conf=0.10, verbose=False)[0]
 
@@ -1134,13 +1269,18 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
         gambar_proses = gambar_input
         offset_x, offset_y = 0, 0
         is_qris_cropped = False
+        deskew_applied = False
+        deskew_M_inv = None
 
     # Gambar outline kotak fisik QRIS Positioning pada foto visualisasi
     if positioning_analysis.get("detected") and positioning_analysis.get("box"):
         px1, py1, px2, py2 = positioning_analysis["box"]
         warna_pos = (0, 230, 115) if positioning_analysis.get("is_optimal") else (0, 165, 255)
         cv2.rectangle(gambar_vis, (px1, py1), (px2, py2), warna_pos, 3)
-        label_pos = f"Fisik QRIS (Crop Fokus AI): {positioning_analysis.get('status')} ({positioning_analysis.get('confidence')*100:.0f}%)"
+        if deskew_applied:
+            label_pos = f"Fisik QRIS: {positioning_analysis.get('status')} • Auto-Deskew ({skew_angle:+.1f} deg)"
+        else:
+            label_pos = f"Fisik QRIS (Crop Fokus AI): {positioning_analysis.get('status')} ({positioning_analysis.get('confidence')*100:.0f}%)"
         cv2.putText(gambar_vis, label_pos, (px1, max(24, py1 - 10)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.55, warna_pos, 2)
 
@@ -1199,9 +1339,18 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
         label_std = PEMETAAN_LABEL_ROBOFLOW.get(nama_kelas.lower().strip(), nama_kelas.lower().strip())
         lx1, ly1, lx2, ly2 = map(int, box.xyxy[0].tolist())
 
-        # Koordinat global pada foto utuh (gambar_vis)
-        gx1, gy1 = lx1 + offset_x, ly1 + offset_y
-        gx2, gy2 = lx2 + offset_x, ly2 + offset_y
+        # Koordinat global pada foto utuh (gambar_vis) dengan inverse mapping jika di-deskew
+        if deskew_applied and deskew_M_inv is not None:
+            pts = np.array([[lx1, ly1], [lx2, ly1], [lx2, ly2], [lx1, ly2]], dtype=np.float32)
+            pts_ones = np.hstack([pts, np.ones((4, 1), dtype=np.float32)])
+            orig_pts = (deskew_M_inv @ pts_ones.T).T
+            gx1 = max(0, int(np.min(orig_pts[:, 0])) + offset_x)
+            gy1 = max(0, int(np.min(orig_pts[:, 1])) + offset_y)
+            gx2 = min(lebar_foto, int(np.max(orig_pts[:, 0])) + offset_x)
+            gy2 = min(tinggi_foto, int(np.max(orig_pts[:, 1])) + offset_y)
+        else:
+            gx1, gy1 = lx1 + offset_x, ly1 + offset_y
+            gx2, gy2 = lx2 + offset_x, ly2 + offset_y
 
         # Abaikan TrOCR hanya untuk objek grafik/barcode (qrcode, logo, gpn)
         if label_std in ["qrcode", "logo", "gpn", "logo_gpn", "logo_qris"]:
