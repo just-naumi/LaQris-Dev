@@ -9,7 +9,7 @@
    ====================================================== */
 
 window.LAQRIS_API_URL = "https://YOUR-BACKEND-URL";
-window.HTTPS_LIVE_URL = "https://accountability-mariah-constant-personality.trycloudflare.com";
+window.HTTPS_LIVE_URL = "https://symphony-desktops-exclusively-ware.trycloudflare.com";
 
 window.API_BASE = (function () {
     // Jika diakses via browser (localhost, 127.0.0.1, atau IP Wi-Fi HP seperti 192.168.x.x):
