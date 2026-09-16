@@ -96,6 +96,25 @@ class QRISRawAnalysisSchema(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────
+# Identity Evidence Sub-Schema
+# ─────────────────────────────────────────────────────────────
+
+class IdentityFieldEvidenceSchema(BaseModel):
+    physical: Optional[str] = None
+    digital: Optional[str] = None
+    match: bool = False
+    similarity: Optional[float] = None
+    priority: str = "SUPPORTING_SIGNAL"
+
+
+class IdentityEvidenceSchema(BaseModel):
+    nmid: IdentityFieldEvidenceSchema
+    merchant_name: IdentityFieldEvidenceSchema
+    acquirer: IdentityFieldEvidenceSchema
+    tid: IdentityFieldEvidenceSchema
+
+
+# ─────────────────────────────────────────────────────────────
 # Current QR Risk Schema (4-Level: NORMAL/CAUTION/WARNING/DANGER)
 # ─────────────────────────────────────────────────────────────
 
@@ -105,6 +124,8 @@ class CurrentQRRiskSchema(BaseModel):
     risk_color: str                    # "green" | "yellow" | "orange" | "red"
     overall_risk_score: float
     trust_score: float
+    decision: str = "ALLOW"            # "ALLOW" | "WARN" | "BLOCK" (Security Decision Contract)
+    reason_codes: List[str] = []       # e.g. ["NMID_MISMATCH"], ["CRC_INVALID"], ["NAME_COMPLETELY_DIFFERENT"]
     is_mismatch: bool
     name_similarity: float
     match_level: str
@@ -120,6 +141,7 @@ class CurrentQRRiskSchema(BaseModel):
     digital_tid: str
     technical_info: Dict[str, Any]
     qris_raw_analysis: Optional[QRISRawAnalysisSchema] = None
+    identity_evidence: Optional[Dict[str, Any]] = None
 
 
 class ScanResponseSchema(BaseModel):
@@ -127,6 +149,55 @@ class ScanResponseSchema(BaseModel):
     current_qr_risk: CurrentQRRiskSchema
     merchant_reputation: ReputationScoreSchema
     visualization_url: str
+
+
+# ─────────────────────────────────────────────────────────────
+# Payment Transaction Schemas (Post-Payment Event Layer)
+# ─────────────────────────────────────────────────────────────
+
+class PaymentTransactionSchema(BaseModel):
+    id: int
+    verification_session_id: Optional[str] = None
+    provider: str
+    provider_transaction_id: str
+    merchant_id: Optional[int] = None
+    nmid: Optional[str] = None
+    amount: float
+    status: str
+    response_code: str
+    invoice_number: Optional[str] = None
+    terminal_id: Optional[str] = None
+    transaction_time: Optional[datetime] = None
+    latency_ms: int = 0
+    retry_count: int = 0
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PaymentTransactionCreateSchema(BaseModel):
+    verification_id: str
+    provider: str = "DemoPay"
+    provider_transaction_id: str
+    amount: float
+    status: str = "SUCCESS"
+    response_code: str = "00"
+    merchant_id: Optional[str] = None
+    terminal_id: Optional[str] = None
+    invoice_number: Optional[str] = None
+    transaction_time: Optional[str] = None
+    latency_ms: int = 0
+    retry_count: int = 0
+
+
+class PaymentTransactionResponseSchema(BaseModel):
+    success: bool
+    message: str
+    transaction_id: str
+    verification_id: str
+    status: str
+    amount: float
 
 
 # ─────────────────────────────────────────────────────────────

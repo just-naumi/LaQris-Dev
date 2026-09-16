@@ -104,6 +104,36 @@ class VerificationSession(Base):
     risk_level = Column(String, default="LOW")
     reputation_score = Column(Float, default=50.0)   # EMRS score saat scan
 
+    # Relasi 0..1 ke transaksi pembayaran (Post-Payment Transaction Event)
+    payment_transaction = relationship("PaymentTransaction", back_populates="verification_session", uselist=False)
+
+
+class PaymentTransaction(Base):
+    """
+    Entity transaksi pembayaran resmi yang terhubung dengan VerificationSession.
+    Menjadi jembatan antara fase Pre-Payment Verification dan Post-Payment Result.
+    """
+    __tablename__ = "payment_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    verification_session_id = Column(String, ForeignKey("verification_sessions.session_id"), nullable=True, index=True)
+    provider = Column(String, default="DemoPay")                 # "DemoPay" | "DANA" | "GOPAY" | "BCA"
+    provider_transaction_id = Column(String, unique=True, index=True, nullable=False) # e.g. "TX-001"
+    merchant_id = Column(Integer, ForeignKey("merchants.id"), nullable=True)
+    nmid = Column(String, nullable=True)
+    amount = Column(Float, nullable=False, default=0.0)
+    status = Column(String, default="SUCCESS")                   # "SUCCESS" | "FAILED" | "BLOCKED"
+    response_code = Column(String, default="00")                 # ISO 8583 / ASPI Response Code
+    invoice_number = Column(String, nullable=True)
+    terminal_id = Column(String, nullable=True)
+    transaction_time = Column(DateTime, default=datetime.utcnow)
+    latency_ms = Column(Integer, default=0)
+    retry_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    verification_session = relationship("VerificationSession", back_populates="payment_transaction")
+    merchant = relationship("Merchant")
+
 
 class User(Base):
     __tablename__ = "users"
@@ -118,5 +148,6 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     status = Column(String, default="ACTIVE")        # "ACTIVE" | "PENDING" | "SUSPENDED"
     created_at = Column(DateTime, default=datetime.utcnow)
+
 
 

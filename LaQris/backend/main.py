@@ -11,7 +11,7 @@ from typing import List, Optional
 
 import hashlib
 from database import init_db, get_db, reset_db
-from models import Merchant, Report, Dispute, VerificationSession, User
+from models import Merchant, Report, Dispute, VerificationSession, User, PaymentTransaction
 import schemas
 from engine import (
     process_qris_verification,
@@ -276,6 +276,55 @@ def get_recent_scans_history(user_id: Optional[str] = None, limit: int = 5, db: 
             "scanned_at": s.scanned_at.strftime("%d %b %Y %H:%M") if s.scanned_at else "Baru saja"
         })
     return {"scans": results}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Transaction Events API Endpoints (Lifecycle Tracking)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.post("/api/v1/transactions/events", response_model=schemas.PaymentTransactionResponseSchema)
+def record_transaction_event(
+    payload: schemas.PaymentTransactionCreateSchema,
+    db: Session = Depends(get_db)
+):
+    """
+    Mencatat event transaksi pembayaran yang terikat pada verification_session_id.
+    Digunakan untuk tracing siklus hidup verifikasi QRIS -> pembayaran gateway.
+    """
+    session = db.query(VerificationSession).filter(VerificationSession.session_id == payload.verification_session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Verification session '{payload.verification_session_id}' tidak ditemukan.")
+
+    tx = PaymentTransaction(
+        verification_session_id=payload.verification_session_id,
+        provider=payload.provider,
+        provider_transaction_id=payload.provider_transaction_id,
+        merchant_id=payload.merchant_id or session.merchant_id,
+        nmid=payload.nmid or session.nmid,
+        amount=payload.amount,
+        status=payload.status,
+        response_code=payload.response_code,
+        invoice_number=payload.invoice_number,
+        terminal_id=payload.terminal_id,
+        latency_ms=payload.latency_ms,
+        retry_count=payload.retry_count or 0
+    )
+    db.add(tx)
+    db.commit()
+    db.refresh(tx)
+    return tx
+
+
+@app.get("/api/v1/transactions/{verification_session_id}", response_model=schemas.PaymentTransactionResponseSchema)
+def get_transaction_by_session(
+    verification_session_id: str,
+    db: Session = Depends(get_db)
+):
+    """Mengambil riwayat transaksi pembayaran berdasarkan verification_session_id."""
+    tx = db.query(PaymentTransaction).filter(PaymentTransaction.verification_session_id == verification_session_id).first()
+    if not tx:
+        raise HTTPException(status_code=404, detail=f"Transaksi untuk session '{verification_session_id}' tidak ditemukan.")
+    return tx
 
 
 # ─────────────────────────────────────────────────────────────────────────────
