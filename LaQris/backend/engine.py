@@ -1333,6 +1333,63 @@ def query_merchant_reputation(nmid_digital, nmid_physical, merchant_name_dig, me
 
 
 # =============================================================================
+# FUNGSI 10A: Pemotongan Objek Presisi Mengikuti Sudut Rotasi (crop_bounding_object)
+# =============================================================================
+def crop_bounding_object(image, box_xyxy=None, corners=None):
+    """
+    Memotong objek gambar persis sesuai koordinat bounding box:
+    - Jika memiliki 4 titik sudut miring (OBB / rotated bounding box), dipotong menggunakan
+      cv2.warpPerspective sehingga mengikuti lekukan & sudut kemiringan tanpa background luar.
+    - Jika tidak memiliki sudut rotasi, dipotong tepat pada [y1:y2, x1:x2].
+    - TIDAK DIBERI TAMBAHAN PIXEL (0 padding px) persis sesuai instruksi pengguna.
+    """
+    if image is None or image.size == 0:
+        return None
+
+    h_img, w_img = image.shape[:2]
+
+    # 1. Prioritaskan crop miring (Warped Perspective) jika ada 4 titik sudut OBB
+    if corners is not None:
+        try:
+            pts = np.array(corners, dtype=np.float32)
+            if pts.shape == (4, 2) or len(pts) == 4:
+                p0, p1, p2, p3 = pts[0], pts[1], pts[2], pts[3]
+                w1 = np.linalg.norm(p1 - p0)
+                w2 = np.linalg.norm(p2 - p3)
+                w = max(4, int(round((w1 + w2) / 2.0)))
+
+                h1 = np.linalg.norm(p2 - p1)
+                h2 = np.linalg.norm(p3 - p0)
+                h = max(4, int(round((h1 + h2) / 2.0)))
+
+                src_pts = np.float32([p0, p1, p2, p3])
+                dst_pts = np.float32([
+                    [0, 0],
+                    [w - 1, 0],
+                    [w - 1, h - 1],
+                    [0, h - 1]
+                ])
+                M = cv2.getPerspectiveTransform(src_pts, dst_pts)
+                warped = cv2.warpPerspective(image, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+                if warped is not None and warped.shape[0] >= 4 and warped.shape[1] >= 4:
+                    return warped
+        except Exception as e:
+            print(f"[DEBUG] Warp perspective crop gagal, fallback ke box tegak: {e}")
+
+    # 2. Pemotongan kotak tegak presisi (0 px padding)
+    if box_xyxy is not None:
+        bx1, by1, bx2, by2 = box_xyxy
+        x1 = max(0, int(round(min(bx1, bx2))))
+        y1 = max(0, int(round(min(by1, by2))))
+        x2 = min(w_img, int(round(max(bx1, bx2))))
+        y2 = min(h_img, int(round(max(by1, by2))))
+        if x2 > x1 and y2 > y1:
+            return image[y1:y2, x1:x2].copy()
+
+    return None
+
+
+# =============================================================================
 # FUNGSI 10B: Manajemen Arsip Sesi Scan (simpan_arsip_sesi_scan)
 # =============================================================================
 def _json_serializable_converter(obj):
@@ -1779,18 +1836,16 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
 
     if positioning_analysis.get("detected") and positioning_analysis.get("box"):
         px1, py1, px2, py2 = positioning_analysis["box"]
-        # Beri padding pengaman (~2.5% atau 12px) agar tepian fisik/stiker tidak terpotong
-        pad_px = max(10, int((px2 - px1) * 0.025))
-        pad_py = max(10, int((py2 - py1) * 0.025))
-        crop_x1 = max(0, px1 - pad_px)
-        crop_y1 = max(0, py1 - pad_py)
-        crop_x2 = min(lebar_foto, px2 + pad_px)
-        crop_y2 = min(tinggi_foto, py2 + pad_py)
+        # Potong persis sesuai bounding box (0 padding px)
+        crop_x1 = max(0, px1)
+        crop_y1 = max(0, py1)
+        crop_x2 = min(lebar_foto, px2)
+        crop_y2 = min(tinggi_foto, py2)
 
         crop_w = crop_x2 - crop_x1
         crop_h = crop_y2 - crop_y1
 
-        if crop_w > 80 and crop_h > 80:
+        if crop_w > 50 and crop_h > 50:
             gambar_proses = gambar_input[crop_y1:crop_y2, crop_x1:crop_x2]
             gambar_qris_card = gambar_proses.copy()
             offset_x, offset_y = crop_x1, crop_y1
@@ -1864,10 +1919,10 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
     gambar_qr_code = None
     h_proc, w_proc = gambar_proses.shape[:2]
     for (bx1, by1, bx2, by2) in calon_kotak_qr:
-        px1 = max(0, int(bx1) - 10)
-        py1 = max(0, int(by1) - 10)
-        px2 = min(w_proc, int(bx2) + 10)
-        py2 = min(h_proc, int(by2) + 10)
+        px1 = max(0, int(bx1))
+        py1 = max(0, int(by1))
+        px2 = min(w_proc, int(bx2))
+        py2 = min(h_proc, int(by2))
         potongan_qr = gambar_proses[py1:py2, px1:px2]
         teks_qr_mentah = scan_qr_code_digital(potongan_qr)
         if teks_qr_mentah:
@@ -1883,10 +1938,10 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
     # Pastikan potongan gambar QR Code tersimpan jika ada calon_kotak_qr
     if gambar_qr_code is None and calon_kotak_qr:
         cbx1, cby1, cbx2, cby2 = calon_kotak_qr[0]
-        cpx1 = max(0, int(cbx1) - 10)
-        cpy1 = max(0, int(cby1) - 10)
-        cpx2 = min(w_proc, int(cbx2) + 10)
-        cpy2 = min(h_proc, int(cby2) + 10)
+        cpx1 = max(0, int(cbx1))
+        cpy1 = max(0, int(cby1))
+        cpx2 = min(w_proc, int(cbx2))
+        cpy2 = min(h_proc, int(cby2))
         if cpy2 > cpy1 and cpx2 > cpx1:
             gambar_qr_code = gambar_proses[cpy1:cpy2, cpx1:cpx2].copy()
 
@@ -1935,18 +1990,20 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
             gx1, gy1 = lx1 + offset_x, ly1 + offset_y
             gx2, gy2 = lx2 + offset_x, ly2 + offset_y
 
-        # Potongan gambar untuk objek grafik / barcode / instruksi
-        cx1_obj = max(0, min(gx1, gx2))
-        cy1_obj = max(0, min(gy1, gy2))
-        cx2_obj = min(lebar_foto, max(gx1, gx2))
-        cy2_obj = min(tinggi_foto, max(gy1, gy2))
-        potongan_obj = gambar_input[cy1_obj:cy2_obj, cx1_obj:cx2_obj].copy() if (cy2_obj > cy1_obj and cx2_obj > cx1_obj) else None
+        # Potongan gambar objek: persis mengikuti sudut rotasi miring (OBB) tanpa tambahan pixel
+        potongan_obj = crop_bounding_object(gambar_input, box_xyxy=(gx1, gy1, gx2, gy2), corners=corners_global)
+        if potongan_obj is None:
+            cx1_obj = max(0, min(gx1, gx2))
+            cy1_obj = max(0, min(gy1, gy2))
+            cx2_obj = min(lebar_foto, max(gx1, gx2))
+            cy2_obj = min(tinggi_foto, max(gy1, gy2))
+            potongan_obj = gambar_input[cy1_obj:cy2_obj, cx1_obj:cx2_obj].copy() if (cy2_obj > cy1_obj and cx2_obj > cx1_obj) else None
 
         # Abaikan TrOCR untuk objek grafik/barcode/instruksi umum
         if label_std in ["qrcode", "logo", "gpn", "logo_gpn", "logo_qris", "cara_pakai", "cek_aplikasi", "slogan", "versi_cetak"]:
             if label_std == "qrcode" and target_qr_box is None:
                 target_qr_box = (gx1, gy1, gx2, gy2)
-                if gambar_qr_code is None and potongan_obj is not None:
+                if potongan_obj is not None:
                     gambar_qr_code = potongan_obj.copy()
 
             warna = DAFTAR_WARNA_LABEL[cls_id % len(DAFTAR_WARNA_LABEL)]
@@ -1972,15 +2029,10 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
         if label_std == "nmid" and target_nmid_box is None:
             target_nmid_box = (gx1, gy1, gx2, gy2)
 
-        # Beri padding (margin 8%) pada potongan area gambar_proses
-        pad_x = max(5, int((lx2 - lx1) * 0.08))
-        pad_y = max(5, int((ly2 - ly1) * 0.08))
-        cx1 = max(0, lx1 - pad_x)
-        cy1 = max(0, ly1 - pad_y)
-        cx2 = min(w_proc, lx2 + pad_x)
-        cy2 = min(h_proc, ly2 + pad_y)
-
-        potongan_teks = gambar_proses[cy1:cy2, cx1:cx2].copy()
+        # Potongan teks: persis mengikuti sudut miring OBB tanpa tambahan pixel (0 padding px)
+        potongan_teks = crop_bounding_object(gambar_input, box_xyxy=(gx1, gy1, gx2, gy2), corners=corners_global)
+        if potongan_teks is None:
+            potongan_teks = gambar_proses[ly1:ly2, lx1:lx2].copy()
 
         # Routing model berdasarkan label:
         if label_std == "nama_merchant":
