@@ -1335,12 +1335,31 @@ def query_merchant_reputation(nmid_digital, nmid_physical, merchant_name_dig, me
 # =============================================================================
 # FUNGSI 10A: Pemotongan Objek Presisi Mengikuti Sudut Rotasi (crop_bounding_object)
 # =============================================================================
-def crop_bounding_object(image, box_xyxy=None, corners=None):
+def order_points_upright(pts):
+    """
+    Mengurutkan 4 titik sudut OBB menjadi [Top-Left, Top-Right, Bottom-Right, Bottom-Left]
+    sehingga hasil potongan orientasinya selalu tegak lurus horizontal dan terbaca dari kiri ke kanan.
+    """
+    rect = np.zeros((4, 2), dtype=np.float32)
+    s = pts.sum(axis=1)
+    rect[0] = pts[np.argmin(s)]  # Top-Left (x + y terkecil)
+    rect[2] = pts[np.argmax(s)]  # Bottom-Right (x + y terbesar)
+
+    diff = np.diff(pts, axis=1)  # y - x
+    rect[1] = pts[np.argmin(diff)]  # Top-Right (y - x terkecil -> x besar, y kecil)
+    rect[3] = pts[np.argmax(diff)]  # Bottom-Left (y - x terbesar -> x kecil, y besar)
+    return rect
+
+
+def crop_bounding_object(image, box_xyxy=None, corners=None, is_horizontal_text=False):
     """
     Memotong objek gambar persis sesuai koordinat bounding box:
     - Jika memiliki 4 titik sudut miring (OBB / rotated bounding box), dipotong menggunakan
-      cv2.warpPerspective sehingga mengikuti lekukan & sudut kemiringan tanpa background luar.
+      cv2.warpPerspective dengan titik sudut yang telah diurutkan (TL, TR, BR, BL) sehingga
+      mengikuti lekukan & sudut kemiringan teks tanpa background luar dan tidak terbalik/miring 90°.
     - Jika tidak memiliki sudut rotasi, dipotong tepat pada [y1:y2, x1:x2].
+    - Jika elemen teks horizontal (misal Nama Merchant, NMID, TID) terpotong dengan tinggi > lebar,
+      otomatis diputar 90° agar orientasinya benar-benar horizontal dan tegak.
     - TIDAK DIBERI TAMBAHAN PIXEL (0 padding px) persis sesuai instruksi pengguna.
     """
     if image is None or image.size == 0:
@@ -1353,25 +1372,28 @@ def crop_bounding_object(image, box_xyxy=None, corners=None):
         try:
             pts = np.array(corners, dtype=np.float32)
             if pts.shape == (4, 2) or len(pts) == 4:
-                p0, p1, p2, p3 = pts[0], pts[1], pts[2], pts[3]
-                w1 = np.linalg.norm(p1 - p0)
-                w2 = np.linalg.norm(p2 - p3)
-                w = max(4, int(round((w1 + w2) / 2.0)))
+                rect = order_points_upright(pts)
+                (tl, tr, br, bl) = rect
 
-                h1 = np.linalg.norm(p2 - p1)
-                h2 = np.linalg.norm(p3 - p0)
-                h = max(4, int(round((h1 + h2) / 2.0)))
+                widthA = np.linalg.norm(br - bl)
+                widthB = np.linalg.norm(tr - tl)
+                maxWidth = max(4, int(round(max(widthA, widthB))))
 
-                src_pts = np.float32([p0, p1, p2, p3])
+                heightA = np.linalg.norm(tr - br)
+                heightB = np.linalg.norm(tl - bl)
+                maxHeight = max(4, int(round(max(heightA, heightB))))
+
                 dst_pts = np.float32([
                     [0, 0],
-                    [w - 1, 0],
-                    [w - 1, h - 1],
-                    [0, h - 1]
+                    [maxWidth - 1, 0],
+                    [maxWidth - 1, maxHeight - 1],
+                    [0, maxHeight - 1]
                 ])
-                M = cv2.getPerspectiveTransform(src_pts, dst_pts)
-                warped = cv2.warpPerspective(image, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+                M = cv2.getPerspectiveTransform(rect, dst_pts)
+                warped = cv2.warpPerspective(image, M, (maxWidth, maxHeight), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
                 if warped is not None and warped.shape[0] >= 4 and warped.shape[1] >= 4:
+                    if is_horizontal_text and warped.shape[0] > warped.shape[1]:
+                        warped = cv2.rotate(warped, cv2.ROTATE_90_CLOCKWISE)
                     return warped
         except Exception as e:
             print(f"[DEBUG] Warp perspective crop gagal, fallback ke box tegak: {e}")
@@ -1384,7 +1406,10 @@ def crop_bounding_object(image, box_xyxy=None, corners=None):
         x2 = min(w_img, int(round(max(bx1, bx2))))
         y2 = min(h_img, int(round(max(by1, by2))))
         if x2 > x1 and y2 > y1:
-            return image[y1:y2, x1:x2].copy()
+            crop = image[y1:y2, x1:x2].copy()
+            if is_horizontal_text and crop.shape[0] > crop.shape[1]:
+                crop = cv2.rotate(crop, cv2.ROTATE_90_CLOCKWISE)
+            return crop
 
     return None
 
@@ -1991,13 +2016,17 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
             gx2, gy2 = lx2 + offset_x, ly2 + offset_y
 
         # Potongan gambar objek: persis mengikuti sudut rotasi miring (OBB) tanpa tambahan pixel
-        potongan_obj = crop_bounding_object(gambar_input, box_xyxy=(gx1, gy1, gx2, gy2), corners=corners_global)
+        is_text_elem = label_std in ["nama_merchant", "nmid", "acquirer", "tid", "versi_cetak", "slogan", "cek_aplikasi", "cara_pakai"]
+        potongan_obj = crop_bounding_object(gambar_input, box_xyxy=(gx1, gy1, gx2, gy2), corners=corners_global, is_horizontal_text=is_text_elem)
         if potongan_obj is None:
             cx1_obj = max(0, min(gx1, gx2))
             cy1_obj = max(0, min(gy1, gy2))
             cx2_obj = min(lebar_foto, max(gx1, gx2))
             cy2_obj = min(tinggi_foto, max(gy1, gy2))
-            potongan_obj = gambar_input[cy1_obj:cy2_obj, cx1_obj:cx2_obj].copy() if (cy2_obj > cy1_obj and cx2_obj > cx1_obj) else None
+            if cy2_obj > cy1_obj and cx2_obj > cx1_obj:
+                potongan_obj = gambar_input[cy1_obj:cy2_obj, cx1_obj:cx2_obj].copy()
+                if is_text_elem and potongan_obj.shape[0] > potongan_obj.shape[1]:
+                    potongan_obj = cv2.rotate(potongan_obj, cv2.ROTATE_90_CLOCKWISE)
 
         # Abaikan TrOCR untuk objek grafik/barcode/instruksi umum
         if label_std in ["qrcode", "logo", "gpn", "logo_gpn", "logo_qris", "cara_pakai", "cek_aplikasi", "slogan", "versi_cetak"]:
@@ -2030,9 +2059,11 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
             target_nmid_box = (gx1, gy1, gx2, gy2)
 
         # Potongan teks: persis mengikuti sudut miring OBB tanpa tambahan pixel (0 padding px)
-        potongan_teks = crop_bounding_object(gambar_input, box_xyxy=(gx1, gy1, gx2, gy2), corners=corners_global)
+        potongan_teks = crop_bounding_object(gambar_input, box_xyxy=(gx1, gy1, gx2, gy2), corners=corners_global, is_horizontal_text=True)
         if potongan_teks is None:
             potongan_teks = gambar_proses[ly1:ly2, lx1:lx2].copy()
+            if potongan_teks.shape[0] > potongan_teks.shape[1]:
+                potongan_teks = cv2.rotate(potongan_teks, cv2.ROTATE_90_CLOCKWISE)
 
         # Routing model berdasarkan label:
         if label_std == "nama_merchant":
