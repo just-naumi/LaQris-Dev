@@ -130,21 +130,6 @@
             letter-spacing: 0.2px;
         }
 
-        /* LaQris Verified Pill */
-        .laqris-verified-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: #ecfdf5;
-            color: #059669;
-            border: 1px solid #a7f3d0;
-            padding: 5px 10px;
-            border-radius: 8px;
-            font-size: 0.76rem;
-            font-weight: 700;
-            margin-bottom: 20px;
-        }
-
         /* Nominal Input Section */
         .section-label {
             font-size: 0.88rem;
@@ -198,40 +183,6 @@
 
         .btn-clear-nominal:hover {
             opacity: 0.7;
-        }
-
-        /* Quick Amount Chips */
-        .quick-chips-row {
-            display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            padding-bottom: 6px;
-            margin-bottom: 28px;
-            scrollbar-width: none;
-        }
-
-        .quick-chips-row::-webkit-scrollbar {
-            display: none;
-        }
-
-        .quick-chip {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            color: #334155;
-            font-size: 0.78rem;
-            font-weight: 700;
-            padding: 6px 12px;
-            border-radius: 20px;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: all 0.2s ease;
-        }
-
-        .quick-chip:hover,
-        .quick-chip.active {
-            background: #e2f7f4;
-            color: #0f766e;
-            border-color: #99f6e4;
         }
 
         /* Sumber Dana Card */
@@ -523,16 +474,8 @@
                     </div>
                 </div>
 
-                <!-- LaQris Security Badge -->
-                <div class="laqris-verified-badge" id="laqrisBadge">
-                    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                    </svg>
-                    <span id="badgeText">Terverifikasi Aman oleh LaQris (Skor: 100%)</span>
-                </div>
-
                 <!-- Nominal Section -->
-                <div class="section-label">Nominal</div>
+                <div class="section-label" style="margin-top: 10px;">Nominal</div>
                 <div class="nominal-input-container">
                     <span class="nominal-prefix">Rp</span>
                     <input type="text" id="inputNominal" class="nominal-input-field" placeholder="0" inputmode="numeric" value="27.000">
@@ -544,17 +487,8 @@
                     </button>
                 </div>
 
-                <!-- Quick Selection Chips -->
-                <div class="quick-chips-row">
-                    <button type="button" class="quick-chip" onclick="setNominal(10000)">Rp 10.000</button>
-                    <button type="button" class="quick-chip" onclick="setNominal(20000)">Rp 20.000</button>
-                    <button type="button" class="quick-chip active" onclick="setNominal(27000)">Rp 27.000</button>
-                    <button type="button" class="quick-chip" onclick="setNominal(50000)">Rp 50.000</button>
-                    <button type="button" class="quick-chip" onclick="setNominal(100000)">Rp 100.000</button>
-                </div>
-
                 <!-- Sumber Dana Section -->
-                <div class="section-label">Sumber dana</div>
+                <div class="section-label" style="margin-top: 32px;">Sumber dana</div>
                 <div class="card-bordered">
                     <div class="card-title" id="sourceAccountType">TAPLUS</div>
                     <div class="card-sub" id="sourceAccountNumber">*******768</div>
@@ -711,10 +645,6 @@
             const initials = getInitials(merchantName);
             document.getElementById('merchantAvatar').textContent = initials;
 
-            // LaQris Badge text
-            const trustScore = sessionData.trust_score || 100;
-            document.getElementById('badgeText').textContent = `Terverifikasi Aman oleh LaQris (${riskLevel} · Skor: ${trustScore}%)`;
-
             // Nominal handling
             if (paramNominal && !isNaN(parseFloat(paramNominal)) && parseFloat(paramNominal) > 0) {
                 currentNominalNumber = Math.round(parseFloat(paramNominal));
@@ -767,22 +697,11 @@
             document.getElementById('confirmDetailNominal').textContent = formatted;
             document.getElementById('confirmTotalAmount').textContent = formatted;
 
-            // Update active chips
-            document.querySelectorAll('.quick-chip').forEach(c => c.classList.remove('active'));
             document.getElementById('btnContinue').disabled = (currentNominalNumber <= 0);
-        }
-
-        function setNominal(amount) {
-            document.querySelectorAll('.quick-chip').forEach(c => c.classList.remove('active'));
-            if (event && event.target) {
-                event.target.classList.add('active');
-            }
-            updateNominalDisplay(amount);
         }
 
         function clearNominal() {
             updateNominalDisplay(0);
-            document.querySelectorAll('.quick-chip').forEach(c => c.classList.remove('active'));
             document.getElementById('inputNominal').focus();
         }
 
