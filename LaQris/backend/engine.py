@@ -90,13 +90,19 @@ DAFTAR_MCC = {
     "7999": "Hiburan & Rekreasi"
 }
 
-# Pemetaan nama kelas label dari dataset YOLO OCR
+# Pemetaan nama kelas label dari dataset YOLO OCR (11 Kelas Resmi Roboflow)
 PEMETAAN_LABEL_ROBOFLOW = {
     "nama merchant": "nama_merchant",
     "national merchant id": "nmid",
     "dicetak oleh": "acquirer",
     "terminal id": "tid",
     "qr code": "qrcode",
+    "logo gpn": "logo_gpn",
+    "logo dan deskripsi qris": "logo_qris",
+    "cara pakai qris": "cara_pakai",
+    "cek aplikasi penyelenggara": "cek_aplikasi",
+    "slogan": "slogan",
+    "versi cetak": "versi_cetak",
     "nama_merchant": "nama_merchant",
     "national_merchant_id": "nmid",
     "dicetak_oleh": "acquirer",
@@ -1401,7 +1407,8 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
     res_ocr = model_ocr.predict(gambar_proses, conf=0.10, verbose=False)[0]
 
     # Fallback ke gambar penuh jika crop terlalu ketat sehingga tidak ada barcode/ocr terdeteksi
-    if is_qris_cropped and len(res_barcode.boxes) == 0 and len(res_ocr.boxes) == 0:
+    num_ocr_boxes = len(res_ocr.obb) if (hasattr(res_ocr, 'obb') and res_ocr.obb is not None and len(res_ocr.obb) > 0) else len(res_ocr.boxes)
+    if is_qris_cropped and len(res_barcode.boxes) == 0 and num_ocr_boxes == 0:
         print("[LOG] Fallback ke gambar penuh karena crop tidak menemukan objek...")
         res_barcode = model_barcode.predict(gambar_input, conf=0.18, verbose=False)[0]
         res_ocr = model_ocr.predict(gambar_input, conf=0.10, verbose=False)[0]
@@ -1433,13 +1440,15 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
         if cls_id == 0:
             calon_kotak_qr.append(box.xyxy[0].tolist())
 
-    # Ambil lokasi kotak QR Code dari YOLO OCR
-    for box in res_ocr.boxes:
-        cls_id = int(box.cls[0].item())
-        nama_kelas = model_ocr.names[cls_id]
-        label_std = PEMETAAN_LABEL_ROBOFLOW.get(nama_kelas.lower().strip(), nama_kelas.lower().strip())
-        if label_std == "qrcode":
-            calon_kotak_qr.append(box.xyxy[0].tolist())
+    # Ambil lokasi kotak QR Code dari YOLO OCR (mendukung .obb dan .boxes)
+    ocr_det_for_qr = res_ocr.obb if (hasattr(res_ocr, 'obb') and res_ocr.obb is not None and len(res_ocr.obb) > 0) else res_ocr.boxes
+    if ocr_det_for_qr is not None:
+        for box in ocr_det_for_qr:
+            cls_id = int(box.cls[0].item())
+            nama_kelas = model_ocr.names[cls_id]
+            label_std = PEMETAAN_LABEL_ROBOFLOW.get(nama_kelas.lower().strip(), nama_kelas.lower().strip())
+            if label_std == "qrcode":
+                calon_kotak_qr.append(box.xyxy[0].tolist())
 
     # Dekode HANYA pada potongan gambar kotak QR Code
     h_proc, w_proc = gambar_proses.shape[:2]
@@ -1468,8 +1477,9 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
     target_qr_box = None
     all_ocr_results = []
 
-    # Sort kotak deteksi berdasarkan skor confidence terbesar
-    boxes_sorted = sorted(res_ocr.boxes, key=lambda b: float(b.conf[0].item()), reverse=True)
+    # Sort kotak deteksi berdasarkan skor confidence terbesar (mendukung model standar .boxes dan model berotasi .obb)
+    ocr_detections = res_ocr.obb if (hasattr(res_ocr, 'obb') and res_ocr.obb is not None and len(res_ocr.obb) > 0) else res_ocr.boxes
+    boxes_sorted = sorted(ocr_detections, key=lambda b: float(b.conf[0].item()), reverse=True) if ocr_detections is not None else []
 
     for box in boxes_sorted:
         cls_id = int(box.cls[0].item())
@@ -1478,7 +1488,18 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
         label_std = PEMETAAN_LABEL_ROBOFLOW.get(nama_kelas.lower().strip(), nama_kelas.lower().strip())
         lx1, ly1, lx2, ly2 = map(int, box.xyxy[0].tolist())
 
-        # Koordinat global pada foto utuh (gambar_vis) dengan inverse mapping jika di-deskew
+        # Koordinat 4 sudut OBB berotasi jika tersedia
+        corners_global = None
+        if hasattr(box, 'xyxyxyxy'):
+            raw_corners = np.array(box.xyxyxyxy[0].tolist(), dtype=np.float32)
+            if deskew_applied and deskew_M_inv is not None:
+                pts_ones = np.hstack([raw_corners, np.ones((4, 1), dtype=np.float32)])
+                orig_pts = (deskew_M_inv @ pts_ones.T).T
+                corners_global = np.int32(orig_pts + np.array([offset_x, offset_y], dtype=np.float32))
+            else:
+                corners_global = np.int32(raw_corners + np.array([offset_x, offset_y], dtype=np.float32))
+
+        # Koordinat bounding box global pada foto utuh (gambar_vis) dengan inverse mapping jika di-deskew
         if deskew_applied and deskew_M_inv is not None:
             pts = np.array([[lx1, ly1], [lx2, ly1], [lx2, ly2], [lx1, ly2]], dtype=np.float32)
             pts_ones = np.hstack([pts, np.ones((4, 1), dtype=np.float32)])
@@ -1491,13 +1512,17 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
             gx1, gy1 = lx1 + offset_x, ly1 + offset_y
             gx2, gy2 = lx2 + offset_x, ly2 + offset_y
 
-        # Abaikan TrOCR hanya untuk objek grafik/barcode (qrcode, logo, gpn)
-        if label_std in ["qrcode", "logo", "gpn", "logo_gpn", "logo_qris"]:
+        # Abaikan TrOCR untuk objek grafik/barcode/instruksi umum
+        if label_std in ["qrcode", "logo", "gpn", "logo_gpn", "logo_qris", "cara_pakai", "cek_aplikasi", "slogan", "versi_cetak"]:
             if label_std == "qrcode" and target_qr_box is None:
                 target_qr_box = (gx1, gy1, gx2, gy2)
             warna = DAFTAR_WARNA_LABEL[cls_id % len(DAFTAR_WARNA_LABEL)]
-            cv2.rectangle(gambar_vis, (gx1, gy1), (gx2, gy2), warna, 2)
-            cv2.putText(gambar_vis, f"{label_std}", (gx1, max(15, gy1 - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.45, warna, 1)
+            if corners_global is not None:
+                cv2.polylines(gambar_vis, [corners_global], isClosed=True, color=warna, thickness=2)
+                cv2.putText(gambar_vis, f"{label_std}", (int(corners_global[0][0]), max(15, int(corners_global[0][1]) - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.45, warna, 1)
+            else:
+                cv2.rectangle(gambar_vis, (gx1, gy1), (gx2, gy2), warna, 2)
+                cv2.putText(gambar_vis, f"{label_std}", (gx1, max(15, gy1 - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.45, warna, 1)
             continue
 
         if label_std == "nmid" and target_nmid_box is None:
@@ -1523,14 +1548,20 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
             "label": label_std,
             "text": teks_ocr,
             "conf": conf_score,
-            "box": (gx1, gy1, gx2, gy2)
+            "box": (gx1, gy1, gx2, gy2),
+            "corners": corners_global.tolist() if corners_global is not None else None
         })
 
-        # Gambar kotak warna-warni + hasil bacaan teks lengkap pada foto visualisasi
+        # Gambar kotak berotasi miring (OBB) atau tegak pada foto visualisasi
         warna = DAFTAR_WARNA_LABEL[cls_id % len(DAFTAR_WARNA_LABEL)]
-        cv2.rectangle(gambar_vis, (gx1, gy1), (gx2, gy2), warna, 2)
-        cv2.putText(gambar_vis, f"{label_std}: {teks_ocr}", (gx1, max(15, gy1 - 5)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, warna, 1)
+        if corners_global is not None:
+            cv2.polylines(gambar_vis, [corners_global], isClosed=True, color=warna, thickness=2)
+            cv2.putText(gambar_vis, f"{label_std}: {teks_ocr}", (int(corners_global[0][0]), max(15, int(corners_global[0][1]) - 5)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.45, warna, 1)
+        else:
+            cv2.rectangle(gambar_vis, (gx1, gy1), (gx2, gy2), warna, 2)
+            cv2.putText(gambar_vis, f"{label_std}: {teks_ocr}", (gx1, max(15, gy1 - 5)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.45, warna, 1)
 
     # ── Ekstraksi & Validasi NMID Fisik ─────────────────────────────────────────
     # Prioritas 1: Cari pola NMID resmi (ID + 9 s.d. 15 digit angka) di seluruh hasil TrOCR
@@ -1821,7 +1852,8 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
             "digital_tid": dig_tid,
             "technical_info": tech_info,
             "qris_raw_analysis": qris_analysis,
-            "identity_evidence": identity_evidence
+            "identity_evidence": identity_evidence,
+            "all_ocr_results": all_ocr_results
         },
         "merchant_reputation": merchant_reputation,
         "visualization_url": f"/static/vis_output/vis_{filename_base}.jpg"
