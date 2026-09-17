@@ -294,9 +294,17 @@
     const params  = new URLSearchParams(window.location.search);
     const nmid    = params.get('nmid') || '';
     const backUrl = params.get('back') || 'scan.html';
+    const txRef   = params.get('tx_ref') || params.get('transaction_ref') || '';
 
     document.getElementById('nmidDisplay').textContent = nmid || 'NMID tidak terdeteksi';
     if (!nmid) document.getElementById('nmidStrip').classList.add('hidden');
+
+    if (txRef) {
+        const txInput = document.getElementById('fbTxRef');
+        if (txInput) txInput.value = txRef;
+        const evCheck = document.getElementById('fbHasEvidence');
+        if (evCheck) evCheck.checked = true;
+    }
 
     document.getElementById('btnBack').addEventListener('click', goBack);
 

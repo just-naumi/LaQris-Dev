@@ -312,28 +312,63 @@ def record_transaction_event(
     Mencatat event transaksi pembayaran yang terikat pada verification_session_id.
     Digunakan untuk tracing siklus hidup verifikasi QRIS -> pembayaran gateway.
     """
-    session = db.query(VerificationSession).filter(VerificationSession.session_id == payload.verification_session_id).first()
-    if not session:
-        raise HTTPException(status_code=404, detail=f"Verification session '{payload.verification_session_id}' tidak ditemukan.")
+    v_id = payload.verification_session_id or payload.verification_id
+    session = None
+    if v_id:
+        session = db.query(VerificationSession).filter(VerificationSession.session_id == v_id).first()
+
+    merchant_id_val = None
+    if payload.merchant_id:
+        try:
+            merchant_id_val = int(payload.merchant_id)
+        except (ValueError, TypeError):
+            pass
+
+    lookup_nmid = payload.nmid or (session.nmid if session else None)
+    if not merchant_id_val and lookup_nmid:
+        m_found = db.query(Merchant).filter(Merchant.nmid == lookup_nmid).first()
+        if m_found:
+            merchant_id_val = m_found.id
 
     tx = PaymentTransaction(
-        verification_session_id=payload.verification_session_id,
-        provider=payload.provider,
+        verification_session_id=v_id,
+        provider=payload.provider or "DemoPay",
         provider_transaction_id=payload.provider_transaction_id,
-        merchant_id=payload.merchant_id or session.merchant_id,
-        nmid=payload.nmid or session.nmid,
+        merchant_id=merchant_id_val,
+        nmid=lookup_nmid,
         amount=payload.amount,
-        status=payload.status,
-        response_code=payload.response_code,
+        status=payload.status or "SUCCESS",
+        response_code=payload.response_code or "00",
         invoice_number=payload.invoice_number,
         terminal_id=payload.terminal_id,
-        latency_ms=payload.latency_ms,
+        latency_ms=payload.latency_ms or 0,
         retry_count=payload.retry_count or 0
     )
     db.add(tx)
+
+    # Update statistik transaksi merchant jika sukses
+    if tx.status == "SUCCESS":
+        m_target = None
+        if merchant_id_val:
+            m_target = db.query(Merchant).filter(Merchant.id == merchant_id_val).first()
+        elif lookup_nmid:
+            m_target = db.query(Merchant).filter(Merchant.nmid == lookup_nmid).first()
+
+        if m_target:
+            m_target.verified_transactions = (m_target.verified_transactions or 0) + 1
+            m_target.successful_transactions = (m_target.successful_transactions or 0) + 1
+
     db.commit()
     db.refresh(tx)
-    return tx
+
+    return schemas.PaymentTransactionResponseSchema(
+        success=True,
+        message="Event transaksi pembayaran berhasil dicatat ke sistem LaQris.",
+        transaction_id=tx.provider_transaction_id,
+        verification_id=tx.verification_session_id or "",
+        status=tx.status,
+        amount=tx.amount
+    )
 
 
 @app.get("/api/v1/transactions/{verification_session_id}", response_model=schemas.PaymentTransactionResponseSchema)
@@ -345,7 +380,14 @@ def get_transaction_by_session(
     tx = db.query(PaymentTransaction).filter(PaymentTransaction.verification_session_id == verification_session_id).first()
     if not tx:
         raise HTTPException(status_code=404, detail=f"Transaksi untuk session '{verification_session_id}' tidak ditemukan.")
-    return tx
+    return schemas.PaymentTransactionResponseSchema(
+        success=True,
+        message="Transaksi ditemukan.",
+        transaction_id=tx.provider_transaction_id,
+        verification_id=tx.verification_session_id or "",
+        status=tx.status,
+        amount=tx.amount
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -525,6 +567,36 @@ def serve_frontend_login():
             }
         )
     return {"message": "login.html not found."}
+
+
+@app.get("/payment")
+@app.get("/payment.html")
+def serve_frontend_payment():
+    pay_path = os.path.join(FOLDER_FRONTEND, "payment.html")
+    if os.path.exists(pay_path):
+        return FileResponse(
+            pay_path,
+            headers={
+                "Cache-Control": "no-store, no-cache, must-revalidate",
+                "Pragma": "no-cache"
+            }
+        )
+    return {"message": "payment.html not found."}
+
+
+@app.get("/feedback")
+@app.get("/feedback.html")
+def serve_frontend_feedback():
+    fb_path = os.path.join(FOLDER_FRONTEND, "feedback.html")
+    if os.path.exists(fb_path):
+        return FileResponse(
+            fb_path,
+            headers={
+                "Cache-Control": "no-store, no-cache, must-revalidate",
+                "Pragma": "no-cache"
+            }
+        )
+    return {"message": "feedback.html not found."}
 
 
 if os.path.exists(FOLDER_FRONTEND):

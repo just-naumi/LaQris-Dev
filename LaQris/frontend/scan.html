@@ -525,6 +525,37 @@
         }
 
         /* Summary Result Action Buttons */
+        .btn-pay-main {
+            width: 100%;
+            background: #5cd2c6;
+            color: #0f172a;
+            font-weight: 800;
+            font-size: 1rem;
+            padding: 15px 22px;
+            border-radius: 9999px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(92, 210, 198, 0.35);
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 18px;
+            margin-bottom: 12px;
+            letter-spacing: 0.2px;
+        }
+
+        .btn-pay-main:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(92, 210, 198, 0.45);
+            background: #4ecdc4;
+        }
+
+        .btn-pay-main:active {
+            transform: translateY(0);
+        }
+
         .btn-feedback-main {
             width: 100%;
             background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
@@ -532,7 +563,7 @@
             font-weight: 700;
             font-size: 0.95rem;
             padding: 14px 20px;
-            border-radius: 16px;
+            border-radius: 9999px;
             border: none;
             cursor: pointer;
             box-shadow: 0 6px 18px rgba(2, 132, 199, 0.28);
@@ -548,6 +579,11 @@
         .btn-feedback-main:hover {
             transform: translateY(-1px);
             box-shadow: 0 8px 22px rgba(2, 132, 199, 0.35);
+        }
+
+        .btn-danger-main {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+            box-shadow: 0 6px 18px rgba(239, 68, 68, 0.35) !important;
         }
 
         .btn-toggle-detail {
@@ -816,13 +852,11 @@
 
                     <!-- Action Buttons -->
                     <div style="margin-top: 10px;">
-                        <button id="btnFeedbackMain" class="btn-feedback-main" onclick="goToFeedbackPage()">
-                            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M7.5 8.25h9m-9 3.001h6m-6 3h3m6 6l-3-3H4.5A2.25 2.25 0 012.25 15V6A2.25 2.25 0 014.5 3.75h15A2.25 2.25 0 0121.75 6v9a2.25 2.25 0 01-2.25 2.25H16.5l-4.5 4.5z" />
+                        <button id="btnFeedbackMain" class="btn-pay-main" onclick="goToPaymentPage()">
+                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-6 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5z" />
                             </svg>
-                            Berikan Feedback
+                            Lakukan Pembayaran
                         </button>
                         <button id="btnToggleDetail" class="btn-toggle-detail" onclick="toggleDetailedInfo()">
                             <span id="toggleDetailText">Lihat Detail Verifikasi</span>
@@ -831,6 +865,11 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                             </svg>
                         </button>
+                        <div id="secFeedbackLink" style="text-align: center; margin-top: 10px;">
+                            <a href="javascript:void(0)" onclick="goToFeedbackPage()" style="font-size: 0.82rem; color: #64748b; text-decoration: none; font-weight: 600;">
+                                Ada keluhan tentang toko ini? <span style="color: #0284c7; text-decoration: underline;">Berikan Feedback</span>
+                            </a>
+                        </div>
                     </div>
                 </div>
 
@@ -1260,11 +1299,74 @@
             const estYear = qAnalysis.nmid_parsed?.estimated_reg_year;
             document.getElementById('valQrRegYear').textContent = estYear ? `~${estYear}` : '—';
 
-            // Store NMID for Feedback
+            // Store NMID & scan data for Payment & Feedback
             currentNmid = qr.digital_nmid || qr.physical_nmid || rep.nmid || '';
+            currentScanData = data;
+
+            // ── Dynamic Action Button: Normal/Caution/Warning -> Lakukan Pembayaran ──
+            const btnMain = document.getElementById('btnFeedbackMain');
+            const secFeedback = document.getElementById('secFeedbackLink');
+
+            if (riskLevel === 'NORMAL' || riskLevel === 'CAUTION' || riskLevel === 'WARNING') {
+                btnMain.className = 'btn-pay-main';
+                btnMain.innerHTML = `
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-6 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5z" />
+                    </svg>
+                    Lakukan Pembayaran
+                `;
+                btnMain.onclick = () => goToPaymentPage(data);
+                if (secFeedback) secFeedback.classList.remove('d-none');
+            } else {
+                // DANGER / BLOCK
+                btnMain.className = 'btn-feedback-main btn-danger-main';
+                btnMain.innerHTML = `
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                    </svg>
+                    Laporkan Stiker QRIS Palsu
+                `;
+                btnMain.onclick = () => goToFeedbackPage();
+                if (secFeedback) secFeedback.classList.add('d-none');
+            }
         }
 
         let currentNmid = '';
+        let currentScanData = null;
+
+        function goToPaymentPage(data) {
+            const scanData = data || currentScanData || {};
+            const qr = scanData.current_qr_risk || {};
+            const tech = scanData.emvco_qr_digital || {};
+            const sessionId = scanData.session_id || '';
+            const merchantName = qr.digital_merchant || qr.physical_merchant || 'RM LUBUK ALUNG JAYA, BUAH';
+            const city = qr.digital_city || tech.merchant_city || 'BANDUNG';
+            const nmid = currentNmid || qr.digital_nmid || qr.physical_nmid || '';
+            const riskLevel = qr.risk_level || 'NORMAL';
+            const trustScore = qr.trust_score ?? 100;
+            const nominal = tech.full_technical_info?.transaction_amount || tech.transaction_amount || '27000';
+
+            const payload = {
+                session_id: sessionId,
+                merchant_name: merchantName,
+                city: city,
+                nmid: nmid,
+                risk_level: riskLevel,
+                trust_score: trustScore,
+                nominal: nominal
+            };
+            sessionStorage.setItem('laqris_payment_payload', JSON.stringify(payload));
+
+            const params = new URLSearchParams({
+                session_id: sessionId,
+                merchant: merchantName,
+                city: city,
+                nmid: nmid,
+                risk: riskLevel,
+                nominal: nominal
+            });
+            window.location.href = 'payment.html?' + params.toString();
+        }
 
         function toggleDetailedInfo() {
             const box = document.getElementById('detailedInfoBox');

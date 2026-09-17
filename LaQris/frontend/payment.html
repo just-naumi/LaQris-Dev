@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pembayaran QRIS — LaQris</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: #f1f5f9;
+            color: #0f172a;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .mobile-container {
+            width: 100%;
+            max-width: 440px;
+            min-height: 100vh;
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+        }
+
+        /* ── Top App Bar ─────────────────────────────────────────────── */
+        .app-bar {
+            height: 56px;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            position: sticky;
+            top: 0;
+            background: #ffffff;
+            z-index: 50;
+            border-bottom: 1px solid #f8fafc;
+        }
+
+        .btn-back-nav {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            margin-left: -8px;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #0f172a;
+            border-radius: 50%;
+            transition: background 0.2s ease;
+        }
+
+        .btn-back-nav:hover {
+            background: #f1f5f9;
+        }
+
+        .app-bar-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: -0.2px;
+        }
+
+        /* ── Content Body ────────────────────────────────────────────── */
+        .content-body {
+            flex: 1;
+            padding: 20px 20px 100px 20px;
+            overflow-y: auto;
+        }
+
+        /* Step 1: Header Penerima */
+        .merchant-header-box {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+
+        .merchant-avatar-circle {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #e2f7f4;
+            color: #0f766e;
+            font-weight: 800;
+            font-size: 1.05rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border: 1px solid #ccfbf1;
+        }
+
+        .merchant-info-text {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            overflow: hidden;
+        }
+
+        .merchant-name-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #0f172a;
+            line-height: 1.35;
+            text-transform: uppercase;
+        }
+
+        .merchant-city-sub {
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+        }
+
+        /* LaQris Verified Pill */
+        .laqris-verified-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #ecfdf5;
+            color: #059669;
+            border: 1px solid #a7f3d0;
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 0.76rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        /* Nominal Input Section */
+        .section-label {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+
+        .nominal-input-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #0f172a;
+            margin-top: 6px;
+            margin-bottom: 12px;
+        }
+
+        .nominal-prefix {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-right: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .nominal-input-field {
+            flex: 1;
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: #0f172a;
+            border: none;
+            outline: none;
+            background: transparent;
+            width: 100%;
+            letter-spacing: -0.5px;
+        }
+
+        .btn-clear-nominal {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+            border-radius: 50%;
+            transition: opacity 0.2s;
+        }
+
+        .btn-clear-nominal:hover {
+            opacity: 0.7;
+        }
+
+        /* Quick Amount Chips */
+        .quick-chips-row {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 6px;
+            margin-bottom: 28px;
+            scrollbar-width: none;
+        }
+
+        .quick-chips-row::-webkit-scrollbar {
+            display: none;
+        }
+
+        .quick-chip {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            color: #334155;
+            font-size: 0.78rem;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+
+        .quick-chip:hover,
+        .quick-chip.active {
+            background: #e2f7f4;
+            color: #0f766e;
+            border-color: #99f6e4;
+        }
+
+        /* Sumber Dana Card */
+        .card-bordered {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 14px 16px;
+            margin-bottom: 24px;
+        }
+
+        .card-bordered .card-title {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+
+        .card-bordered .card-sub {
+            font-size: 0.88rem;
+            font-weight: 500;
+            color: #475569;
+            letter-spacing: 0.3px;
+        }
+
+        /* Step 2: Konfirmasi Pembayaran Specifics */
+        .confirm-section-title {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 8px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            font-size: 0.95rem;
+        }
+
+        .detail-row-label {
+            color: #0f172a;
+            font-weight: 500;
+        }
+
+        .detail-row-value {
+            color: #0f172a;
+            font-weight: 700;
+        }
+
+        .detail-divider {
+            height: 1px;
+            background: #f1f5f9;
+            margin: 4px 0;
+        }
+
+        /* ── Sticky Bottom Action Bar ────────────────────────────────── */
+        .bottom-action-bar {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 440px;
+            background: #ffffff;
+            padding: 14px 20px 20px 20px;
+            box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.04);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 40;
+        }
+
+        .total-summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2px;
+        }
+
+        .total-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .total-amount {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.3px;
+        }
+
+        .btn-primary-teal {
+            width: 100%;
+            height: 48px;
+            border-radius: 9999px;
+            background: #5cd2c6;
+            color: #0f172a;
+            font-size: 1rem;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary-teal:hover {
+            background: #4ecdc4;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary-teal:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary-teal:disabled {
+            background: #cbd5e1;
+            color: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ── Success Receipt Modal ───────────────────────────────────── */
+        .receipt-modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .receipt-modal-card {
+            background: #ffffff;
+            width: 100%;
+            max-width: 400px;
+            border-radius: 24px;
+            padding: 26px 22px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            text-align: center;
+            animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes popIn {
+            from {
+                opacity: 0;
+                transform: scale(0.92);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .success-icon-circle {
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            background: #dcfce7;
+            color: #10b981;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px auto;
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.25);
+        }
+
+        .receipt-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+
+        .receipt-nominal-big {
+            font-size: 1.7rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 10px 0 16px 0;
+            letter-spacing: -0.5px;
+        }
+
+        .receipt-info-box {
+            background: #f8fafc;
+            border: 1px solid #f1f5f9;
+            border-radius: 14px;
+            padding: 14px 16px;
+            text-align: left;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        .receipt-info-row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .receipt-info-label {
+            color: #64748b;
+        }
+
+        .receipt-info-val {
+            font-weight: 700;
+            color: #0f172a;
+            text-align: right;
+        }
+
+        .btn-receipt-feedback {
+            width: 100%;
+            height: 46px;
+            border-radius: 9999px;
+            background: #0284c7;
+            color: #ffffff;
+            font-size: 0.92rem;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 6px 16px rgba(2, 132, 199, 0.3);
+        }
+
+        .btn-receipt-close {
+            width: 100%;
+            height: 44px;
+            border-radius: 9999px;
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 0.92rem;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-receipt-close:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        .d-none {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="mobile-container">
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- STEP 1: PEMBAYARAN QRIS (Input Nominal)                        -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <div id="stepInputNominal">
+            <!-- App Bar -->
+            <div class="app-bar">
+                <button class="btn-back-nav" onclick="goBackToScan()" title="Kembali ke Scan">
+                    <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                    </svg>
+                </button>
+                <div class="app-bar-title">Pembayaran QRIS</div>
+            </div>
+
+            <!-- Content Body -->
+            <div class="content-body">
+                <!-- Merchant Header -->
+                <div class="merchant-header-box">
+                    <div class="merchant-avatar-circle" id="merchantAvatar">RB</div>
+                    <div class="merchant-info-text">
+                        <div class="merchant-name-title" id="merchantNameDisp">RM LUBUK ALUNG JAYA, BUAH</div>
+                        <div class="merchant-city-sub" id="merchantCityDisp">BANDUNG</div>
+                    </div>
+                </div>
+
+                <!-- LaQris Security Badge -->
+                <div class="laqris-verified-badge" id="laqrisBadge">
+                    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                    </svg>
+                    <span id="badgeText">Terverifikasi Aman oleh LaQris (Skor: 100%)</span>
+                </div>
+
+                <!-- Nominal Section -->
+                <div class="section-label">Nominal</div>
+                <div class="nominal-input-container">
+                    <span class="nominal-prefix">Rp</span>
+                    <input type="text" id="inputNominal" class="nominal-input-field" placeholder="0" inputmode="numeric" value="27.000">
+                    <button type="button" class="btn-clear-nominal" onclick="clearNominal()" title="Hapus">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M15 9l-6 6M9 9l6 6" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Quick Selection Chips -->
+                <div class="quick-chips-row">
+                    <button type="button" class="quick-chip" onclick="setNominal(10000)">Rp 10.000</button>
+                    <button type="button" class="quick-chip" onclick="setNominal(20000)">Rp 20.000</button>
+                    <button type="button" class="quick-chip active" onclick="setNominal(27000)">Rp 27.000</button>
+                    <button type="button" class="quick-chip" onclick="setNominal(50000)">Rp 50.000</button>
+                    <button type="button" class="quick-chip" onclick="setNominal(100000)">Rp 100.000</button>
+                </div>
+
+                <!-- Sumber Dana Section -->
+                <div class="section-label">Sumber dana</div>
+                <div class="card-bordered">
+                    <div class="card-title" id="sourceAccountType">TAPLUS</div>
+                    <div class="card-sub" id="sourceAccountNumber">*******768</div>
+                </div>
+            </div>
+
+            <!-- Sticky Bottom Action Bar -->
+            <div class="bottom-action-bar">
+                <button type="button" class="btn-primary-teal" id="btnContinue" onclick="goToStepConfirm()">
+                    Lanjut
+                </button>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- STEP 2: KONFIRMASI PEMBAYARAN                                  -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <div id="stepConfirmPayment" class="d-none">
+            <!-- App Bar -->
+            <div class="app-bar">
+                <button class="btn-back-nav" onclick="goToStepInput()" title="Kembali">
+                    <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                    </svg>
+                </button>
+                <div class="app-bar-title">Konfirmasi pembayaran</div>
+            </div>
+
+            <!-- Content Body -->
+            <div class="content-body">
+                <!-- Section Penerima -->
+                <div class="confirm-section-title">Penerima</div>
+                <div class="card-bordered" style="margin-bottom: 20px;">
+                    <div class="card-title" id="confirmMerchantName">RM LUBUK ALUNG JAYA, BUAH</div>
+                    <div class="card-sub" id="confirmMerchantCity">BANDUNG</div>
+                </div>
+
+                <!-- Section Sumber Dana -->
+                <div class="confirm-section-title">Sumber dana</div>
+                <div class="card-bordered" style="margin-bottom: 24px;">
+                    <div class="card-title" id="confirmAccountHolder">M NA***L HA**I</div>
+                    <div class="card-sub" id="confirmAccountDetails">TAPLUS • *******768</div>
+                </div>
+
+                <!-- Section Detail Pembayaran -->
+                <div class="confirm-section-title">Detail pembayaran</div>
+                <div class="detail-divider"></div>
+                <div class="detail-row">
+                    <span class="detail-row-label">Nominal</span>
+                    <span class="detail-row-value" id="confirmDetailNominal">Rp27.000</span>
+                </div>
+            </div>
+
+            <!-- Sticky Bottom Action Bar -->
+            <div class="bottom-action-bar">
+                <div class="total-summary-row">
+                    <span class="total-label">Total</span>
+                    <span class="total-amount" id="confirmTotalAmount">Rp27.000</span>
+                </div>
+                <button type="button" class="btn-primary-teal" id="btnPayNow" onclick="processPayment()">
+                    Bayar Sekarang
+                </button>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- SUCCESS RECEIPT MODAL                                          -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <div id="receiptModal" class="receipt-modal-backdrop d-none">
+            <div class="receipt-modal-card">
+                <div class="success-icon-circle">
+                    <svg width="38" height="38" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                </div>
+                <div class="receipt-title">Pembayaran Berhasil!</div>
+                <div style="font-size:0.82rem; color:#64748b;">Transaksi QRIS telah diverifikasi & diselesaikan</div>
+                <div class="receipt-nominal-big" id="receiptNominalDisp">Rp 27.000</div>
+
+                <div class="receipt-info-box">
+                    <div class="receipt-info-row">
+                        <span class="receipt-info-label">Penerima</span>
+                        <span class="receipt-info-val" id="receiptMerchantVal">RM LUBUK ALUNG JAYA</span>
+                    </div>
+                    <div class="receipt-info-row">
+                        <span class="receipt-info-label">No. Transaksi</span>
+                        <span class="receipt-info-val" id="receiptTxVal" style="font-family:monospace;">TX-928102</span>
+                    </div>
+                    <div class="receipt-info-row">
+                        <span class="receipt-info-label">No. Invoice</span>
+                        <span class="receipt-info-val" id="receiptInvVal" style="font-family:monospace;">INV-1029</span>
+                    </div>
+                    <div class="receipt-info-row">
+                        <span class="receipt-info-label">Waktu</span>
+                        <span class="receipt-info-val" id="receiptTimeVal">18 Sep 2026 10:41 WIB</span>
+                    </div>
+                    <div class="receipt-info-row">
+                        <span class="receipt-info-label">Keamanan LaQris</span>
+                        <span class="receipt-info-val" style="color:#059669;">✓ Verified Authentic</span>
+                    </div>
+                </div>
+
+                <button type="button" class="btn-receipt-feedback" onclick="goToFeedbackFromReceipt()">
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3.001h6m-6 3h3m6 6l-3-3H4.5A2.25 2.25 0 012.25 15V6A2.25 2.25 0 014.5 3.75h15A2.25 2.25 0 0121.75 6v9a2.25 2.25 0 01-2.25 2.25H16.5l-4.5 4.5z" />
+                    </svg>
+                    Berikan Ulasan & Feedback
+                </button>
+                <button type="button" class="btn-receipt-close" onclick="finishAndGoHome()">
+                    Selesai & Ke Beranda
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ── State & Data Initialization ───────────────────────────────
+        let sessionData = {};
+        let currentNominalNumber = 27000;
+        let createdTxRef = '';
+
+        window.addEventListener('DOMContentLoaded', () => {
+            // Read from SessionStorage or URL Params
+            const params = new URLSearchParams(window.location.search);
+            const savedSessionStr = sessionStorage.getItem('laqris_payment_payload');
+            if (savedSessionStr) {
+                try {
+                    sessionData = JSON.parse(savedSessionStr);
+                } catch (e) { }
+            }
+
+            // Fallback from URL params
+            const merchantName = params.get('merchant') || sessionData.merchant_name || 'RM LUBUK ALUNG JAYA, BUAH';
+            const merchantCity = params.get('city') || sessionData.city || 'BANDUNG';
+            const nmid = params.get('nmid') || sessionData.nmid || '';
+            const sessionId = params.get('session_id') || sessionData.session_id || '';
+            const riskLevel = params.get('risk') || sessionData.risk_level || 'NORMAL';
+            const paramNominal = params.get('nominal') || sessionData.nominal;
+
+            sessionData.merchant_name = merchantName;
+            sessionData.city = merchantCity;
+            sessionData.nmid = nmid;
+            sessionData.session_id = sessionId;
+            sessionData.risk_level = riskLevel;
+
+            // Display Merchant Header
+            document.getElementById('merchantNameDisp').textContent = merchantName;
+            document.getElementById('merchantCityDisp').textContent = merchantCity;
+            document.getElementById('confirmMerchantName').textContent = merchantName;
+            document.getElementById('confirmMerchantCity').textContent = merchantCity;
+
+            // Generate Initials
+            const initials = getInitials(merchantName);
+            document.getElementById('merchantAvatar').textContent = initials;
+
+            // LaQris Badge text
+            const trustScore = sessionData.trust_score || 100;
+            document.getElementById('badgeText').textContent = `Terverifikasi Aman oleh LaQris (${riskLevel} · Skor: ${trustScore}%)`;
+
+            // Nominal handling
+            if (paramNominal && !isNaN(parseFloat(paramNominal)) && parseFloat(paramNominal) > 0) {
+                currentNominalNumber = Math.round(parseFloat(paramNominal));
+            } else {
+                currentNominalNumber = 27000;
+            }
+            updateNominalDisplay(currentNominalNumber);
+
+            // Setup input listener for Rupiah formatting
+            const inputNom = document.getElementById('inputNominal');
+            inputNom.addEventListener('input', onNominalInput);
+        });
+
+        function getInitials(name) {
+            if (!name) return 'QR';
+            const clean = name.replace(/[^a-zA-Z0-9\s]/g, '').trim();
+            const parts = clean.split(/\s+/).filter(Boolean);
+            if (parts.length >= 2) {
+                return (parts[0][0] + parts[1][0]).toUpperCase();
+            } else if (parts.length === 1 && parts[0].length >= 2) {
+                return parts[0].substring(0, 2).toUpperCase();
+            }
+            return 'QR';
+        }
+
+        function formatRupiah(number) {
+            return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
+
+        function updateNominalDisplay(num) {
+            currentNominalNumber = Math.max(0, num);
+            const inputEl = document.getElementById('inputNominal');
+            inputEl.value = currentNominalNumber > 0 ? formatRupiah(currentNominalNumber) : '';
+
+            // Update confirm display
+            const formatted = 'Rp' + formatRupiah(currentNominalNumber);
+            document.getElementById('confirmDetailNominal').textContent = formatted;
+            document.getElementById('confirmTotalAmount').textContent = formatted;
+
+            // Disable button if 0
+            document.getElementById('btnContinue').disabled = (currentNominalNumber <= 0);
+        }
+
+        function onNominalInput(e) {
+            const raw = e.target.value.replace(/\D/g, '');
+            currentNominalNumber = raw ? parseInt(raw, 10) : 0;
+            e.target.value = currentNominalNumber > 0 ? formatRupiah(currentNominalNumber) : '';
+
+            const formatted = 'Rp' + formatRupiah(currentNominalNumber);
+            document.getElementById('confirmDetailNominal').textContent = formatted;
+            document.getElementById('confirmTotalAmount').textContent = formatted;
+
+            // Update active chips
+            document.querySelectorAll('.quick-chip').forEach(c => c.classList.remove('active'));
+            document.getElementById('btnContinue').disabled = (currentNominalNumber <= 0);
+        }
+
+        function setNominal(amount) {
+            document.querySelectorAll('.quick-chip').forEach(c => c.classList.remove('active'));
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
+            updateNominalDisplay(amount);
+        }
+
+        function clearNominal() {
+            updateNominalDisplay(0);
+            document.querySelectorAll('.quick-chip').forEach(c => c.classList.remove('active'));
+            document.getElementById('inputNominal').focus();
+        }
+
+        function goBackToScan() {
+            window.location.href = 'scan.html';
+        }
+
+        function goToStepConfirm() {
+            if (currentNominalNumber <= 0) {
+                alert('Silakan masukkan nominal pembayaran.');
+                return;
+            }
+            document.getElementById('stepInputNominal').classList.add('d-none');
+            document.getElementById('stepConfirmPayment').classList.remove('d-none');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function goToStepInput() {
+            document.getElementById('stepConfirmPayment').classList.add('d-none');
+            document.getElementById('stepInputNominal').classList.remove('d-none');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function processPayment() {
+            const btnPay = document.getElementById('btnPayNow');
+            btnPay.disabled = true;
+            btnPay.textContent = 'Memproses Pembayaran...';
+
+            const txId = 'TX-' + Math.floor(100000 + Math.random() * 900000);
+            const invId = 'INV-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.floor(1000 + Math.random() * 9000);
+            createdTxRef = txId;
+
+            const payload = {
+                verification_session_id: sessionData.session_id || ('LQ-S-' + Date.now()),
+                provider: "DemoPay",
+                provider_transaction_id: txId,
+                amount: currentNominalNumber,
+                status: "SUCCESS",
+                response_code: "00",
+                invoice_number: invId,
+                nmid: sessionData.nmid || null,
+                terminal_id: "A01",
+                latency_ms: 1250,
+                retry_count: 0
+            };
+
+            try {
+                const res = await fetch('/api/v1/transactions/events', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                console.log('[LOG] Transaksi berhasil dicatat:', data);
+            } catch (err) {
+                console.warn('[WARN] Gagal mencatat ke event API (tetap lanjut demo):', err);
+            }
+
+            // Show Success Modal
+            setTimeout(() => {
+                document.getElementById('receiptNominalDisp').textContent = 'Rp ' + formatRupiah(currentNominalNumber);
+                document.getElementById('receiptMerchantVal').textContent = sessionData.merchant_name;
+                document.getElementById('receiptTxVal').textContent = txId;
+                document.getElementById('receiptInvVal').textContent = invId;
+
+                const now = new Date();
+                const timeStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ' +
+                    now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+                document.getElementById('receiptTimeVal').textContent = timeStr;
+
+                document.getElementById('receiptModal').classList.remove('d-none');
+            }, 600);
+        }
+
+        function goToFeedbackFromReceipt() {
+            const nmid = encodeURIComponent(sessionData.nmid || '');
+            const tx = encodeURIComponent(createdTxRef || '');
+            const back = encodeURIComponent('payment.html');
+            window.location.href = `feedback.html?nmid=${nmid}&tx_ref=${tx}&back=dashboard.html`;
+        }
+
+        function finishAndGoHome() {
+            window.location.href = 'dashboard.html';
+        }
+    </script>
+</body>
+
+</html>

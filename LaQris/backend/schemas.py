@@ -177,13 +177,15 @@ class PaymentTransactionSchema(BaseModel):
 
 
 class PaymentTransactionCreateSchema(BaseModel):
-    verification_id: str
+    verification_id: Optional[str] = None
+    verification_session_id: Optional[str] = None
     provider: str = "DemoPay"
     provider_transaction_id: str
     amount: float
     status: str = "SUCCESS"
     response_code: str = "00"
-    merchant_id: Optional[str] = None
+    merchant_id: Optional[Any] = None
+    nmid: Optional[str] = None
     terminal_id: Optional[str] = None
     invoice_number: Optional[str] = None
     transaction_time: Optional[str] = None
