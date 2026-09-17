@@ -1309,6 +1309,10 @@
                     const user = JSON.parse(rawUser);
                     if (user.full_name) displayName = user.full_name;
                     else if (user.username) displayName = user.username;
+                    if (user.account_number) {
+                        const accEl = document.getElementById('accNumber');
+                        if (accEl) accEl.textContent = user.account_number;
+                    }
                 } catch (e) {
                     console.error("Gagal membaca profil user:", e);
                 }

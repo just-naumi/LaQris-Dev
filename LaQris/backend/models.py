@@ -147,7 +147,10 @@ class User(Base):
     role = Column(String, default="PENGGUNA")        # "PENGGUNA" | "MERCHANT"
     password_hash = Column(String, nullable=False)
     status = Column(String, default="ACTIVE")        # "ACTIVE" | "PENDING" | "SUSPENDED"
+    account_number = Column(String, default="1858868768")
+    account_type = Column(String, default="TAPLUS")
     created_at = Column(DateTime, default=datetime.utcnow)
+
 
 
 

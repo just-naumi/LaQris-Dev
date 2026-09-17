@@ -491,7 +491,7 @@
                 <div class="section-label" style="margin-top: 32px;">Sumber dana</div>
                 <div class="card-bordered">
                     <div class="card-title" id="sourceAccountType">TAPLUS</div>
-                    <div class="card-sub" id="sourceAccountNumber">*******768</div>
+                    <div class="card-sub" id="sourceAccountNumber">Memuat...</div>
                 </div>
             </div>
 
@@ -529,8 +529,8 @@
                 <!-- Section Sumber Dana -->
                 <div class="confirm-section-title">Sumber dana</div>
                 <div class="card-bordered" style="margin-bottom: 24px;">
-                    <div class="card-title" id="confirmAccountHolder">M NA***L HA**I</div>
-                    <div class="card-sub" id="confirmAccountDetails">TAPLUS • *******768</div>
+                    <div class="card-title" id="confirmAccountHolder">Memuat...</div>
+                    <div class="card-sub" id="confirmAccountDetails">TAPLUS • ...</div>
                 </div>
 
                 <!-- Section Detail Pembayaran -->
@@ -723,6 +723,55 @@
             const initials = getInitials(merchantName);
             document.getElementById('merchantAvatar').textContent = initials;
 
+            // 4. Load logged-in User Account for "Sumber Dana"
+            let userAccountName = '';
+            let userAccountNumber = '';
+            let userAccountType = 'TAPLUS';
+
+            let userObj = null;
+            try {
+                const raw = localStorage.getItem('laqris_user') || sessionStorage.getItem('laqris_user');
+                if (raw) userObj = JSON.parse(raw);
+            } catch(e) {}
+
+            if (userObj) {
+                userAccountName = userObj.full_name || userObj.username || '';
+                userAccountNumber = userObj.account_number || '';
+                userAccountType = userObj.account_type || 'TAPLUS';
+            }
+
+            // Fallback: If not found in browser storage, fetch current user profile from backend
+            if (!userAccountName) {
+                try {
+                    const uRes = await fetch('/api/user/current');
+                    if (uRes.ok) {
+                        const uData = await uRes.json();
+                        userAccountName = uData.full_name || uData.username;
+                        userAccountNumber = uData.account_number;
+                        userAccountType = uData.account_type || 'TAPLUS';
+                    }
+                } catch(e) {}
+            }
+
+            if (!userAccountName) {
+                userAccountName = 'Pengguna LaQris';
+                userAccountNumber = '1858868768';
+                userAccountType = 'TAPLUS';
+            }
+
+            if (!userAccountNumber) {
+                const seed = (userObj?.user_id || userAccountName || '1858868768').replace(/\D/g, '') || '868768';
+                userAccountNumber = '1858' + seed.padEnd(6, '0').slice(-6);
+            }
+
+            const maskedPayerName = maskAccountHolderName(userAccountName);
+            const maskedPayerAcc = maskAccountNumber(userAccountNumber);
+
+            document.getElementById('sourceAccountType').textContent = userAccountType;
+            document.getElementById('sourceAccountNumber').textContent = maskedPayerAcc;
+            document.getElementById('confirmAccountHolder').textContent = maskedPayerName;
+            document.getElementById('confirmAccountDetails').textContent = `${userAccountType} • ${maskedPayerAcc}`;
+
             // Nominal handling
             if (paramNominal && !isNaN(parseFloat(paramNominal)) && parseFloat(paramNominal) > 0) {
                 currentNominalNumber = Math.round(parseFloat(paramNominal));
@@ -735,6 +784,29 @@
             const inputNom = document.getElementById('inputNominal');
             inputNom.addEventListener('input', onNominalInput);
         });
+
+        function maskAccountNumber(acc) {
+            if (!acc) return '*******768';
+            const clean = acc.toString().replace(/\D/g, '');
+            if (clean.length <= 3) return '*******' + clean;
+            return '*******' + clean.slice(-3);
+        }
+
+        function maskAccountHolderName(fullName) {
+            if (!fullName) return 'PENGGUNA';
+            const clean = fullName.trim().toUpperCase();
+            const words = clean.split(/\s+/).filter(Boolean);
+            return words.map(word => {
+                if (word.length <= 2) return word;
+                if (word.length === 3) return word[0] + '*' + word[2];
+                if (word.length === 4) return word[0] + '**' + word[3];
+                const startLen = 2;
+                const endLen = word.length >= 6 ? 2 : 1;
+                const middleLen = word.length - startLen - endLen;
+                const stars = '*'.repeat(Math.max(2, Math.min(3, middleLen)));
+                return word.substring(0, startLen) + stars + word.substring(word.length - endLen);
+            }).join(' ');
+        }
 
         function getInitials(name) {
             if (!name) return 'QR';

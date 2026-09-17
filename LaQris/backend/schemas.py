@@ -273,6 +273,8 @@ class UserResponseSchema(BaseModel):
     status: str
     full_name: Optional[str] = None
     role: str
+    account_number: Optional[str] = "1858868768"
+    account_type: Optional[str] = "TAPLUS"
     created_at: datetime
 
     class Config:
