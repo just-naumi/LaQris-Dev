@@ -467,10 +467,10 @@
             <div class="content-body">
                 <!-- Merchant Header -->
                 <div class="merchant-header-box">
-                    <div class="merchant-avatar-circle" id="merchantAvatar">RB</div>
+                    <div class="merchant-avatar-circle" id="merchantAvatar">QR</div>
                     <div class="merchant-info-text">
-                        <div class="merchant-name-title" id="merchantNameDisp">RM LUBUK ALUNG JAYA, BUAH</div>
-                        <div class="merchant-city-sub" id="merchantCityDisp">BANDUNG</div>
+                        <div class="merchant-name-title" id="merchantNameDisp">Memuat...</div>
+                        <div class="merchant-city-sub" id="merchantCityDisp">—</div>
                     </div>
                 </div>
 
@@ -522,8 +522,8 @@
                 <!-- Section Penerima -->
                 <div class="confirm-section-title">Penerima</div>
                 <div class="card-bordered" style="margin-bottom: 20px;">
-                    <div class="card-title" id="confirmMerchantName">RM LUBUK ALUNG JAYA, BUAH</div>
-                    <div class="card-sub" id="confirmMerchantCity">BANDUNG</div>
+                    <div class="card-title" id="confirmMerchantName">Memuat...</div>
+                    <div class="card-sub" id="confirmMerchantCity">—</div>
                 </div>
 
                 <!-- Section Sumber Dana -->
@@ -571,7 +571,7 @@
                 <div class="receipt-info-box">
                     <div class="receipt-info-row">
                         <span class="receipt-info-label">Penerima</span>
-                        <span class="receipt-info-val" id="receiptMerchantVal">RM LUBUK ALUNG JAYA</span>
+                        <span class="receipt-info-val" id="receiptMerchantVal">—</span>
                     </div>
                     <div class="receipt-info-row">
                         <span class="receipt-info-label">No. Transaksi</span>
@@ -611,29 +611,107 @@
         let currentNominalNumber = 27000;
         let createdTxRef = '';
 
-        window.addEventListener('DOMContentLoaded', () => {
-            // Read from SessionStorage or URL Params
+        window.addEventListener('DOMContentLoaded', async () => {
             const params = new URLSearchParams(window.location.search);
-            const savedSessionStr = sessionStorage.getItem('laqris_payment_payload');
-            if (savedSessionStr) {
-                try {
-                    sessionData = JSON.parse(savedSessionStr);
-                } catch (e) { }
+            let merchantName = params.get('merchant');
+            let merchantCity = params.get('city');
+            let nmid = params.get('nmid');
+            let sessionId = params.get('session_id');
+            let riskLevel = params.get('risk');
+            let paramNominal = params.get('nominal');
+
+            // 1. Check SessionStorage payment payload
+            let paymentPayload = {};
+            try {
+                const s = sessionStorage.getItem('laqris_payment_payload');
+                if (s) paymentPayload = JSON.parse(s);
+            } catch(e) {}
+
+            // 2. Check SessionStorage scan result
+            let scanResult = {};
+            try {
+                const s = sessionStorage.getItem('laqris_scan_result');
+                if (s) scanResult = JSON.parse(s);
+            } catch(e) {}
+            const qr = scanResult.current_qr_risk || {};
+            const tech = scanResult.emvco_qr_digital || qr.technical_info || {};
+
+            if (!merchantName) {
+                merchantName = paymentPayload.merchant_name || 
+                    (qr.digital_merchant && qr.digital_merchant !== 'Tidak ditemukan' ? qr.digital_merchant : null) || 
+                    (qr.physical_merchant && qr.physical_merchant !== 'Tidak terbaca' ? qr.physical_merchant : null);
             }
 
-            // Fallback from URL params
-            const merchantName = params.get('merchant') || sessionData.merchant_name || 'RM LUBUK ALUNG JAYA, BUAH';
-            const merchantCity = params.get('city') || sessionData.city || 'BANDUNG';
-            const nmid = params.get('nmid') || sessionData.nmid || '';
-            const sessionId = params.get('session_id') || sessionData.session_id || '';
-            const riskLevel = params.get('risk') || sessionData.risk_level || 'NORMAL';
-            const paramNominal = params.get('nominal') || sessionData.nominal;
+            if (!merchantCity) {
+                merchantCity = paymentPayload.city || 
+                    (qr.digital_city && qr.digital_city !== 'Tidak ditemukan' ? qr.digital_city : null) ||
+                    tech.merchant_city;
+            }
 
-            sessionData.merchant_name = merchantName;
-            sessionData.city = merchantCity;
-            sessionData.nmid = nmid;
-            sessionData.session_id = sessionId;
-            sessionData.risk_level = riskLevel;
+            if (!sessionId) {
+                sessionId = paymentPayload.session_id || scanResult.session_id || '';
+            }
+            if (!nmid) {
+                nmid = paymentPayload.nmid || qr.digital_nmid || qr.physical_nmid || '';
+            }
+            if (!riskLevel) {
+                riskLevel = paymentPayload.risk_level || qr.risk_level || 'NORMAL';
+            }
+            if (!paramNominal) {
+                paramNominal = paymentPayload.nominal || tech.full_technical_info?.transaction_amount || tech.transaction_amount;
+            }
+
+            // 3. Fallback: If merchantName is still empty, auto-fetch the latest scan session from backend!
+            if (!merchantName) {
+                try {
+                    const res = await fetch('/api/scan/sessions?limit=1');
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.sessions && data.sessions.length > 0) {
+                            const latest = data.sessions[0];
+                            if (latest.merchant_name && latest.merchant_name !== 'Tidak ditemukan') {
+                                merchantName = latest.merchant_name;
+                            }
+                            if (!sessionId) sessionId = latest.session_id;
+                            if (!riskLevel) riskLevel = latest.risk_level;
+
+                            // Also try to get city from full session json
+                            if (latest.json_url) {
+                                try {
+                                    const jsonRes = await fetch(latest.json_url);
+                                    if (jsonRes.ok) {
+                                        const sessionFull = await jsonRes.json();
+                                        const summary = sessionFull.verification_summary || {};
+                                        if (!merchantName && (summary.digital_merchant || summary.physical_merchant)) {
+                                            merchantName = summary.digital_merchant || summary.physical_merchant;
+                                        }
+                                        if (!merchantCity && sessionFull.current_qr_risk?.digital_city) {
+                                            merchantCity = sessionFull.current_qr_risk.digital_city;
+                                        }
+                                        if (!nmid && (summary.digital_nmid || summary.physical_nmid)) {
+                                            nmid = summary.digital_nmid || summary.physical_nmid;
+                                        }
+                                    }
+                                } catch (e) {}
+                            }
+                        }
+                    }
+                } catch(e) {
+                    console.warn('[WARN] Gagal mengambil sesi scan terbaru:', e);
+                }
+            }
+
+            // Final fallbacks
+            merchantName = merchantName || 'Merchant QRIS';
+            merchantCity = merchantCity || 'INDONESIA';
+
+            sessionData = {
+                merchant_name: merchantName,
+                city: merchantCity,
+                nmid: nmid || '',
+                session_id: sessionId || '',
+                risk_level: riskLevel || 'NORMAL'
+            };
 
             // Display Merchant Header
             document.getElementById('merchantNameDisp').textContent = merchantName;

@@ -1224,45 +1224,57 @@
             document.getElementById('statusTitle').textContent = riskTitles[riskLevel] || riskLevel;
             document.getElementById('statusNote').textContent = qr.explanation || '—';
 
+            // Store NMID & scan data for Payment & Feedback immediately
+            currentNmid = qr.digital_nmid || qr.physical_nmid || rep.nmid || '';
+            currentScanData = data;
+
+            const safeSetText = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = val;
+            };
+
             // ── Identity Comparison ──────────────────────────────────────────
-            document.getElementById('valPhysName').textContent = qr.physical_merchant || 'Tidak terbaca';
-            document.getElementById('valDigName').textContent = qr.digital_merchant || 'Tidak ditemukan';
-            document.getElementById('valMatchLevel').textContent = `${qr.name_similarity ?? 0}% (${qr.match_level || '—'})`;
-            document.getElementById('valPhysNmid').textContent = qr.physical_nmid || 'Tidak terbaca';
-            document.getElementById('valDigNmid').textContent = qr.digital_nmid || 'Tidak ditemukan';
-            document.getElementById('valDigCity').textContent = qr.digital_city || 'Tidak ditemukan';
-            document.getElementById('valAcquirer').textContent = qr.digital_acquirer || 'Tidak ditemukan';
-            document.getElementById('valTid').textContent = qr.digital_tid || 'Tidak ditemukan';
+            safeSetText('valPhysName', qr.physical_merchant || 'Tidak terbaca');
+            safeSetText('valDigName', qr.digital_merchant || 'Tidak ditemukan');
+            safeSetText('valMatchLevel', `${qr.name_similarity ?? 0}% (${qr.match_level || '—'})`);
+            safeSetText('valPhysNmid', qr.physical_nmid || 'Tidak terbaca');
+            safeSetText('valDigNmid', qr.digital_nmid || 'Tidak ditemukan');
+            safeSetText('valDigCity', qr.digital_city || 'Tidak ditemukan');
+            safeSetText('valAcquirer', qr.digital_acquirer || 'Tidak ditemukan');
+            safeSetText('valTid', qr.digital_tid || 'Tidak ditemukan');
 
             // ── LaQris Observation History ────────────────────────────────────
             const totalObs = obs.total_observations ?? 0;
             const firstSeenVal = obs.first_observed || rep.first_seen_observed || (rep.registered_at ? new Date(rep.registered_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Belum ada data');
             const lastSeenVal = obs.last_observed || rep.last_seen_observed || (totalObs > 0 ? 'Hari ini' : '—');
-            document.getElementById('obsFirstSeen').textContent = firstSeenVal;
-            document.getElementById('obsLastSeen').textContent = lastSeenVal;
+            safeSetText('obsFirstSeen', firstSeenVal);
+            safeSetText('obsLastSeen', lastSeenVal);
+
+            const obsNoDataEl = document.getElementById('obsNoData');
+            const obsMatchBarFill = document.getElementById('obsMatchBarFill');
 
             if (totalObs === 0) {
-                document.getElementById('obsNoData').classList.remove('d-none');
-                document.getElementById('obsTotalObs').textContent = '0';
-                document.getElementById('obsUniqueObs').textContent = '0';
-                document.getElementById('obsMatchCount').textContent = '0';
-                document.getElementById('obsMismatchCount').textContent = '0';
-                document.getElementById('obsMatchRate').textContent = '0%';
-                document.getElementById('obsMatchBarFill').style.width = '0%';
-                document.getElementById('obsFeedback').textContent = '0';
-                document.getElementById('obsComplaints').textContent = '0';
-                document.getElementById('obsDisputes').textContent = '0';
+                if (obsNoDataEl) obsNoDataEl.classList.remove('d-none');
+                safeSetText('obsTotalObs', '0');
+                safeSetText('obsUniqueObs', '0');
+                safeSetText('obsMatchCount', '0');
+                safeSetText('obsMismatchCount', '0');
+                safeSetText('obsMatchRate', '0%');
+                if (obsMatchBarFill) obsMatchBarFill.style.width = '0%';
+                safeSetText('obsFeedback', '0');
+                safeSetText('obsComplaints', '0');
+                safeSetText('obsDisputes', '0');
             } else {
-                document.getElementById('obsNoData').classList.add('d-none');
-                document.getElementById('obsTotalObs').textContent = totalObs.toLocaleString('id-ID');
-                document.getElementById('obsUniqueObs').textContent = (obs.unique_observers ?? 0).toLocaleString('id-ID');
-                document.getElementById('obsMatchCount').textContent = obs.identity_match ?? 0;
-                document.getElementById('obsMismatchCount').textContent = obs.identity_mismatch ?? 0;
+                if (obsNoDataEl) obsNoDataEl.classList.add('d-none');
+                safeSetText('obsTotalObs', totalObs.toLocaleString('id-ID'));
+                safeSetText('obsUniqueObs', (obs.unique_observers ?? 0).toLocaleString('id-ID'));
+                safeSetText('obsMatchCount', obs.identity_match ?? 0);
+                safeSetText('obsMismatchCount', obs.identity_mismatch ?? 0);
                 const matchRate = obs.identity_match_rate ?? 0;
-                document.getElementById('obsMatchRate').textContent = `${matchRate.toFixed(1)}%`;
-                document.getElementById('obsMatchBarFill').style.width = `${matchRate}%`;
-                document.getElementById('obsFeedback').textContent = (obs.complaints ?? 0) + (obs.verified_feedback ?? 0);
-                document.getElementById('obsComplaints').textContent = obs.complaints ?? 0;
+                safeSetText('obsMatchRate', `${matchRate.toFixed(1)}%`);
+                if (obsMatchBarFill) obsMatchBarFill.style.width = `${matchRate}%`;
+                safeSetText('obsFeedback', (obs.complaints ?? 0) + (obs.verified_feedback ?? 0));
+                safeSetText('obsComplaints', obs.complaints ?? 0);
             }
 
             // ── Merchant Reputation (EMRS) ────────────────────────────────────
@@ -1272,16 +1284,17 @@
             const comps = rep.components || {};
 
             if (!isRegistered || score === null || score === undefined) {
-                document.getElementById('emrsSubhead').textContent = 'Merchant belum memiliki data reputasi di LaQris';
+                safeSetText('emrsSubhead', 'Merchant belum memiliki data reputasi di LaQris');
             } else {
                 const confLabel = rep.confidence_level || 'LOW';
-                document.getElementById('emrsSubhead').textContent = `Skor: ${score.toFixed(0)}/100 · ${grade} · Confidence: ${confLabel}`;
+                safeSetText('emrsSubhead', `Skor: ${score.toFixed(0)}/100 · ${grade} · Confidence: ${confLabel}`);
             }
 
             const setComp = (id, val, defaultVal) => {
                 const v = (val !== null && val !== undefined) ? val : defaultVal;
-                document.getElementById(`comp${id}`).textContent = `${v.toFixed(0)} / 100`;
-                document.getElementById(`bar${id}`).style.width = `${v}%`;
+                safeSetText(`comp${id}`, `${v.toFixed(0)} / 100`);
+                const bar = document.getElementById(`bar${id}`);
+                if (bar) bar.style.width = `${v}%`;
             };
             setComp('A', comps.A, 100);
             setComp('C', comps.C, 100);
@@ -1290,43 +1303,43 @@
             const repStatus = (isRegistered && rep.grade)
                 ? `${grade} (Confidence: ${rep.confidence_level || 'LOW'})`
                 : (qr.is_mismatch ? 'Perlu Perhatian (Indikasi Ketidaksesuaian)' : 'Verified Authentic / Belum Ada Masalah');
-            document.getElementById('valReputation').textContent = repStatus;
+            safeSetText('valReputation', repStatus);
 
             // ── EMVCo Analysis ────────────────────────────────────────────────
             const qAnalysis = qr.qris_raw_analysis || {};
-            document.getElementById('valQrInitiation').textContent = qAnalysis.point_of_initiation || 'Statis';
-            document.getElementById('valQrMcc').textContent = qAnalysis.mcc_category || qAnalysis.mcc_code || 'Retail / Perdagangan';
+            safeSetText('valQrInitiation', qAnalysis.point_of_initiation || 'Statis');
+            safeSetText('valQrMcc', qAnalysis.mcc_category || qAnalysis.mcc_code || 'Retail / Perdagangan');
             const estYear = qAnalysis.nmid_parsed?.estimated_reg_year;
-            document.getElementById('valQrRegYear').textContent = estYear ? `~${estYear}` : '—';
-
-            // Store NMID & scan data for Payment & Feedback
-            currentNmid = qr.digital_nmid || qr.physical_nmid || rep.nmid || '';
-            currentScanData = data;
+            safeSetText('valQrRegYear', estYear ? `~${estYear}` : '—');
 
             // ── Dynamic Action Button: Normal/Caution/Warning -> Lakukan Pembayaran ──
             const btnMain = document.getElementById('btnFeedbackMain');
             const secFeedback = document.getElementById('secFeedbackLink');
 
             if (riskLevel === 'NORMAL' || riskLevel === 'CAUTION' || riskLevel === 'WARNING') {
-                btnMain.className = 'btn-pay-main';
-                btnMain.innerHTML = `
-                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-6 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5z" />
-                    </svg>
-                    Lakukan Pembayaran
-                `;
-                btnMain.onclick = () => goToPaymentPage(data);
+                if (btnMain) {
+                    btnMain.className = 'btn-pay-main';
+                    btnMain.innerHTML = `
+                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-6 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5z" />
+                        </svg>
+                        Lakukan Pembayaran
+                    `;
+                    btnMain.onclick = () => goToPaymentPage(data);
+                }
                 if (secFeedback) secFeedback.classList.remove('d-none');
             } else {
                 // DANGER / BLOCK
-                btnMain.className = 'btn-feedback-main btn-danger-main';
-                btnMain.innerHTML = `
-                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                    </svg>
-                    Laporkan Stiker QRIS Palsu
-                `;
-                btnMain.onclick = () => goToFeedbackPage();
+                if (btnMain) {
+                    btnMain.className = 'btn-feedback-main btn-danger-main';
+                    btnMain.innerHTML = `
+                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                        </svg>
+                        Laporkan Stiker QRIS Palsu
+                    `;
+                    btnMain.onclick = () => goToFeedbackPage();
+                }
                 if (secFeedback) secFeedback.classList.add('d-none');
             }
         }
@@ -1335,13 +1348,38 @@
         let currentScanData = null;
 
         function goToPaymentPage(data) {
-            const scanData = data || currentScanData || {};
+            let scanData = data || currentScanData;
+            if (!scanData) {
+                try {
+                    const saved = sessionStorage.getItem('laqris_scan_result');
+                    if (saved) scanData = JSON.parse(saved);
+                } catch(e) {}
+            }
+            scanData = scanData || {};
             const qr = scanData.current_qr_risk || {};
-            const tech = scanData.emvco_qr_digital || {};
+            const tech = scanData.emvco_qr_digital || qr.technical_info || {};
+            const rep = scanData.merchant_reputation || {};
             const sessionId = scanData.session_id || '';
-            const merchantName = qr.digital_merchant || qr.physical_merchant || 'RM LUBUK ALUNG JAYA, BUAH';
-            const city = qr.digital_city || tech.merchant_city || 'BANDUNG';
-            const nmid = currentNmid || qr.digital_nmid || qr.physical_nmid || '';
+
+            // Extract genuine merchant name
+            let merchantName = '';
+            if (qr.digital_merchant && qr.digital_merchant !== 'Tidak ditemukan') {
+                merchantName = qr.digital_merchant;
+            } else if (qr.physical_merchant && qr.physical_merchant !== 'Tidak terbaca') {
+                merchantName = qr.physical_merchant;
+            } else if (rep.merchant_name) {
+                merchantName = rep.merchant_name;
+            }
+
+            // Extract genuine merchant city
+            let city = '';
+            if (qr.digital_city && qr.digital_city !== 'Tidak ditemukan') {
+                city = qr.digital_city;
+            } else if (tech.merchant_city) {
+                city = tech.merchant_city;
+            }
+
+            const nmid = currentNmid || qr.digital_nmid || qr.physical_nmid || rep.nmid || '';
             const riskLevel = qr.risk_level || 'NORMAL';
             const trustScore = qr.trust_score ?? 100;
             const nominal = tech.full_technical_info?.transaction_amount || tech.transaction_amount || '27000';
@@ -1357,14 +1395,14 @@
             };
             sessionStorage.setItem('laqris_payment_payload', JSON.stringify(payload));
 
-            const params = new URLSearchParams({
-                session_id: sessionId,
-                merchant: merchantName,
-                city: city,
-                nmid: nmid,
-                risk: riskLevel,
-                nominal: nominal
-            });
+            const params = new URLSearchParams();
+            if (sessionId) params.set('session_id', sessionId);
+            if (merchantName) params.set('merchant', merchantName);
+            if (city) params.set('city', city);
+            if (nmid) params.set('nmid', nmid);
+            if (riskLevel) params.set('risk', riskLevel);
+            if (nominal) params.set('nominal', nominal);
+
             window.location.href = 'payment.html?' + params.toString();
         }
 
