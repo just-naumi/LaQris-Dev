@@ -16,6 +16,7 @@ import re
 import math
 import difflib
 import uuid
+import json
 import numpy as np
 import torch
 from PIL import Image
@@ -1332,6 +1333,413 @@ def query_merchant_reputation(nmid_digital, nmid_physical, merchant_name_dig, me
 
 
 # =============================================================================
+# FUNGSI 10B: Manajemen Arsip Sesi Scan (simpan_arsip_sesi_scan)
+# =============================================================================
+def _json_serializable_converter(obj):
+    """Konverter aman tipe data numpy / custom agar valid disimpan ke file JSON."""
+    if isinstance(obj, (np.integer, np.int64, np.int32, np.int16, np.int8)):
+        return int(obj)
+    elif isinstance(obj, (np.floating, np.float64, np.float32, np.float16)):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (datetime, )):
+        return obj.isoformat()
+    return str(obj)
+
+
+def simpan_arsip_sesi_scan(
+    session_id,
+    filename_base,
+    gambar_input,
+    gambar_vis,
+    gambar_qris_card,
+    gambar_qr_code,
+    positioning_analysis,
+    all_detected_items,
+    tech_info,
+    qris_analysis,
+    dig_name,
+    dig_nmid,
+    dig_city,
+    dig_acq,
+    dig_tid,
+    phys_name,
+    phys_nmid,
+    phys_acq,
+    phys_tid,
+    is_mismatch,
+    is_nmid_mismatch,
+    name_similarity,
+    match_level,
+    current_qr_risk_score,
+    current_trust_score,
+    risk_level,
+    risk_label,
+    risk_color,
+    explanation,
+    payment_decision,
+    reason_codes,
+    merchant_reputation
+):
+    """
+    Menyimpan arsip lengkap per sesi scan foto ke folder khusus:
+    static/sessions/{session_id}/
+    
+    Isi folder per sesi:
+    1. full_annotated.jpg  : 1 gambar utuh berisi semua plot (YOLO BBox/OBB, label, confidence, teks OCR, banner status)
+    2. original.jpg        : Gambar asli sebelum di-plot
+    3. crops/              : Subfolder berisi seluruh potongan gambar (kartu QRIS, QR code, dan setiap elemen terdeteksi)
+    4. predictions_data.json: Data terstruktur lengkap hasil analisis model YOLO & TrOCR
+    5. summary_report.txt  : Laporan teks ringkas yang mudah dibaca manusia
+    """
+    folder_backend = os.path.dirname(os.path.abspath(__file__))
+    folder_sessions = os.path.join(folder_backend, "static", "sessions")
+    session_dir = os.path.join(folder_sessions, session_id)
+    crops_dir = os.path.join(session_dir, "crops")
+    os.makedirs(crops_dir, exist_ok=True)
+
+    waktu_sekarang = datetime.now()
+    waktu_str = waktu_sekarang.strftime("%d %b %Y %H:%M:%S")
+
+    # 1. Simpan Gambar Utuh Beranotasi & Gambar Asli
+    path_full_annotated = os.path.join(session_dir, "full_annotated.jpg")
+    path_original = os.path.join(session_dir, "original.jpg")
+    cv2.imwrite(path_full_annotated, gambar_vis)
+    cv2.imwrite(path_original, gambar_input)
+
+    # Simpan juga ke vis_output untuk kompatibilitas frontend lama
+    folder_vis = os.path.join(folder_backend, "static", "vis_output")
+    os.makedirs(folder_vis, exist_ok=True)
+    cv2.imwrite(os.path.join(folder_vis, f"vis_{filename_base}.jpg"), gambar_vis)
+
+    # 2. Simpan Seluruh Potongan Gambar (Crops)
+    saved_crops = []
+
+    # 2A. Potongan Fisik Kartu QRIS (YOLO Positioning)
+    if gambar_qris_card is not None and gambar_qris_card.size > 0:
+        card_crop_name = "crop_00_qris_card.jpg"
+        path_card_crop = os.path.join(crops_dir, card_crop_name)
+        cv2.imwrite(path_card_crop, gambar_qris_card)
+        saved_crops.append({
+            "index": 0,
+            "category": "positioning_card",
+            "label": "qris_card_physical",
+            "filename": card_crop_name,
+            "url": f"/static/sessions/{session_id}/crops/{card_crop_name}",
+            "confidence": float(positioning_analysis.get("confidence", 1.0)),
+            "width": int(gambar_qris_card.shape[1]),
+            "height": int(gambar_qris_card.shape[0])
+        })
+
+    # 2B. Potongan Kotak QR Code Digital
+    if gambar_qr_code is not None and gambar_qr_code.size > 0:
+        qr_crop_name = "crop_01_qrcode.jpg"
+        path_qr_crop = os.path.join(crops_dir, qr_crop_name)
+        cv2.imwrite(path_qr_crop, gambar_qr_code)
+        saved_crops.append({
+            "index": 1,
+            "category": "barcode",
+            "label": "qrcode",
+            "filename": qr_crop_name,
+            "url": f"/static/sessions/{session_id}/crops/{qr_crop_name}",
+            "confidence": 0.99,
+            "width": int(gambar_qr_code.shape[1]),
+            "height": int(gambar_qr_code.shape[0])
+        })
+
+    # 2C. Potongan Seluruh Objek YOLO OCR (Teks & Grafik)
+    ocr_detections_info = []
+    trocr_predictions_info = []
+
+    for idx, item in enumerate(all_detected_items, start=2):
+        label_raw = item.get("label", "unknown")
+        clean_label = re.sub(r'[^a-zA-Z0-9_]', '_', label_raw).lower()
+        conf_val = float(item.get("conf", 0.0))
+        conf_pct = int(conf_val * 100)
+
+        crop_filename = None
+        crop_url = None
+        crop_img = item.get("crop_img")
+
+        if crop_img is not None and crop_img.size > 0 and crop_img.shape[0] > 4 and crop_img.shape[1] > 4:
+            crop_filename = f"crop_{idx:02d}_{clean_label}_{conf_pct}pct.jpg"
+            path_crop = os.path.join(crops_dir, crop_filename)
+            cv2.imwrite(path_crop, crop_img)
+            crop_url = f"/static/sessions/{session_id}/crops/{crop_filename}"
+            saved_crops.append({
+                "index": idx,
+                "category": "ocr_element" if item.get("is_text") else "graphic_element",
+                "label": label_raw,
+                "filename": crop_filename,
+                "url": crop_url,
+                "confidence": conf_val,
+                "width": int(crop_img.shape[1]),
+                "height": int(crop_img.shape[0])
+            })
+
+        detection_entry = {
+            "index": idx,
+            "label": label_raw,
+            "raw_class": item.get("raw_class", label_raw),
+            "confidence": conf_val,
+            "confidence_percent": f"{conf_pct}%",
+            "is_text": item.get("is_text", False),
+            "box_xyxy": item.get("box"),
+            "rotated_corners": item.get("corners"),
+            "crop_url": crop_url
+        }
+        ocr_detections_info.append(detection_entry)
+
+        if item.get("is_text") and item.get("text"):
+            trocr_predictions_info.append({
+                "index": idx,
+                "label": label_raw,
+                "text_recognized": item.get("text"),
+                "yolo_confidence": conf_val,
+                "crop_url": crop_url
+            })
+
+    # 3. Buat File JSON Data Prediksi Komprehensif (predictions_data.json)
+    data_prediksi = {
+        "session_id": session_id,
+        "created_at": waktu_sekarang.isoformat(),
+        "created_at_formatted": waktu_str,
+        "source_filename": filename_base,
+        "verification_summary": {
+            "status": "MISMATCH" if is_mismatch else "MATCH",
+            "risk_level": risk_level,
+            "risk_label": risk_label,
+            "risk_color": risk_color,
+            "overall_risk_score": float(current_qr_risk_score),
+            "trust_score": float(current_trust_score),
+            "payment_decision": payment_decision,
+            "is_mismatch": bool(is_mismatch),
+            "is_nmid_mismatch": bool(is_nmid_mismatch),
+            "name_similarity_percent": float(name_similarity),
+            "match_level": match_level,
+            "physical_merchant": phys_name,
+            "digital_merchant": dig_name,
+            "physical_nmid": phys_nmid,
+            "digital_nmid": dig_nmid,
+            "physical_acquirer": phys_acq,
+            "digital_acquirer": dig_acq,
+            "physical_tid": phys_tid,
+            "digital_tid": dig_tid,
+            "reason_codes": reason_codes,
+            "explanation": explanation
+        },
+        "yolo_positioning_analysis": {
+            "detected": bool(positioning_analysis.get("detected", False)),
+            "confidence": float(positioning_analysis.get("confidence", 0.0)),
+            "status": positioning_analysis.get("status", "-"),
+            "is_optimal": bool(positioning_analysis.get("is_optimal", False)),
+            "box": positioning_analysis.get("box"),
+            "skew_angle": float(positioning_analysis.get("skew_angle", 0.0)),
+            "deskew_applied": bool(positioning_analysis.get("deskew_applied", False)),
+            "aspect_ratio": positioning_analysis.get("aspect_ratio"),
+            "centering_offset_x": positioning_analysis.get("offset_x"),
+            "centering_offset_y": positioning_analysis.get("offset_y"),
+            "crop_url": f"/static/sessions/{session_id}/crops/crop_00_qris_card.jpg" if gambar_qris_card is not None else None
+        },
+        "yolo_ocr_detections": {
+            "total_detected": len(ocr_detections_info),
+            "detections": ocr_detections_info
+        },
+        "trocr_predictions": {
+            "total_text_elements": len(trocr_predictions_info),
+            "predictions": trocr_predictions_info
+        },
+        "emvco_qr_digital": {
+            "is_valid": bool(tech_info.get("is_valid", False)),
+            "merchant_name": dig_name,
+            "nmid": dig_nmid,
+            "merchant_city": tech_info.get("merchant_city", "-"),
+            "acquirer": dig_acq,
+            "terminal_id": dig_tid,
+            "postal_code": tech_info.get("postal_code", "-"),
+            "crc_valid": bool(tech_info.get("crc_valid", False)),
+            "raw_payload": tech_info.get("raw_text", ""),
+            "full_technical_info": tech_info,
+            "qris_raw_analysis": qris_analysis
+        },
+        "merchant_reputation_emrs": merchant_reputation,
+        "files": {
+            "session_folder": f"/static/sessions/{session_id}",
+            "full_annotated_url": f"/static/sessions/{session_id}/full_annotated.jpg",
+            "original_url": f"/static/sessions/{session_id}/original.jpg",
+            "report_url": f"/static/sessions/{session_id}/summary_report.txt",
+            "json_data_url": f"/static/sessions/{session_id}/predictions_data.json",
+            "total_crops": len(saved_crops),
+            "crops": saved_crops
+        }
+    }
+
+    path_json = os.path.join(session_dir, "predictions_data.json")
+    with open(path_json, "w", encoding="utf-8") as f_json:
+        json.dump(data_prediksi, f_json, indent=2, ensure_ascii=False, default=_json_serializable_converter)
+
+    # 4. Buat File Laporan Teks Ringkas (summary_report.txt)
+    lines_deteksi = []
+    for d in ocr_detections_info:
+        label_padded = f"[{d['label']}]".ljust(22)
+        crop_txt = f"| Crop: {d['crop_url']}" if d.get('crop_url') else ""
+        lines_deteksi.append(f"  {label_padded} : Conf {d['confidence_percent']} {crop_txt}")
+    text_deteksi_block = "\n".join(lines_deteksi) if lines_deteksi else "  (Tidak ada elemen terdeteksi)"
+
+    lines_trocr = []
+    for t in trocr_predictions_info:
+        lines_trocr.append(f"  - [{t['label']}] -> \"{t['text_recognized']}\" (YOLO Conf: {t['yolo_confidence']*100:.1f}%)")
+    text_trocr_block = "\n".join(lines_trocr) if lines_trocr else "  (Tidak ada teks fisik terbaca)"
+
+    keputusan_str = payment_decision if isinstance(payment_decision, str) else f"{payment_decision.get('action', '-')} - {payment_decision.get('message', '-')}"
+
+    report_content = f"""================================================================================
+                     LAQRIS SCAN SESSION ANALYSIS REPORT
+================================================================================
+Session ID        : {session_id}
+Waktu Scan        : {waktu_str}
+File Sumber       : {filename_base}
+Status Fraud      : {'[!] TERINDIKASI FRAUD MISMATCH' if is_mismatch else '[v] NORMAL / MATCH'}
+Tingkat Keamanan  : [{risk_level}] {risk_label}
+Skor Kepercayaan  : {current_trust_score:.1f}% (Skor Risiko: {current_qr_risk_score:.1f}%)
+Keputusan Sistem  : {keputusan_str}
+Penjelasan        : {explanation}
+Pemicu Risiko     : {', '.join(reason_codes) if reason_codes else 'Tidak ada'}
+
+--------------------------------------------------------------------------------
+1. ANALISIS MODEL YOLO POSITIONING (Deteksi Fisik Kartu/Stiker QRIS)
+--------------------------------------------------------------------------------
+Status Deteksi    : {'Terdeteksi' if positioning_analysis.get('detected') else 'Tidak Terdeteksi'}
+Confidence        : {positioning_analysis.get('confidence', 0.0)*100:.1f}%
+Status Posisi     : {positioning_analysis.get('status', '-')}
+Kesiapan Scan     : {'Optimal (Siap Pindai)' if positioning_analysis.get('is_optimal') else 'Kurang Optimal'}
+Sudut Kemiringan  : {positioning_analysis.get('skew_angle', 0.0):+.2f} derajat
+Auto-Deskew       : {'Diterapkan' if positioning_analysis.get('deskew_applied') else 'Tidak'}
+File Potongan     : crops/crop_00_qris_card.jpg
+
+--------------------------------------------------------------------------------
+2. ANALISIS MODEL YOLO OCR (Deteksi Elemen & Teks Fisik)
+--------------------------------------------------------------------------------
+Total Objek       : {len(ocr_detections_info)} elemen terdeteksi
+Daftar Elemen:
+{text_deteksi_block}
+
+--------------------------------------------------------------------------------
+3. ANALISIS MODEL TrOCR (Optical Character Recognition)
+--------------------------------------------------------------------------------
+Nama Merchant     : "{phys_name}"
+NMID Fisik        : "{phys_nmid}"
+Acquirer          : "{phys_acq if phys_acq else 'Tidak terbaca'}"
+TID               : "{phys_tid if phys_tid else 'Tidak terbaca'}"
+
+Rincian Pembacaan Teks:
+{text_trocr_block}
+
+--------------------------------------------------------------------------------
+4. DATA DIGITAL QRIS (EMVCo ASPI Standard Payload)
+--------------------------------------------------------------------------------
+Validitas Format  : {'VALID (Format Standar ASPI/Bank Indonesia)' if tech_info.get('is_valid') else 'TIDAK VALID / RUSAK'}
+Nama Toko Digital : "{dig_name}"
+NMID Digital      : "{dig_nmid}"
+Kota Toko         : "{tech_info.get('merchant_city', '-')}"
+Lembaga Acquirer  : "{dig_acq}"
+Terminal ID (TID) : "{dig_tid}"
+CRC32 Checksum    : {'VALID' if tech_info.get('crc_valid') else 'TIDAK VALID'}
+
+--------------------------------------------------------------------------------
+5. HASIL VERIFIKASI IDENTITAS (Fisik vs Digital)
+--------------------------------------------------------------------------------
+Kesesuaian Nama   : {name_similarity:.1f}% ({match_level})
+Kesesuaian NMID   : {'MISMATCH (NMID Berbeda -> Indikasi Stiker Palsu!)' if is_nmid_mismatch else 'SESUAI (Identik)'}
+
+--------------------------------------------------------------------------------
+6. ARSIP FILE PER SESI ({session_dir})
+--------------------------------------------------------------------------------
+- Gambar Utuh Plot  : full_annotated.jpg
+- Gambar Asli       : original.jpg
+- Data Prediksi JSON: predictions_data.json
+- Laporan Teks      : summary_report.txt
+- Total Potongan    : {len(saved_crops)} file di folder crops/
+================================================================================
+"""
+
+    path_txt = os.path.join(session_dir, "summary_report.txt")
+    with open(path_txt, "w", encoding="utf-8") as f_txt:
+        f_txt.write(report_content)
+
+    print(f"[LOG] Arsip Sesi Berhasil Disimpan: {session_dir} ({len(saved_crops)} crops)")
+
+    return {
+        "session_folder": f"/static/sessions/{session_id}",
+        "session_files": {
+            "full_annotated_url": f"/static/sessions/{session_id}/full_annotated.jpg",
+            "original_url": f"/static/sessions/{session_id}/original.jpg",
+            "report_url": f"/static/sessions/{session_id}/summary_report.txt",
+            "json_data_url": f"/static/sessions/{session_id}/predictions_data.json",
+            "crops_count": len(saved_crops),
+            "crops": saved_crops
+        }
+    }
+
+
+def get_session_archive_data(session_id):
+    """Membaca data json arsip sesi tertentu."""
+    folder_backend = os.path.dirname(os.path.abspath(__file__))
+    path_json = os.path.join(folder_backend, "static", "sessions", session_id, "predictions_data.json")
+    if not os.path.exists(path_json):
+        return None
+    try:
+        with open(path_json, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"[ERROR] Gagal membaca arsip sesi {session_id}: {e}")
+        return None
+
+
+def list_all_scan_sessions(limit=20):
+    """Mengambil daftar seluruh folder sesi scan yang tersimpan di static/sessions."""
+    folder_backend = os.path.dirname(os.path.abspath(__file__))
+    folder_sessions = os.path.join(folder_backend, "static", "sessions")
+    if not os.path.exists(folder_sessions):
+        return []
+
+    daftar_sesi = []
+    folders = [f for f in os.listdir(folder_sessions) if os.path.isdir(os.path.join(folder_sessions, f))]
+    folders.sort(reverse=True)
+
+    for sid in folders[:limit]:
+        path_session = os.path.join(folder_sessions, sid)
+        path_json = os.path.join(path_session, "predictions_data.json")
+        summary_info = {}
+        if os.path.exists(path_json):
+            try:
+                with open(path_json, "r", encoding="utf-8") as fj:
+                    data = json.load(fj)
+                    summary_info = data.get("verification_summary", {})
+            except Exception:
+                pass
+
+        crops_folder = os.path.join(path_session, "crops")
+        crops_num = len(os.listdir(crops_folder)) if os.path.exists(crops_folder) else 0
+
+        daftar_sesi.append({
+            "session_id": sid,
+            "folder_url": f"/static/sessions/{sid}",
+            "full_annotated_url": f"/static/sessions/{sid}/full_annotated.jpg",
+            "report_url": f"/static/sessions/{sid}/summary_report.txt",
+            "json_url": f"/static/sessions/{sid}/predictions_data.json",
+            "status": summary_info.get("status", "UNKNOWN"),
+            "risk_level": summary_info.get("risk_level", "NORMAL"),
+            "trust_score": summary_info.get("trust_score", 0.0),
+            "merchant_name": summary_info.get("digital_merchant") or summary_info.get("physical_merchant") or "Merchant QRIS",
+            "crops_count": crops_num
+        })
+
+    return daftar_sesi
+
+
+# =============================================================================
 # FUNGSI 11: Pipeline Utama Verifikasi QRIS (process_qris_verification)
 # =============================================================================
 def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
@@ -1346,7 +1754,7 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
     7. Mengembalikan hasil verifikasi lengkap ke Frontend
     """
     model_barcode, model_ocr, proc_trocr, model_trocr = load_ai_models()
-    session_id = str(uuid.uuid4())[:8]
+    session_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:6]}"
 
     # 1. Resize foto ukuran raksasa dari kamera HP ke max 1280px PERTAMA KALI
     # (Penting agar koordinat kotak YOLO presisi 100% sesuai dengan piksel gambar visualisasi)
@@ -1365,6 +1773,7 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
     # 1C. CROP FISIK QRIS SEUKURAN KOTAK HASIL DETEKSI (Targeted QRIS Crop)
     # Memastikan model Barcode dan OCR bekerja pada gambar terfokus beresolusi tinggi tanpa gangguan background
     is_qris_cropped = False
+    gambar_qris_card = None
     offset_x, offset_y = 0, 0
     gambar_proses = gambar_input
 
@@ -1383,6 +1792,7 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
 
         if crop_w > 80 and crop_h > 80:
             gambar_proses = gambar_input[crop_y1:crop_y2, crop_x1:crop_x2]
+            gambar_qris_card = gambar_proses.copy()
             offset_x, offset_y = crop_x1, crop_y1
             is_qris_cropped = True
             print(f"[LOG] Crop Fisik QRIS Berhasil: {crop_w}x{crop_h}px dari offset ({offset_x}, {offset_y})")
@@ -1451,6 +1861,7 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
                 calon_kotak_qr.append(box.xyxy[0].tolist())
 
     # Dekode HANYA pada potongan gambar kotak QR Code
+    gambar_qr_code = None
     h_proc, w_proc = gambar_proses.shape[:2]
     for (bx1, by1, bx2, by2) in calon_kotak_qr:
         px1 = max(0, int(bx1) - 10)
@@ -1460,6 +1871,7 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
         potongan_qr = gambar_proses[py1:py2, px1:px2]
         teks_qr_mentah = scan_qr_code_digital(potongan_qr)
         if teks_qr_mentah:
+            gambar_qr_code = potongan_qr.copy()
             break
 
     # Fallback terakhir jika potongan kotak miring/gagal
@@ -1467,6 +1879,16 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
         teks_qr_mentah = scan_qr_code_digital(gambar_proses)
     if not teks_qr_mentah and is_qris_cropped:
         teks_qr_mentah = scan_qr_code_digital(gambar_input)
+
+    # Pastikan potongan gambar QR Code tersimpan jika ada calon_kotak_qr
+    if gambar_qr_code is None and calon_kotak_qr:
+        cbx1, cby1, cbx2, cby2 = calon_kotak_qr[0]
+        cpx1 = max(0, int(cbx1) - 10)
+        cpy1 = max(0, int(cby1) - 10)
+        cpx2 = min(w_proc, int(cbx2) + 10)
+        cpy2 = min(h_proc, int(cby2) + 10)
+        if cpy2 > cpy1 and cpx2 > cpx1:
+            gambar_qr_code = gambar_proses[cpy1:cpy2, cpx1:cpx2].copy()
 
     # 2. Parse payload EMVCo QRIS digital
     tech_info, dig_name, dig_city, dig_nmid, dig_acq, dig_tid, qris_analysis = validate_and_parse_emvco_qr(teks_qr_mentah)
@@ -1476,6 +1898,7 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
     target_nmid_box = None
     target_qr_box = None
     all_ocr_results = []
+    all_detected_items = []
 
     # Sort kotak deteksi berdasarkan skor confidence terbesar (mendukung model standar .boxes dan model berotasi .obb)
     ocr_detections = res_ocr.obb if (hasattr(res_ocr, 'obb') and res_ocr.obb is not None and len(res_ocr.obb) > 0) else res_ocr.boxes
@@ -1512,10 +1935,20 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
             gx1, gy1 = lx1 + offset_x, ly1 + offset_y
             gx2, gy2 = lx2 + offset_x, ly2 + offset_y
 
+        # Potongan gambar untuk objek grafik / barcode / instruksi
+        cx1_obj = max(0, min(gx1, gx2))
+        cy1_obj = max(0, min(gy1, gy2))
+        cx2_obj = min(lebar_foto, max(gx1, gx2))
+        cy2_obj = min(tinggi_foto, max(gy1, gy2))
+        potongan_obj = gambar_input[cy1_obj:cy2_obj, cx1_obj:cx2_obj].copy() if (cy2_obj > cy1_obj and cx2_obj > cx1_obj) else None
+
         # Abaikan TrOCR untuk objek grafik/barcode/instruksi umum
         if label_std in ["qrcode", "logo", "gpn", "logo_gpn", "logo_qris", "cara_pakai", "cek_aplikasi", "slogan", "versi_cetak"]:
             if label_std == "qrcode" and target_qr_box is None:
                 target_qr_box = (gx1, gy1, gx2, gy2)
+                if gambar_qr_code is None and potongan_obj is not None:
+                    gambar_qr_code = potongan_obj.copy()
+
             warna = DAFTAR_WARNA_LABEL[cls_id % len(DAFTAR_WARNA_LABEL)]
             if corners_global is not None:
                 cv2.polylines(gambar_vis, [corners_global], isClosed=True, color=warna, thickness=2)
@@ -1523,6 +1956,17 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
             else:
                 cv2.rectangle(gambar_vis, (gx1, gy1), (gx2, gy2), warna, 2)
                 cv2.putText(gambar_vis, f"{label_std}", (gx1, max(15, gy1 - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.45, warna, 1)
+
+            all_detected_items.append({
+                "label": label_std,
+                "raw_class": nama_kelas,
+                "conf": conf_score,
+                "box": (gx1, gy1, gx2, gy2),
+                "corners": corners_global.tolist() if corners_global is not None else None,
+                "text": None,
+                "is_text": False,
+                "crop_img": potongan_obj
+            })
             continue
 
         if label_std == "nmid" and target_nmid_box is None:
@@ -1536,7 +1980,7 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
         cx2 = min(w_proc, lx2 + pad_x)
         cy2 = min(h_proc, ly2 + pad_y)
 
-        potongan_teks = gambar_proses[cy1:cy2, cx1:cx2]
+        potongan_teks = gambar_proses[cy1:cy2, cx1:cx2].copy()
 
         # Routing model berdasarkan label:
         if label_std == "nama_merchant":
@@ -1544,12 +1988,24 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
         else:
             teks_ocr = ocr_trocr_general(potongan_teks, proc_trocr, model_trocr)
 
-        all_ocr_results.append({
+        ocr_entry = {
             "label": label_std,
             "text": teks_ocr,
             "conf": conf_score,
             "box": (gx1, gy1, gx2, gy2),
             "corners": corners_global.tolist() if corners_global is not None else None
+        }
+        all_ocr_results.append(ocr_entry)
+
+        all_detected_items.append({
+            "label": label_std,
+            "raw_class": nama_kelas,
+            "conf": conf_score,
+            "box": (gx1, gy1, gx2, gy2),
+            "corners": corners_global.tolist() if corners_global is not None else None,
+            "text": teks_ocr,
+            "is_text": True,
+            "crop_img": potongan_teks
         })
 
         # Gambar kotak berotasi miring (OBB) atau tegak pada foto visualisasi
@@ -1825,9 +2281,47 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
     finally:
         db.close()
 
-    # 7. Kembalikan data lengkap dalam bentuk Dictionary JSON
+    # 7. Simpan Arsip Lengkap Per Sesi (1 Gambar Utuh Plot, Semua Potongan Gambar Crops, File Prediksi JSON & TXT)
+    session_artifacts = simpan_arsip_sesi_scan(
+        session_id=session_id,
+        filename_base=filename_base,
+        gambar_input=gambar_input,
+        gambar_vis=gambar_vis,
+        gambar_qris_card=gambar_qris_card,
+        gambar_qr_code=gambar_qr_code,
+        positioning_analysis=positioning_analysis,
+        all_detected_items=all_detected_items,
+        tech_info=tech_info,
+        qris_analysis=qris_analysis,
+        dig_name=dig_name,
+        dig_nmid=dig_nmid,
+        dig_city=dig_city,
+        dig_acq=dig_acq,
+        dig_tid=dig_tid,
+        phys_name=phys_name,
+        phys_nmid=phys_nmid,
+        phys_acq=phys_acq,
+        phys_tid=phys_tid,
+        is_mismatch=is_mismatch,
+        is_nmid_mismatch=is_nmid_mismatch,
+        name_similarity=name_similarity,
+        match_level=match_level,
+        current_qr_risk_score=current_qr_risk_score,
+        current_trust_score=current_trust_score,
+        risk_level=risk_level,
+        risk_label=risk_label,
+        risk_color=risk_color,
+        explanation=explanation,
+        payment_decision=payment_decision,
+        reason_codes=reason_codes,
+        merchant_reputation=merchant_reputation
+    )
+
+    # 8. Kembalikan data lengkap dalam bentuk Dictionary JSON
     return {
         "session_id": session_id,
+        "session_folder": session_artifacts["session_folder"],
+        "session_files": session_artifacts["session_files"],
         "positioning_analysis": positioning_analysis,
         "current_qr_risk": {
             "risk_level": risk_level,
@@ -1856,7 +2350,7 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
             "all_ocr_results": all_ocr_results
         },
         "merchant_reputation": merchant_reputation,
-        "visualization_url": f"/static/vis_output/vis_{filename_base}.jpg"
+        "visualization_url": session_artifacts["session_files"]["full_annotated_url"]
     }
 
 

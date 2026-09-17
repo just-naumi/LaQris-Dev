@@ -112,7 +112,7 @@ def pisahkan_dan_siapkan_dataset():
             pass
 
     konfigurasi_yaml = {
-        'path': str(folder_saat_ini).replace('\\', '/'),
+        'path': '.',
         'train': 'train/images',
         'val': 'valid/images',
         'test': 'test/images',
@@ -120,10 +120,10 @@ def pisahkan_dan_siapkan_dataset():
         'names': daftar_nama_kelas
     }
 
-    with open(path_data_yaml, 'w') as file_yaml:
+    with open(path_data_yaml, 'w', encoding='utf-8') as file_yaml:
         yaml.dump(konfigurasi_yaml, file_yaml, default_flow_style=False, sort_keys=False)
 
-    print(f"[OK] File konfigurasi 'data.yaml' berhasil diperbarui ({len(daftar_nama_kelas)} kelas) di:")
+    print(f"[OK] File konfigurasi 'data.yaml' berhasil diverifikasi ({len(daftar_nama_kelas)} kelas) di:")
     print(f"     {path_data_yaml}")
     print("=================================================================")
     print("      PEMBAGIAN DATASET SELESAI & SIAP DIGUNAKAN!              ")

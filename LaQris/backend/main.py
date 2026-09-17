@@ -18,7 +18,9 @@ from engine import (
     evaluasi_posisi_qris,
     submit_feedback_to_db,
     get_merchant_reputation_by_nmid,
-    calculate_emrs
+    calculate_emrs,
+    get_session_archive_data,
+    list_all_scan_sessions
 )
 
 # Auto-initialize SQLite database on startup
@@ -276,6 +278,25 @@ def get_recent_scans_history(user_id: Optional[str] = None, limit: int = 5, db: 
             "scanned_at": s.scanned_at.strftime("%d %b %Y %H:%M") if s.scanned_at else "Baru saja"
         })
     return {"scans": results}
+
+
+@app.get("/api/scan/session/{session_id}")
+def get_scan_session_details_endpoint(session_id: str):
+    """
+    Mengambil seluruh detail arsip sesi scan tertentu (JSON data prediksi & list crops).
+    """
+    data = get_session_archive_data(session_id)
+    if not data:
+        raise HTTPException(status_code=404, detail="Sesi scan tidak ditemukan.")
+    return data
+
+
+@app.get("/api/scan/sessions")
+def list_scan_sessions_endpoint(limit: int = 20):
+    """
+    Mengambil daftar seluruh folder sesi scan yang tersimpan di static/sessions.
+    """
+    return {"sessions": list_all_scan_sessions(limit=limit)}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
