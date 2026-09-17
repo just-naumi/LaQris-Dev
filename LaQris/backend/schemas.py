@@ -185,7 +185,9 @@ class PaymentTransactionCreateSchema(BaseModel):
     status: str = "SUCCESS"
     response_code: str = "00"
     merchant_id: Optional[Any] = None
+    merchant_name: Optional[str] = None
     nmid: Optional[str] = None
+    user_id: Optional[str] = None
     terminal_id: Optional[str] = None
     invoice_number: Optional[str] = None
     transaction_time: Optional[str] = None
@@ -275,6 +277,7 @@ class UserResponseSchema(BaseModel):
     role: str
     account_number: Optional[str] = "1858868768"
     account_type: Optional[str] = "TAPLUS"
+    pin: Optional[str] = "123456"
     created_at: datetime
 
     class Config:

@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import datetime
 
 import hashlib
 from database import init_db, get_db, reset_db
@@ -253,11 +254,11 @@ def seed_database_endpoint():
 
 
 @app.get("/api/scans/history")
-def get_recent_scans_history(user_id: Optional[str] = None, limit: int = 5, db: Session = Depends(get_db)):
-    """Mengambil 5 riwayat scan QRIS teraktual dari database SQLite (filter per user_id)."""
+def get_recent_scans_history(user_id: Optional[str] = None, limit: int = 10, db: Session = Depends(get_db)):
+    """Mengambil riwayat scan & transaksi QRIS teraktual dari database SQLite (filter per user_id)."""
     query = db.query(VerificationSession)
     if user_id:
-        query = query.filter(VerificationSession.user_id == user_id)
+        query = query.filter((VerificationSession.user_id == user_id) | (VerificationSession.user_id.is_(None)))
     
     sessions = (
         query.order_by(VerificationSession.scanned_at.desc())
@@ -266,8 +267,29 @@ def get_recent_scans_history(user_id: Optional[str] = None, limit: int = 5, db: 
     )
     
     results = []
+    now = datetime.utcnow()
     for s in sessions:
         merchant_name = s.digital_name or s.physical_name or "Merchant QRIS"
+        
+        # Ambil transaksi pembayaran yang terhubung
+        tx = s.payment_transaction
+        if not tx and s.session_id:
+            tx = db.query(PaymentTransaction).filter(PaymentTransaction.verification_session_id == s.session_id).first()
+
+        amount_val = tx.amount if (tx and tx.amount) else None
+        is_paid = bool(tx and tx.status == "SUCCESS")
+
+        # Format waktu relatif (Hari ini, Kemarin, dll.)
+        time_str = "Hari ini"
+        if s.scanned_at:
+            delta_days = (now.date() - s.scanned_at.date()).days
+            if delta_days == 0:
+                time_str = f"Hari ini, {s.scanned_at.strftime('%H:%M')}"
+            elif delta_days == 1:
+                time_str = f"Kemarin, {s.scanned_at.strftime('%H:%M')}"
+            else:
+                time_str = s.scanned_at.strftime("%d %b, %H:%M")
+
         results.append({
             "session_id": s.session_id,
             "merchant_name": merchant_name,
@@ -275,7 +297,13 @@ def get_recent_scans_history(user_id: Optional[str] = None, limit: int = 5, db: 
             "status": s.status,
             "risk_level": s.risk_level,
             "trust_score": s.trust_score,
-            "scanned_at": s.scanned_at.strftime("%d %b %Y %H:%M") if s.scanned_at else "Baru saja"
+            "scanned_at": time_str,
+            "raw_scanned_at": s.scanned_at.isoformat() if s.scanned_at else None,
+            "amount": amount_val,
+            "is_paid": is_paid,
+            "payment_status": tx.status if tx else None,
+            "transaction_id": tx.provider_transaction_id if tx else None,
+            "invoice_number": tx.invoice_number if tx else None
         })
     return {"scans": results}
 
@@ -316,6 +344,24 @@ def record_transaction_event(
     session = None
     if v_id:
         session = db.query(VerificationSession).filter(VerificationSession.session_id == v_id).first()
+
+    target_user_id = payload.user_id or "USR-001928"
+    if session and not session.user_id:
+        session.user_id = target_user_id
+    elif not session and v_id:
+        session = VerificationSession(
+            session_id=v_id,
+            user_id=target_user_id,
+            nmid=payload.nmid,
+            digital_name=payload.merchant_name or "Merchant QRIS",
+            physical_name=payload.merchant_name or "Merchant QRIS",
+            status="MATCH",
+            risk_level="NORMAL",
+            trust_score=100.0,
+            scanned_at=datetime.utcnow()
+        )
+        db.add(session)
+        db.flush()
 
     merchant_id_val = None
     if payload.merchant_id:
@@ -448,7 +494,8 @@ def register_user(payload: schemas.UserRegisterSchema, db: Session = Depends(get
             "full_name": user.full_name,
             "role": user.role,
             "account_number": getattr(user, "account_number", acc_num),
-            "account_type": getattr(user, "account_type", "TAPLUS")
+            "account_type": getattr(user, "account_type", "TAPLUS"),
+            "pin": getattr(user, "pin", "123456") or "123456"
         }
     }
 
@@ -476,14 +523,15 @@ def login_user(payload: schemas.UserLoginSchema, db: Session = Depends(get_db)):
             "phone": user.phone,
             "role": user.role,
             "account_number": getattr(user, "account_number", "1858868768") or "1858868768",
-            "account_type": getattr(user, "account_type", "TAPLUS") or "TAPLUS"
+            "account_type": getattr(user, "account_type", "TAPLUS") or "TAPLUS",
+            "pin": getattr(user, "pin", "123456") or "123456"
         }
     }
 
 
 @app.get("/api/user/current")
 def get_current_user_profile(user_id: Optional[str] = None, db: Session = Depends(get_db)):
-    """Mengambil data profil pengguna yang sedang aktif beserta nomor rekening."""
+    """Mengambil data profil pengguna yang sedang aktif beserta nomor rekening dan PIN."""
     user = None
     if user_id:
         user = db.query(User).filter(User.user_id == user_id).first()
@@ -495,7 +543,8 @@ def get_current_user_profile(user_id: Optional[str] = None, db: Session = Depend
             "username": "yantoalim",
             "full_name": "Yanto Alim",
             "account_number": "1858868768",
-            "account_type": "TAPLUS"
+            "account_type": "TAPLUS",
+            "pin": "123456"
         }
     return {
         "id": user.id,
@@ -506,8 +555,27 @@ def get_current_user_profile(user_id: Optional[str] = None, db: Session = Depend
         "phone": user.phone,
         "role": user.role,
         "account_number": getattr(user, "account_number", "1858868768") or "1858868768",
-        "account_type": getattr(user, "account_type", "TAPLUS") or "TAPLUS"
+        "account_type": getattr(user, "account_type", "TAPLUS") or "TAPLUS",
+        "pin": getattr(user, "pin", "123456") or "123456"
     }
+
+
+@app.post("/api/user/verify-pin")
+def verify_user_pin(payload: dict, db: Session = Depends(get_db)):
+    """Verifikasi PIN transaksi pengguna."""
+    input_pin = str(payload.get("pin", "")).strip()
+    user_id = payload.get("user_id")
+    user = None
+    if user_id:
+        user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        user = db.query(User).order_by(User.id.desc()).first()
+    correct_pin = getattr(user, "pin", "123456") if user else "123456"
+    if not correct_pin:
+        correct_pin = "123456"
+    if input_pin == correct_pin:
+        return {"valid": True, "message": "PIN benar."}
+    return {"valid": False, "message": "PIN tidak sesuai. Silakan coba lagi."}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

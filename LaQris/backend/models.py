@@ -149,6 +149,7 @@ class User(Base):
     status = Column(String, default="ACTIVE")        # "ACTIVE" | "PENDING" | "SUSPENDED"
     account_number = Column(String, default="1858868768")
     account_type = Column(String, default="TAPLUS")
+    pin = Column(String, default="123456")
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

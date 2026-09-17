@@ -1239,7 +1239,9 @@
                 status: "SUCCESS",
                 response_code: "00",
                 invoice_number: invId,
+                merchant_name: sessionData.merchant_name || null,
                 nmid: sessionData.nmid || null,
+                user_id: currentUserId || undefined,
                 terminal_id: "A01",
                 latency_ms: 1250,
                 retry_count: 0
