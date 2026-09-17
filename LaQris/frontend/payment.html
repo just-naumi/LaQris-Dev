@@ -440,6 +440,154 @@
             color: #0f172a;
         }
 
+        /* ── PIN Screen Styles (wondr style) ─────────────────────────── */
+        .pin-screen-body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 20px 30px 20px;
+            flex: 1;
+            min-height: calc(100vh - 56px);
+            justify-content: flex-start;
+        }
+
+        .pin-header-box {
+            text-align: center;
+            margin-top: 16px;
+            margin-bottom: 34px;
+        }
+
+        .pin-title {
+            font-size: 1.45rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 8px;
+            letter-spacing: -0.3px;
+        }
+
+        .pin-subtitle {
+            font-size: 0.88rem;
+            color: #475569;
+            font-weight: 500;
+        }
+
+        .pin-dots-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 46px;
+            min-height: 48px;
+        }
+
+        .pin-dots-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 8px 0;
+            transition: transform 0.2s ease;
+        }
+
+        .pin-dot {
+            width: 17px;
+            height: 17px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .pin-dot.filled {
+            background: #5cd2c6;
+            transform: scale(1.18);
+            box-shadow: 0 0 10px rgba(92, 210, 198, 0.45);
+        }
+
+        .pin-dot.error {
+            background: #ef4444 !important;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.5) !important;
+        }
+
+        .pin-dots-row.shake {
+            animation: shakeDots 0.4s ease;
+        }
+
+        @keyframes shakeDots {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-12px); }
+            40%, 80% { transform: translateX(12px); }
+        }
+
+        .pin-error-text {
+            color: #ef4444;
+            font-size: 0.82rem;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        .pin-keypad-container {
+            width: 100%;
+            max-width: 310px;
+            margin-top: auto;
+            margin-bottom: 24px;
+        }
+
+        .keypad-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px 22px;
+            justify-items: center;
+            align-items: center;
+        }
+
+        .keypad-btn {
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            background: #f1f5f9;
+            border: none;
+            color: #0f172a;
+            font-size: 1.55rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .keypad-btn:hover {
+            background: #e2e8f0;
+        }
+
+        .keypad-btn:active {
+            background: #cbd5e1;
+            transform: scale(0.92);
+        }
+
+        .btn-keypad-del {
+            background: #f1f5f9;
+            color: #0f172a;
+        }
+
+        .btn-forgot-pin {
+            background: none;
+            border: none;
+            color: #f97316;
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 8px;
+            white-space: nowrap;
+            transition: opacity 0.2s;
+        }
+
+        .btn-forgot-pin:hover {
+            opacity: 0.8;
+        }
+
         .d-none {
             display: none !important;
         }
@@ -548,9 +696,70 @@
                     <span class="total-label">Total</span>
                     <span class="total-amount" id="confirmTotalAmount">Rp27.000</span>
                 </div>
-                <button type="button" class="btn-primary-teal" id="btnPayNow" onclick="processPayment()">
+                <button type="button" class="btn-primary-teal" id="btnPayNow" onclick="goToStepPin()">
                     Bayar Sekarang
                 </button>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- STEP 3: MASUKIN PIN WONDR                                      -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <div id="stepInputPin" class="d-none">
+            <!-- App Bar with back arrow -->
+            <div class="app-bar" style="border-bottom: none; background: transparent;">
+                <button class="btn-back-nav" onclick="goToStepConfirmFromPin()" title="Kembali ke Konfirmasi">
+                    <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                    </svg>
+                </button>
+                <div class="app-bar-title" style="visibility: hidden;">PIN</div>
+            </div>
+
+            <!-- Content Body / Pin Screen -->
+            <div class="pin-screen-body">
+                <div class="pin-header-box">
+                    <div class="pin-title">Masukin PIN wondr</div>
+                    <div class="pin-subtitle">PIN wondr 6 digit kamu.</div>
+                </div>
+
+                <!-- 6 PIN Dots -->
+                <div class="pin-dots-container">
+                    <div class="pin-dots-row" id="pinDotsRow">
+                        <div class="pin-dot" id="pinDot0"></div>
+                        <div class="pin-dot" id="pinDot1"></div>
+                        <div class="pin-dot" id="pinDot2"></div>
+                        <div class="pin-dot" id="pinDot3"></div>
+                        <div class="pin-dot" id="pinDot4"></div>
+                        <div class="pin-dot" id="pinDot5"></div>
+                    </div>
+                    <div class="pin-error-text d-none" id="pinErrorText">PIN salah. Silakan coba lagi.</div>
+                </div>
+
+                <!-- Keypad 3x4 -->
+                <div class="pin-keypad-container">
+                    <div class="keypad-grid">
+                        <button type="button" class="keypad-btn" onclick="pressPinDigit('1')">1</button>
+                        <button type="button" class="keypad-btn" onclick="pressPinDigit('2')">2</button>
+                        <button type="button" class="keypad-btn" onclick="pressPinDigit('3')">3</button>
+
+                        <button type="button" class="keypad-btn" onclick="pressPinDigit('4')">4</button>
+                        <button type="button" class="keypad-btn" onclick="pressPinDigit('5')">5</button>
+                        <button type="button" class="keypad-btn" onclick="pressPinDigit('6')">6</button>
+
+                        <button type="button" class="keypad-btn" onclick="pressPinDigit('7')">7</button>
+                        <button type="button" class="keypad-btn" onclick="pressPinDigit('8')">8</button>
+                        <button type="button" class="keypad-btn" onclick="pressPinDigit('9')">9</button>
+
+                        <button type="button" class="btn-forgot-pin" onclick="showForgotPinAlert()">Lupa PIN</button>
+                        <button type="button" class="keypad-btn" onclick="pressPinDigit('0')">0</button>
+                        <button type="button" class="keypad-btn btn-keypad-del" onclick="deletePinDigit()" title="Hapus">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9.75L14.25 12m0 0l2.25 2.25M14.25 12l2.25-2.25M14.25 12L12 14.25m-2.58 4.92l-6.375-6.375a1.125 1.125 0 010-1.59L9.42 4.83c.21-.21.496-.33.795-.33H19.5A2.25 2.25 0 0121.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-9.285a1.125 1.125 0 01-.795-.33z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -610,6 +819,10 @@
         let sessionData = {};
         let currentNominalNumber = 27000;
         let createdTxRef = '';
+        let currentUserPin = '123456';
+        let currentUserId = '';
+        let enteredPin = '';
+        let isPinValidating = false;
 
         window.addEventListener('DOMContentLoaded', async () => {
             const params = new URLSearchParams(window.location.search);
@@ -738,17 +951,21 @@
                 userAccountName = userObj.full_name || userObj.username || '';
                 userAccountNumber = userObj.account_number || '';
                 userAccountType = userObj.account_type || 'TAPLUS';
+                currentUserPin = userObj.pin || '123456';
+                currentUserId = userObj.user_id || '';
             }
 
             // Fallback: If not found in browser storage, fetch current user profile from backend
-            if (!userAccountName) {
+            if (!userAccountName || !currentUserPin) {
                 try {
                     const uRes = await fetch('/api/user/current');
                     if (uRes.ok) {
                         const uData = await uRes.json();
-                        userAccountName = uData.full_name || uData.username;
-                        userAccountNumber = uData.account_number;
-                        userAccountType = uData.account_type || 'TAPLUS';
+                        if (!userAccountName) userAccountName = uData.full_name || uData.username;
+                        if (!userAccountNumber) userAccountNumber = uData.account_number;
+                        if (!userAccountType) userAccountType = uData.account_type || 'TAPLUS';
+                        if (uData.pin) currentUserPin = uData.pin;
+                        if (uData.user_id) currentUserId = uData.user_id;
                     }
                 } catch(e) {}
             }
@@ -874,6 +1091,136 @@
             document.getElementById('stepInputNominal').classList.remove('d-none');
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
+
+        // ── PIN Screen Navigation & Keypad Logic ──────────────────────
+        function goToStepPin() {
+            document.getElementById('stepConfirmPayment').classList.add('d-none');
+            document.getElementById('stepInputPin').classList.remove('d-none');
+            resetPinInput();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function goToStepConfirmFromPin() {
+            document.getElementById('stepInputPin').classList.add('d-none');
+            document.getElementById('stepConfirmPayment').classList.remove('d-none');
+            resetPinInput();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function resetPinInput() {
+            enteredPin = '';
+            isPinValidating = false;
+            updatePinDotsDisplay(false);
+            const errEl = document.getElementById('pinErrorText');
+            if (errEl) errEl.classList.add('d-none');
+            const row = document.getElementById('pinDotsRow');
+            if (row) row.classList.remove('shake');
+        }
+
+        function updatePinDotsDisplay(isError = false) {
+            for (let i = 0; i < 6; i++) {
+                const dot = document.getElementById(`pinDot${i}`);
+                if (!dot) continue;
+                dot.classList.remove('filled', 'error');
+                if (isError) {
+                    dot.classList.add('error');
+                } else if (i < enteredPin.length) {
+                    dot.classList.add('filled');
+                }
+            }
+        }
+
+        function pressPinDigit(digit) {
+            if (isPinValidating) return;
+            if (enteredPin.length < 6) {
+                enteredPin += digit.toString();
+                updatePinDotsDisplay(false);
+                const errEl = document.getElementById('pinErrorText');
+                if (errEl) errEl.classList.add('d-none');
+
+                if (enteredPin.length === 6) {
+                    handlePinComplete();
+                }
+            }
+        }
+
+        function deletePinDigit() {
+            if (isPinValidating) return;
+            if (enteredPin.length > 0) {
+                enteredPin = enteredPin.slice(0, -1);
+                updatePinDotsDisplay(false);
+                const errEl = document.getElementById('pinErrorText');
+                if (errEl) errEl.classList.add('d-none');
+            }
+        }
+
+        async function handlePinComplete() {
+            isPinValidating = true;
+
+            // Verify PIN against backend API or user profile
+            let isValid = false;
+            try {
+                const res = await fetch('/api/user/verify-pin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        pin: enteredPin,
+                        user_id: currentUserId || undefined
+                    })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    isValid = data.valid === true;
+                } else {
+                    isValid = (enteredPin === currentUserPin);
+                }
+            } catch (err) {
+                isValid = (enteredPin === currentUserPin);
+            }
+
+            if (isValid) {
+                // Success: Hide PIN screen and trigger payment
+                setTimeout(() => {
+                    document.getElementById('stepInputPin').classList.add('d-none');
+                    document.getElementById('stepConfirmPayment').classList.remove('d-none');
+                    processPayment();
+                }, 200);
+            } else {
+                // Error: Highlight red & shake dots
+                updatePinDotsDisplay(true);
+                const row = document.getElementById('pinDotsRow');
+                if (row) {
+                    row.classList.remove('shake');
+                    void row.offsetWidth; // force DOM reflow
+                    row.classList.add('shake');
+                }
+                const errEl = document.getElementById('pinErrorText');
+                if (errEl) errEl.classList.remove('d-none');
+
+                setTimeout(() => {
+                    enteredPin = '';
+                    updatePinDotsDisplay(false);
+                    if (row) row.classList.remove('shake');
+                    isPinValidating = false;
+                }, 850);
+            }
+        }
+
+        function showForgotPinAlert() {
+            alert(`Informasi PIN wondr Akun Anda:\nPIN saat ini: ${currentUserPin}\n\nSilakan masukkan 6 digit PIN tersebut.`);
+        }
+
+        // Support physical keyboard (0-9 & Backspace)
+        window.addEventListener('keydown', (e) => {
+            const pinScreen = document.getElementById('stepInputPin');
+            if (!pinScreen || pinScreen.classList.contains('d-none')) return;
+
+            if (e.key >= '0' && e.key <= '9') {
+                pressPinDigit(e.key);
+            } else if (e.key === 'Backspace') {
+                deletePinDigit();
+            }
+        });
 
         async function processPayment() {
             const btnPay = document.getElementById('btnPayNow');
