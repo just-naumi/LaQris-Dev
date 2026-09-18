@@ -310,38 +310,129 @@ function cancelTransactionAction() {
 
 
 // ══════════════════════════════════════════════════════════════
-// Feedback Modal
+// Feedback Modal & Handlers
 // ══════════════════════════════════════════════════════════════
+
+let activeEvidenceFile = null;
 
 function openFeedbackModal() {
     if (!currentNmid) return;
-    new bootstrap.Modal(document.getElementById("feedbackModal")).show();
+    const modalEl = document.getElementById("feedbackModal");
+    if (modalEl && window.bootstrap) {
+        new bootstrap.Modal(modalEl).show();
+    }
 }
 
 function closeFeedbackModal() {
-    bootstrap.Modal.getInstance(document.getElementById("feedbackModal"))?.hide();
+    const modalEl = document.getElementById("feedbackModal");
+    if (modalEl && window.bootstrap) {
+        bootstrap.Modal.getInstance(modalEl)?.hide();
+    }
+    resetFeedbackForm();
 }
 
-function toggleEvidence() {
-    const current = document.getElementById("fbHasEvidence").value === "true";
-    const next = !current;
-    document.getElementById("fbHasEvidence").value = next.toString();
-    const icon = document.getElementById("fbEvidenceIcon");
-    const toggle = document.getElementById("fbEvidenceToggle");
-    icon.innerHTML = next ? '<i class="fa-solid fa-square-check"></i>' : '<i class="fa-regular fa-square"></i>';
-    toggle.className = next ? "fb-evidence-toggle active" : "fb-evidence-toggle";
+function resetFeedbackForm() {
+    activeEvidenceFile = null;
+    const desc = document.getElementById("fbDescription");
+    if (desc) {
+        desc.value = "";
+        desc.style.borderColor = "";
+    }
+    const cat = document.getElementById("fbManualCategory") || document.getElementById("fbCategory");
+    if (cat) cat.value = "";
+    const tx = document.getElementById("fbTxRef");
+    if (tx) tx.value = "";
+    const fileInput = document.getElementById("fbFileInput");
+    if (fileInput) fileInput.value = "";
+}
+
+function handleEvidenceFileChange(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+    const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+    const allowedExts = ['.jpg', '.jpeg', '.png', '.pdf'];
+
+    if (!allowedTypes.includes(file.type) && !allowedExts.includes(fileExt)) {
+        if (window.Swal) {
+            Swal.fire({ icon: "error", title: "Format Tidak Valid", text: "Gunakan format JPG, PNG, atau PDF.", background: "#18181b", color: "#fff" });
+        } else {
+            alert("Format file tidak valid. Gunakan format JPG, PNG, atau PDF.");
+        }
+        event.target.value = "";
+        activeEvidenceFile = null;
+        return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        if (window.Swal) {
+            Swal.fire({ icon: "error", title: "Ukuran Terlalu Besar", text: "Ukuran file bukti maksimal 5 MB.", background: "#18181b", color: "#fff" });
+        } else {
+            alert("Ukuran file melebihi batas maksimal 5 MB.");
+        }
+        event.target.value = "";
+        activeEvidenceFile = null;
+        return;
+    }
+
+    activeEvidenceFile = file;
 }
 
 async function submitFeedback() {
-    if (!currentNmid) return;
+    if (!currentNmid) {
+        alert("NMID merchant tidak terdeteksi.");
+        return;
+    }
+
+    const descInput = document.getElementById("fbDescription");
+    const description = descInput ? descInput.value.trim() : "";
+
+    if (!description) {
+        if (descInput) {
+            descInput.focus();
+            descInput.style.borderColor = "#ef4444";
+        }
+        if (window.Swal) {
+            Swal.fire({
+                icon: "warning",
+                title: "Deskripsi Wajib Diisi",
+                text: "Ceritakan pengalaman Anda saat menggunakan QRIS ini.",
+                background: "#18181b",
+                color: "#fff"
+            });
+        } else {
+            alert("Harap isi deskripsi pengalaman Anda terlebih dahulu.");
+        }
+        return;
+    }
+
+    const manualCatEl = document.getElementById("fbManualCategory") || document.getElementById("fbCategory");
+    const manualCategory = manualCatEl ? manualCatEl.value : null;
+    const txRefEl = document.getElementById("fbTxRef");
+    const transactionRef = txRefEl ? (txRefEl.value.trim() || null) : null;
+    const hasEvidence = Boolean(activeEvidenceFile);
+
+    // Kategori fallback untuk kompatibilitas backend
+    let legacyCategory = "General Complaint";
+    if (manualCategory === "identity_mismatch" || manualCategory === "Merchant Mismatch") {
+        legacyCategory = "Merchant Mismatch";
+    } else if (manualCategory === "qr_replacement" || manualCategory === "QRIS Replacement") {
+        legacyCategory = "QRIS Replacement";
+    } else if (manualCategory === "additional_fees" || manualCategory === "Additional Fee") {
+        legacyCategory = "Additional Fee";
+    } else if (manualCategory === "safe_confirmation" || manualCategory === "Verified Authentic") {
+        legacyCategory = "Verified Authentic";
+    }
 
     const payload = {
         nmid: currentNmid,
-        category: document.getElementById("fbCategory").value,
-        severity: document.getElementById("fbSeverity").value,
-        description: document.getElementById("fbDescription").value || null,
-        transaction_ref: document.getElementById("fbTxRef").value || null,
-        has_evidence: document.getElementById("fbHasEvidence").value === "true"
+        description: description,
+        manual_category: manualCategory || null,
+        transaction_ref: transactionRef,
+        category: legacyCategory,
+        severity: "LOW",
+        has_evidence: hasEvidence
     };
 
     try {
@@ -350,17 +441,36 @@ async function submitFeedback() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
+
         closeFeedbackModal();
-        Swal.fire({
-            icon: "success",
-            title: "Laporan Terkirim!",
-            html: `Evidence Level: <strong>${payload.has_evidence ? "2 (Verified)" : "1 (Unverified)"}</strong><br>EMRS baru: <strong>${result.new_reputation_score?.toFixed(1) ?? "—"} / 100</strong>`,
-            background: "#18181b",
-            color: "#fff",
-            confirmButtonColor: "#6366f1"
-        });
+
+        const evidenceStatus = hasEvidence ? "Menunggu Verifikasi (Bukti Terlampir)" : "Tanpa Bukti";
+        const processInfo = result.detected_category ? `Kategori Terdeteksi: <strong>${result.detected_category}</strong>` : "Feedback sedang diproses oleh sistem.";
+
+        if (window.Swal) {
+            Swal.fire({
+                icon: "success",
+                title: "Feedback Berhasil Dikirim",
+                html: `Feedback Anda telah diterima.<br><br>Status: <strong>${evidenceStatus}</strong><br>${processInfo}<br>EMRS saat ini: <strong>${result.new_reputation_score?.toFixed(1) ?? "—"} / 100</strong>`,
+                background: "#18181b",
+                color: "#fff",
+                confirmButtonColor: "#3b82f6"
+            });
+        } else {
+            alert("Feedback Berhasil Dikirim!\nStatus: " + evidenceStatus);
+        }
     } catch (e) {
-        Swal.fire({ icon: "error", title: "Network Error", text: e.message, background: "#18181b", color: "#fff" });
+        if (window.Swal) {
+            Swal.fire({
+                icon: "error",
+                title: "Gagal Mengirim Feedback",
+                text: e.message || "Terjadi kendala pada server.",
+                background: "#18181b",
+                color: "#fff"
+            });
+        } else {
+            alert("Gagal mengirim feedback: " + e.message);
+        }
     }
 }
 
