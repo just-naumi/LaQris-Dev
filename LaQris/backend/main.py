@@ -328,92 +328,223 @@ def list_scan_sessions_endpoint(limit: int = 20):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Transaction Events API Endpoints (Lifecycle Tracking)
+# Pre-Payment Verification API (Contract A: Provider API Ready)
 # ─────────────────────────────────────────────────────────────────────────────
 
+@app.post("/api/v1/verify", response_model=schemas.VerifyResponseSchema)
+def verify_pre_payment(
+    payload: schemas.VerifyRequestSchema,
+    db: Session = Depends(get_db)
+):
+    """
+    Contract A: Pre-payment Verification Endpoint untuk Payment Provider (DemoPay / Gateway).
+    Memeriksa integritas QRIS dan mengembalikan keputusan ALLOW / WARN / BLOCK
+    sebelum otorisasi transaksi dilakukan di payment server.
+    """
+    v_id = payload.session_id or payload.verification_id
+    if not v_id:
+        raise HTTPException(status_code=400, detail="Parameter session_id atau verification_id diperlukan.")
+
+    session = db.query(VerificationSession).filter(VerificationSession.session_id == v_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Sesi verifikasi '{v_id}' tidak ditemukan.")
+
+    now = datetime.utcnow()
+    if session.expires_at and now > session.expires_at:
+        raise HTTPException(status_code=400, detail="Sesi verifikasi telah kedaluwarsa. Silakan scan ulang QRIS.")
+
+    if session.is_bound:
+        raise HTTPException(
+            status_code=409,
+            detail="Sesi verifikasi telah digunakan untuk pembayaran sebelumnya (anti-replay)."
+        )
+
+    # Parse reason codes dari JSON text
+    parsed_reasons = []
+    if session.reason_codes:
+        try:
+            import json
+            parsed_reasons = json.loads(session.reason_codes)
+        except Exception:
+            parsed_reasons = []
+
+    # Map decision policy: NORMAL -> ALLOW, CAUTION/WARNING -> WARN, DANGER -> BLOCK
+    decision = session.decision or "ALLOW"
+    can_proceed = (decision in ["ALLOW", "WARN"])
+
+    merchant_info = schemas.VerifyMerchantInfoSchema(
+        digital_name=session.digital_name,
+        physical_name=session.physical_name,
+        nmid=session.nmid
+    )
+
+    return schemas.VerifyResponseSchema(
+        verification_id=session.session_id,
+        decision=decision,
+        risk_level=session.risk_level or "NORMAL",
+        risk_score=round(100.0 - (session.trust_score or 100.0), 1),
+        trust_score=session.trust_score or 100.0,
+        reason_codes=parsed_reasons,
+        merchant_info=merchant_info,
+        can_proceed_payment=can_proceed,
+        is_bound=session.is_bound or False,
+        expires_at=session.expires_at,
+        message="Verifikasi pre-payment berhasil. Transaksi dapat dilanjutkan." if can_proceed else "Transaksi diblokir demi keamanan nasabah."
+    )
+
+
+@app.get("/api/v1/verify/{session_id}", response_model=schemas.VerifyResponseSchema)
+def get_verification_session_status(session_id: str, db: Session = Depends(get_db)):
+    """Mengecek status dan masa berlaku sesi verifikasi QRIS."""
+    return verify_pre_payment(schemas.VerifyRequestSchema(session_id=session_id), db=db)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Post-Payment Transaction Events API (Contract B & DB Transaction Layer)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Blacklist field sensitif pembayaran (Step 15 di Readme: Sanitization)
+SENSITIVE_PAYMENT_FIELDS = {
+    "card_number", "pan", "full_pan", "cvv", "cvc", "pin", "password",
+    "auth_token", "secret", "card_expiry"
+}
+
+def _sanitize_payment_payload(raw_dict: dict) -> dict:
+    """Menghapus seluruh field sensitif pembayaran sesuai spesifikasi keamanan LaQris."""
+    return {k: v for k, v in raw_dict.items() if k.lower() not in SENSITIVE_PAYMENT_FIELDS}
+
+
+@app.post("/api/v1/transaction-events", response_model=schemas.PaymentTransactionResponseSchema)
 @app.post("/api/v1/transactions/events", response_model=schemas.PaymentTransactionResponseSchema)
 def record_transaction_event(
     payload: schemas.PaymentTransactionCreateSchema,
     db: Session = Depends(get_db)
 ):
     """
-    Mencatat event transaksi pembayaran yang terikat pada verification_session_id.
-    Digunakan untuk tracing siklus hidup verifikasi QRIS -> pembayaran gateway.
+    Contract B: Post-payment Transaction Event Ingestion Endpoint.
+    Menerima notifikasi hasil transaksi dari Payment Provider (DemoPay),
+    melakukan sanitasi data sensitif, mengikat (binding) sesi verifikasi
+    secara atomik, dan memperbarui metrik reputasi merchant.
     """
-    v_id = payload.verification_session_id or payload.verification_id
-    session = None
-    if v_id:
-        session = db.query(VerificationSession).filter(VerificationSession.session_id == v_id).first()
+    v_id = payload.verification_id or payload.verification_session_id
+    if not v_id:
+        raise HTTPException(status_code=400, detail="verification_id diperlukan untuk binding transaksi.")
 
-    target_user_id = payload.user_id or "USR-001928"
-    if session and not session.user_id:
-        session.user_id = target_user_id
-    elif not session and v_id:
-        session = VerificationSession(
-            session_id=v_id,
-            user_id=target_user_id,
-            nmid=payload.nmid,
-            digital_name=payload.merchant_name or "Merchant QRIS",
-            physical_name=payload.merchant_name or "Merchant QRIS",
-            status="MATCH",
-            risk_level="NORMAL",
-            trust_score=100.0,
-            scanned_at=datetime.utcnow()
+    # 1. Validasi Keberadaan Sesi Verifikasi
+    session = db.query(VerificationSession).filter(VerificationSession.session_id == v_id).first()
+    if not session:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Verification session '{v_id}' tidak valid atau tidak ditemukan."
         )
-        db.add(session)
-        db.flush()
 
-    merchant_id_val = None
-    if payload.merchant_id:
+    # 2. Enforcement Session Binding & Security Decision (Step 3 & 18 di Readme)
+    if session.decision == "BLOCK" or session.risk_level == "DANGER":
+        raise HTTPException(
+            status_code=403,
+            detail="Pembayaran ditolak: Sesi verifikasi ini memiliki status BLOCK / DANGER."
+        )
+
+    now = datetime.utcnow()
+    if session.expires_at and now > session.expires_at:
+        raise HTTPException(
+            status_code=400,
+            detail="Pembayaran ditolak: Sesi verifikasi telah kedaluwarsa (>15 menit)."
+        )
+
+    if session.is_bound:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Sesi verifikasi '{v_id}' sudah terikat pada transaksi pembayaran lain (anti-replay)."
+        )
+
+    # 3. Sanitasi Payload (Step 15 di Readme)
+    sanitized_data = _sanitize_payment_payload(payload.model_dump())
+
+    # User ID binding
+    target_user_id = sanitized_data.get("user_id") or session.user_id or "USR-001928"
+    if not session.user_id:
+        session.user_id = target_user_id
+
+    # Resolve Merchant
+    lookup_nmid = sanitized_data.get("nmid") or session.nmid
+    merchant_obj = None
+    if sanitized_data.get("merchant_id"):
         try:
-            merchant_id_val = int(payload.merchant_id)
+            m_id_int = int(sanitized_data["merchant_id"])
+            merchant_obj = db.query(Merchant).filter(Merchant.id == m_id_int).first()
         except (ValueError, TypeError):
             pass
+    if not merchant_obj and lookup_nmid:
+        merchant_obj = db.query(Merchant).filter(Merchant.nmid == lookup_nmid).first()
 
-    lookup_nmid = payload.nmid or (session.nmid if session else None)
-    if not merchant_id_val and lookup_nmid:
-        m_found = db.query(Merchant).filter(Merchant.nmid == lookup_nmid).first()
-        if m_found:
-            merchant_id_val = m_found.id
+    # 4. DB Transaction Layer (Atomic Session Binding & Metric Update)
+    try:
+        # A. Bind Sesi
+        session.is_bound = True
+        session.bound_at = now
 
-    tx = PaymentTransaction(
-        verification_session_id=v_id,
-        provider=payload.provider or "DemoPay",
-        provider_transaction_id=payload.provider_transaction_id,
-        merchant_id=merchant_id_val,
-        nmid=lookup_nmid,
-        amount=payload.amount,
-        status=payload.status or "SUCCESS",
-        response_code=payload.response_code or "00",
-        invoice_number=payload.invoice_number,
-        terminal_id=payload.terminal_id,
-        latency_ms=payload.latency_ms or 0,
-        retry_count=payload.retry_count or 0
-    )
-    db.add(tx)
+        # B. Simpan Entitas PaymentTransaction
+        tx = PaymentTransaction(
+            verification_session_id=v_id,
+            provider=sanitized_data.get("provider") or "DemoPay",
+            provider_transaction_id=sanitized_data["provider_transaction_id"],
+            merchant_id=merchant_obj.id if merchant_obj else None,
+            nmid=lookup_nmid,
+            user_id=target_user_id,
+            amount=sanitized_data.get("amount", 0.0),
+            status=sanitized_data.get("status", "SUCCESS"),
+            response_code=sanitized_data.get("response_code", "00"),
+            invoice_number=sanitized_data.get("invoice_number"),
+            terminal_id=sanitized_data.get("terminal_id"),
+            latency_ms=sanitized_data.get("latency_ms", 0),
+            retry_count=sanitized_data.get("retry_count", 0),
+            created_at=now
+        )
+        db.add(tx)
 
-    # Update statistik transaksi merchant jika sukses
-    if tx.status == "SUCCESS":
-        m_target = None
-        if merchant_id_val:
-            m_target = db.query(Merchant).filter(Merchant.id == merchant_id_val).first()
-        elif lookup_nmid:
-            m_target = db.query(Merchant).filter(Merchant.nmid == lookup_nmid).first()
+        # C. Update Metrik Merchant & EMRS
+        rep_impact = None
+        if merchant_obj:
+            merchant_obj.verified_transactions = (merchant_obj.verified_transactions or 0) + 1
+            if tx.status == "SUCCESS":
+                merchant_obj.successful_transactions = (merchant_obj.successful_transactions or 0) + 1
+            else:
+                merchant_obj.failed_transactions = (merchant_obj.failed_transactions or 0) + 1
 
-        if m_target:
-            m_target.verified_transactions = (m_target.verified_transactions or 0) + 1
-            m_target.successful_transactions = (m_target.successful_transactions or 0) + 1
+            # Hitung ulang EMRS score merchant
+            reports = db.query(Report).filter(Report.merchant_id == merchant_obj.id).all()
+            disputes = db.query(Dispute).filter(Dispute.merchant_id == merchant_obj.id).all()
+            emrs_res = calculate_emrs(merchant_obj, reports, disputes)
+            merchant_obj.reputation_score = emrs_res.get("reputation_score", merchant_obj.reputation_score)
 
-    db.commit()
-    db.refresh(tx)
+            rep_impact = {
+                "nmid": merchant_obj.nmid,
+                "merchant_name": merchant_obj.merchant_name,
+                "new_reputation_score": merchant_obj.reputation_score,
+                "verified_transactions": merchant_obj.verified_transactions,
+                "successful_transactions": merchant_obj.successful_transactions
+            }
+
+        db.commit()
+        db.refresh(tx)
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gagal mencatat transaksi pembayaran: {str(e)}"
+        )
 
     return schemas.PaymentTransactionResponseSchema(
         success=True,
-        message="Event transaksi pembayaran berhasil dicatat ke sistem LaQris.",
+        message="Event transaksi pembayaran berhasil dicatat dan diikat ke sesi verifikasi.",
         transaction_id=tx.provider_transaction_id,
         verification_id=tx.verification_session_id or "",
         status=tx.status,
-        amount=tx.amount
+        amount=tx.amount,
+        is_bound=True,
+        merchant_reputation_impact=rep_impact
     )
 
 
@@ -432,7 +563,8 @@ def get_transaction_by_session(
         transaction_id=tx.provider_transaction_id,
         verification_id=tx.verification_session_id or "",
         status=tx.status,
-        amount=tx.amount
+        amount=tx.amount,
+        is_bound=True
     )
 
 

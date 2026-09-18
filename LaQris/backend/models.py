@@ -104,6 +104,13 @@ class VerificationSession(Base):
     risk_level = Column(String, default="LOW")
     reputation_score = Column(Float, default=50.0)   # EMRS score saat scan
 
+    # ── Session Hardening & Security Decision ─────────────────
+    decision = Column(String, default="ALLOW")       # "ALLOW" | "WARN" | "BLOCK"
+    reason_codes = Column(Text, default="[]")        # JSON string array e.g. '["NMID_MISMATCH"]'
+    expires_at = Column(DateTime, nullable=True)     # Sesi kedaluwarsa setelah 15 menit
+    is_bound = Column(Boolean, default=False)        # Anti-replay: True jika sudah diikat transaksi
+    bound_at = Column(DateTime, nullable=True)       # Waktu sesi diikat ke transaksi
+
     # Relasi 0..1 ke transaksi pembayaran (Post-Payment Transaction Event)
     payment_transaction = relationship("PaymentTransaction", back_populates="verification_session", uselist=False)
 
@@ -121,6 +128,7 @@ class PaymentTransaction(Base):
     provider_transaction_id = Column(String, unique=True, index=True, nullable=False) # e.g. "TX-001"
     merchant_id = Column(Integer, ForeignKey("merchants.id"), nullable=True)
     nmid = Column(String, nullable=True)
+    user_id = Column(String, index=True, nullable=True)          # User ownership tracking
     amount = Column(Float, nullable=False, default=0.0)
     status = Column(String, default="SUCCESS")                   # "SUCCESS" | "FAILED" | "BLOCKED"
     response_code = Column(String, default="00")                 # ISO 8583 / ASPI Response Code

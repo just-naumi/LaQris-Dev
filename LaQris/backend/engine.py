@@ -22,7 +22,7 @@ import torch
 from PIL import Image
 from pyzbar import pyzbar
 import warnings
-from datetime import datetime
+from datetime import datetime, timedelta
 from ultralytics import YOLO
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel, ViTImageProcessor, RobertaTokenizer
 
@@ -1102,14 +1102,14 @@ def get_payment_decision(risk_level: str) -> str:
     Menentukan keputusan intervensi keamanan (Security Decision Contract):
     - NORMAL  -> ALLOW (Pembayaran diizinkan langsung)
     - CAUTION -> WARN  (Peringatan & konfirmasi pengguna sebelum bayar)
-    - WARNING -> BLOCK (Blokir pembayaran / butuh verifikasi manual mendalam)
+    - WARNING -> WARN  (Peringatan risiko menengah, tetap boleh bayar dengan konfirmasi)
     - DANGER  -> BLOCK (Blokir total / penipuan stiker terdeteksi)
     """
     if risk_level == "NORMAL":
         return "ALLOW"
-    elif risk_level == "CAUTION":
+    elif risk_level in ["CAUTION", "WARNING"]:
         return "WARN"
-    elif risk_level in ["WARNING", "DANGER"]:
+    elif risk_level == "DANGER":
         return "BLOCK"
     return "BLOCK"
 
@@ -2357,7 +2357,11 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
             status="MISMATCH" if is_mismatch else "MATCH",
             trust_score=current_trust_score,
             risk_level=risk_level,
-            reputation_score=merchant_reputation.get("reputation_score", 50.0)
+            reputation_score=merchant_reputation.get("reputation_score", 50.0),
+            decision=payment_decision,
+            reason_codes=json.dumps(reason_codes),
+            expires_at=datetime.utcnow() + timedelta(minutes=15),
+            is_bound=False
         )
         db.add(session_rec)
         db.commit()

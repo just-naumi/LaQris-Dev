@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timedelta
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 # Path ke file database SQLite
@@ -43,6 +43,31 @@ def init_db():
             print("[LOG] Skema tabel 'users' lama terdeteksi. Mereset & memperbarui tabel SQLite...")
             models.Base.metadata.drop_all(bind=engine)
             models.Base.metadata.create_all(bind=engine)
+            inspector = inspect(engine)
+
+    # Safe in-place migration for verification_sessions hardening
+    if "verification_sessions" in inspector.get_table_names():
+        v_cols = [c["name"] for c in inspector.get_columns("verification_sessions")]
+        with engine.connect() as conn:
+            if "decision" not in v_cols:
+                conn.execute(text("ALTER TABLE verification_sessions ADD COLUMN decision VARCHAR DEFAULT 'ALLOW'"))
+            if "reason_codes" not in v_cols:
+                conn.execute(text("ALTER TABLE verification_sessions ADD COLUMN reason_codes TEXT DEFAULT '[]'"))
+            if "expires_at" not in v_cols:
+                conn.execute(text("ALTER TABLE verification_sessions ADD COLUMN expires_at DATETIME"))
+            if "is_bound" not in v_cols:
+                conn.execute(text("ALTER TABLE verification_sessions ADD COLUMN is_bound BOOLEAN DEFAULT 0"))
+            if "bound_at" not in v_cols:
+                conn.execute(text("ALTER TABLE verification_sessions ADD COLUMN bound_at DATETIME"))
+            conn.commit()
+
+    # Safe in-place migration for payment_transactions user_id
+    if "payment_transactions" in inspector.get_table_names():
+        p_cols = [c["name"] for c in inspector.get_columns("payment_transactions")]
+        with engine.connect() as conn:
+            if "user_id" not in p_cols:
+                conn.execute(text("ALTER TABLE payment_transactions ADD COLUMN user_id VARCHAR"))
+            conn.commit()
 
     db = SessionLocal()
     try:

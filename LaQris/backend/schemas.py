@@ -152,7 +152,68 @@ class ScanResponseSchema(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────
-# Payment Transaction Schemas (Post-Payment Event Layer)
+# Pre-Payment Verification Schemas (Contract A: /api/v1/verify)
+# ─────────────────────────────────────────────────────────────
+
+class VerifyRequestSchema(BaseModel):
+    session_id: Optional[str] = None
+    verification_id: Optional[str] = None
+    provider: str = "DemoPay"
+    qr_payload: Optional[str] = None
+    user_id: Optional[str] = None
+    amount: Optional[float] = None
+
+
+class VerifyMerchantInfoSchema(BaseModel):
+    digital_name: Optional[str] = None
+    physical_name: Optional[str] = None
+    nmid: Optional[str] = None
+    acquirer: Optional[str] = None
+    terminal_id: Optional[str] = None
+
+
+class VerifyResponseSchema(BaseModel):
+    verification_id: str
+    decision: str                      # "ALLOW" | "WARN" | "BLOCK"
+    risk_level: str                    # "NORMAL" | "CAUTION" | "WARNING" | "DANGER"
+    risk_score: float
+    trust_score: float
+    reason_codes: List[str] = []
+    merchant_info: VerifyMerchantInfoSchema
+    can_proceed_payment: bool          # True jika ALLOW atau WARN, False jika BLOCK
+    is_bound: bool = False
+    expires_at: Optional[datetime] = None
+    message: str = "Verifikasi pre-payment berhasil."
+
+
+# ─────────────────────────────────────────────────────────────
+# Verification Session Detail Schema
+# ─────────────────────────────────────────────────────────────
+
+class VerificationSessionDetailSchema(BaseModel):
+    id: int
+    session_id: str
+    user_id: Optional[str] = None
+    nmid: Optional[str] = None
+    digital_name: Optional[str] = None
+    physical_name: Optional[str] = None
+    scanned_at: datetime
+    status: str
+    trust_score: float
+    risk_level: str
+    reputation_score: float
+    decision: str = "ALLOW"
+    reason_codes: List[str] = []
+    expires_at: Optional[datetime] = None
+    is_bound: bool = False
+    bound_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ─────────────────────────────────────────────────────────────
+# Payment Transaction Schemas (Post-Payment Event Layer - Contract B)
 # ─────────────────────────────────────────────────────────────
 
 class PaymentTransactionSchema(BaseModel):
@@ -162,6 +223,7 @@ class PaymentTransactionSchema(BaseModel):
     provider_transaction_id: str
     merchant_id: Optional[int] = None
     nmid: Optional[str] = None
+    user_id: Optional[str] = None
     amount: float
     status: str
     response_code: str
@@ -202,6 +264,13 @@ class PaymentTransactionResponseSchema(BaseModel):
     verification_id: str
     status: str
     amount: float
+    is_bound: bool = True
+    merchant_reputation_impact: Optional[Dict[str, Any]] = None
+
+
+# Contract B Aliases
+TransactionEventCreateSchema = PaymentTransactionCreateSchema
+TransactionEventResponseSchema = PaymentTransactionResponseSchema
 
 
 # ─────────────────────────────────────────────────────────────
