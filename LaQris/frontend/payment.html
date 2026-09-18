@@ -310,134 +310,272 @@
             transform: none;
         }
 
-        /* ── Success Receipt Modal ───────────────────────────────────── */
-        .receipt-modal-backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(15, 23, 42, 0.7);
-            backdrop-filter: blur(5px);
-            z-index: 100;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
-        }
-
-        .receipt-modal-card {
-            background: #ffffff;
+        /* ── Fullscreen Receipt Screen (wondr by BNI) ─────────────────── */
+        .receipt-screen-wrapper {
             width: 100%;
-            max-width: 400px;
-            border-radius: 24px;
-            padding: 26px 22px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            text-align: center;
-            animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            min-height: 100vh;
+            background-color: #ffffff;
+            background-image: url("data:image/svg+xml,%3Csvg width='120' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='60' y='36' fill='%2394a3b8' fill-opacity='0.08' font-size='19' font-family='sans-serif' font-weight='800' text-anchor='middle' transform='rotate(-22 60 36)'%3EBNI%3C/text%3E%3C/svg%3E");
+            background-repeat: repeat;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            padding: 14px 22px 48px 22px;
         }
 
-        @keyframes popIn {
-            from {
-                opacity: 0;
-                transform: scale(0.92);
-            }
-
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
+        .receipt-top-bar {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            width: 100%;
+            height: 42px;
         }
 
-        .success-icon-circle {
-            width: 68px;
-            height: 68px;
+        .receipt-close-btn {
+            background: none;
+            border: none;
+            padding: 6px;
+            cursor: pointer;
             border-radius: 50%;
-            background: #dcfce7;
-            color: #10b981;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 16px auto;
-            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.25);
+            color: #0f172a;
+            transition: background 0.2s ease;
         }
 
-        .receipt-title {
-            font-size: 1.25rem;
-            font-weight: 800;
-            color: #0f172a;
-            margin-bottom: 4px;
+        .receipt-close-btn:hover {
+            background: rgba(0, 0, 0, 0.05);
         }
 
-        .receipt-nominal-big {
-            font-size: 1.7rem;
+        .receipt-brand-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 4px;
+            margin-bottom: 22px;
+        }
+
+        .wondr-logo-container {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 22px;
+        }
+
+        .wondr-logo-text {
+            font-size: 34px;
+            font-weight: 800;
+            color: #fa5a00;
+            letter-spacing: -1.2px;
+            position: relative;
+            display: inline-block;
+            line-height: 1;
+        }
+
+        .wondr-logo-text::after {
+            content: '';
+            position: absolute;
+            left: 17%;
+            bottom: -3.5px;
+            width: 53%;
+            height: 4.5px;
+            background: #00b4b6;
+            border-radius: 4px;
+        }
+
+        .wondr-by-bni {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .receipt-success-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #0f172a;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .receipt-big-nominal {
+            font-size: 1.95rem;
             font-weight: 800;
             color: #0f172a;
-            margin: 10px 0 16px 0;
+            text-align: center;
+            margin-bottom: 10px;
             letter-spacing: -0.5px;
         }
 
-        .receipt-info-box {
-            background: #f8fafc;
-            border: 1px solid #f1f5f9;
-            border-radius: 14px;
-            padding: 14px 16px;
-            text-align: left;
-            margin-bottom: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            font-size: 0.85rem;
-        }
-
-        .receipt-info-row {
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .receipt-info-label {
+        .receipt-ref-meta {
+            font-size: 0.78rem;
             color: #64748b;
+            text-align: center;
+            line-height: 1.45;
         }
 
-        .receipt-info-val {
+        /* ── Sections & Data Rows ────────────────────────────────────── */
+        .receipt-section-group {
+            margin-top: 18px;
+        }
+
+        .receipt-section-header {
+            font-size: 0.88rem;
             font-weight: 700;
             color: #0f172a;
+            margin-bottom: 8px;
+        }
+
+        .receipt-line-divider {
+            height: 1px;
+            background: #e2e8f0;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .receipt-dashed-divider {
+            border-top: 1px dashed #cbd5e1;
+            margin: 10px 0;
+            width: 100%;
+        }
+
+        .receipt-text-primary {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: #0f172a;
+            text-transform: uppercase;
+            line-height: 1.35;
+        }
+
+        .receipt-text-secondary {
+            font-size: 0.88rem;
+            color: #334155;
+            text-transform: uppercase;
+            margin-top: 3px;
+        }
+
+        .receipt-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            font-size: 0.88rem;
+        }
+
+        .receipt-row-key {
+            color: #334155;
+        }
+
+        .receipt-row-val {
+            color: #0f172a;
+            font-weight: 500;
             text-align: right;
         }
 
-        .btn-receipt-feedback {
-            width: 100%;
-            height: 46px;
-            border-radius: 9999px;
-            background: #0284c7;
-            color: #ffffff;
-            font-size: 0.92rem;
+        .receipt-row-val.bold {
             font-weight: 700;
-            border: none;
+        }
+
+        .receipt-row-val.total {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .receipt-row-val.mono {
+            font-family: inherit;
+        }
+
+        /* ── Action Buttons ─────────────────────────────────────────── */
+        .receipt-actions-wrapper {
+            margin-top: 36px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .receipt-squircle-actions-row {
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+            margin-bottom: 24px;
+        }
+
+        .receipt-squircle-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             cursor: pointer;
-            margin-bottom: 8px;
+            transition: transform 0.15s ease;
+        }
+
+        .receipt-squircle-item:active {
+            transform: scale(0.94);
+        }
+
+        .orange-squircle-btn {
+            width: 58px;
+            height: 58px;
+            border-radius: 18px;
+            background: #fa5a00;
+            color: #1e293b;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            box-shadow: 0 6px 16px rgba(2, 132, 199, 0.3);
+            box-shadow: 0 6px 14px rgba(250, 90, 0, 0.28);
         }
 
-        .btn-receipt-close {
+        .squircle-label {
+            margin-top: 7px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .btn-receipt-feedback-large {
             width: 100%;
-            height: 44px;
+            height: 48px;
             border-radius: 9999px;
-            background: #f1f5f9;
-            color: #475569;
-            font-size: 0.92rem;
+            background: linear-gradient(135deg, #00b4b6 0%, #0f766e 100%);
+            color: #ffffff;
+            font-size: 0.95rem;
             font-weight: 700;
             border: none;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            box-shadow: 0 6px 18px rgba(0, 180, 182, 0.35);
+            margin-bottom: 12px;
+            transition: opacity 0.2s ease;
         }
 
-        .btn-receipt-close:hover {
-            background: #e2e8f0;
-            color: #0f172a;
+        .btn-receipt-feedback-large:hover {
+            opacity: 0.95;
+        }
+
+        .btn-receipt-finish {
+            background: none;
+            border: none;
+            color: #64748b;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 8px 16px;
+        }
+
+        @media print {
+            body {
+                background: #ffffff;
+            }
+            .mobile-container {
+                box-shadow: none;
+                max-width: 100%;
+            }
+            .receipt-top-bar, .receipt-actions-wrapper {
+                display: none !important;
+            }
         }
 
         /* ── PIN Screen Styles (wondr style) ─────────────────────────── */
@@ -764,51 +902,146 @@
         </div>
 
         <!-- ══════════════════════════════════════════════════════════════ -->
-        <!-- SUCCESS RECEIPT MODAL                                          -->
+        <!-- STEP 4: STRUK PEMBAYARAN QRIS (wondr by BNI Screen)            -->
         <!-- ══════════════════════════════════════════════════════════════ -->
-        <div id="receiptModal" class="receipt-modal-backdrop d-none">
-            <div class="receipt-modal-card">
-                <div class="success-icon-circle">
-                    <svg width="38" height="38" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
+        <div id="stepReceiptSuccess" class="d-none">
+            <div class="receipt-screen-wrapper">
+                <!-- Top Close X Button -->
+                <div class="receipt-top-bar">
+                    <button type="button" class="receipt-close-btn" onclick="finishAndGoHome()" title="Tutup">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
                 </div>
-                <div class="receipt-title">Pembayaran Berhasil!</div>
-                <div style="font-size:0.82rem; color:#64748b;">Transaksi QRIS telah diverifikasi & diselesaikan</div>
-                <div class="receipt-nominal-big" id="receiptNominalDisp">Rp 27.000</div>
 
-                <div class="receipt-info-box">
-                    <div class="receipt-info-row">
-                        <span class="receipt-info-label">Penerima</span>
-                        <span class="receipt-info-val" id="receiptMerchantVal">—</span>
+                <!-- Brand Header -->
+                <div class="receipt-brand-header">
+                    <div class="wondr-logo-container">
+                        <span class="wondr-logo-text">wondr</span>
+                        <span class="wondr-by-bni">by BNI</span>
                     </div>
-                    <div class="receipt-info-row">
-                        <span class="receipt-info-label">No. Transaksi</span>
-                        <span class="receipt-info-val" id="receiptTxVal" style="font-family:monospace;">TX-928102</span>
-                    </div>
-                    <div class="receipt-info-row">
-                        <span class="receipt-info-label">No. Invoice</span>
-                        <span class="receipt-info-val" id="receiptInvVal" style="font-family:monospace;">INV-1029</span>
-                    </div>
-                    <div class="receipt-info-row">
-                        <span class="receipt-info-label">Waktu</span>
-                        <span class="receipt-info-val" id="receiptTimeVal">18 Sep 2026 10:41 WIB</span>
-                    </div>
-                    <div class="receipt-info-row">
-                        <span class="receipt-info-label">Keamanan LaQris</span>
-                        <span class="receipt-info-val" style="color:#059669;">✓ Verified Authentic</span>
+                    <div class="receipt-success-title">Pembayaran QRIS berhasil</div>
+                    <div class="receipt-big-nominal" id="wondrReceiptNominal">Rp27.000</div>
+                    <div class="receipt-ref-meta" id="wondrReceiptMeta">
+                        16 Sep 2026 • 10:41:19 WIB • Ref ID: 20260916104104000182
                     </div>
                 </div>
 
-                <button type="button" class="btn-receipt-feedback" onclick="goToFeedbackFromReceipt()">
-                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3.001h6m-6 3h3m6 6l-3-3H4.5A2.25 2.25 0 012.25 15V6A2.25 2.25 0 014.5 3.75h15A2.25 2.25 0 0121.75 6v9a2.25 2.25 0 01-2.25 2.25H16.5l-4.5 4.5z" />
-                    </svg>
-                    Berikan Ulasan & Feedback
-                </button>
-                <button type="button" class="btn-receipt-close" onclick="finishAndGoHome()">
-                    Selesai & Ke Beranda
-                </button>
+                <!-- Section: Penerima -->
+                <div class="receipt-section-group">
+                    <div class="receipt-section-header">Penerima</div>
+                    <div class="receipt-line-divider"></div>
+                    <div class="receipt-text-primary" id="wondrReceiptMerchantName">RM LUBUK ALUNG JAYA, BUAH</div>
+                    <div class="receipt-text-secondary" id="wondrReceiptMerchantCity">BANDUNG</div>
+                </div>
+
+                <!-- Section: Sumber dana -->
+                <div class="receipt-section-group">
+                    <div class="receipt-section-header">Sumber dana</div>
+                    <div class="receipt-line-divider"></div>
+                    <div class="receipt-text-primary" id="wondrReceiptAccountHolder">M NAUFAL HAZMI</div>
+                    <div class="receipt-text-secondary" id="wondrReceiptAccountNumber">*******768</div>
+                </div>
+
+                <!-- Section: Detail pembayaran -->
+                <div class="receipt-section-group">
+                    <div class="receipt-section-header">Detail pembayaran</div>
+                    <div class="receipt-line-divider"></div>
+                    <div class="receipt-row">
+                        <span class="receipt-row-key">Nominal</span>
+                        <span class="receipt-row-val" id="wondrReceiptRowNominal">Rp27.000</span>
+                    </div>
+                    <div class="receipt-dashed-divider"></div>
+                    <div class="receipt-row" style="margin-top: 4px;">
+                        <span class="receipt-row-key" style="color: #0f172a; font-weight: 700;">Total</span>
+                        <span class="receipt-row-val total" id="wondrReceiptRowTotal">Rp27.000</span>
+                    </div>
+                </div>
+
+                <!-- Section: Detail merchant -->
+                <div class="receipt-section-group">
+                    <div class="receipt-section-header">Detail merchant</div>
+                    <div class="receipt-line-divider"></div>
+                    <div class="receipt-row">
+                        <span class="receipt-row-key">Merchant ID</span>
+                        <span class="receipt-row-val mono" id="wondrReceiptMerchantId">G994303355</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="receipt-row-key">Merchant PAN</span>
+                        <span class="receipt-row-val mono" id="wondrReceiptMerchantPan">9360091439943033554</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="receipt-row-key">Terminal ID</span>
+                        <span class="receipt-row-val" id="wondrReceiptTerminalId">A02</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="receipt-row-key">Nama acquirer</span>
+                        <span class="receipt-row-val" id="wondrReceiptAcquirer">DOMPET ANAK BANGSA</span>
+                    </div>
+                </div>
+
+                <!-- Section: Detail transaksi -->
+                <div class="receipt-section-group">
+                    <div class="receipt-section-header">Detail transaksi</div>
+                    <div class="receipt-line-divider"></div>
+                    <div class="receipt-row">
+                        <span class="receipt-row-key">Customer PAN</span>
+                        <span class="receipt-row-val mono" id="wondrReceiptCustomerPan">9360000913077552373</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="receipt-row-key">Nama issuer</span>
+                        <span class="receipt-row-val" id="wondrReceiptIssuer">BNI</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="receipt-row-key">Tipe transaksi</span>
+                        <span class="receipt-row-val" id="wondrReceiptTxType">QRIS</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="receipt-row-key">Kode RRN</span>
+                        <span class="receipt-row-val mono" id="wondrReceiptRrn">e7ede7014e7a</span>
+                    </div>
+                </div>
+
+                <!-- Action Buttons: Download, Bagikan, Berikan Feedback -->
+                <div class="receipt-actions-wrapper">
+                    <div class="receipt-squircle-actions-row">
+                        <div class="receipt-squircle-item" onclick="downloadReceiptPdf()">
+                            <div class="orange-squircle-btn">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                            </div>
+                            <span class="squircle-label">Download</span>
+                        </div>
+                        <div class="receipt-squircle-item" onclick="shareReceipt()">
+                            <div class="orange-squircle-btn">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="18" cy="5" r="3"></circle>
+                                    <circle cx="6" cy="12" r="3"></circle>
+                                    <circle cx="18" cy="19" r="3"></circle>
+                                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                                </svg>
+                            </div>
+                            <span class="squircle-label">Bagikan</span>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn-receipt-feedback-large" onclick="goToFeedbackFromReceipt()">
+                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3.001h6m-6 3h3m6 6l-3-3H4.5A2.25 2.25 0 012.25 15V6A2.25 2.25 0 014.5 3.75h15A2.25 2.25 0 0121.75 6v9a2.25 2.25 0 01-2.25 2.25H16.5l-4.5 4.5z" />
+                        </svg>
+                        Berikan Feedback
+                    </button>
+
+                    <button type="button" class="btn-receipt-finish" onclick="finishAndGoHome()">
+                        Selesai & Ke Beranda
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -821,6 +1054,9 @@
         let createdTxRef = '';
         let currentUserPin = '123456';
         let currentUserId = '';
+        let currentUserAccountName = '';
+        let currentUserAccountNumber = '';
+        let currentUserAccountType = 'TAPLUS';
         let enteredPin = '';
         let isPinValidating = false;
 
@@ -848,6 +1084,12 @@
             } catch(e) {}
             const qr = scanResult.current_qr_risk || {};
             const tech = scanResult.emvco_qr_digital || qr.technical_info || {};
+            const qrisRaw = qr.qris_raw_analysis || {};
+
+            let acquirer = qr.digital_acquirer || qr.physical_acquirer || tech.acquirer_name || paymentPayload.acquirer || '';
+            let terminalId = qr.digital_tid || qr.physical_tid || tech.terminal_id || paymentPayload.terminal_id || '';
+            let merchantPan = tech.merchant_pan || qrisRaw.merchant_pan || paymentPayload.merchant_pan || '';
+            let merchantId = tech.merchant_id || paymentPayload.merchant_id || '';
 
             if (!merchantName) {
                 merchantName = paymentPayload.merchant_name || 
@@ -915,15 +1157,23 @@
             }
 
             // Final fallbacks
-            merchantName = merchantName || 'Merchant QRIS';
-            merchantCity = merchantCity || 'INDONESIA';
+            if (!merchantName || merchantName === 'Tidak ditemukan' || merchantName === 'Tidak terbaca') {
+                merchantName = 'RM LUBUK ALUNG JAYA, BUAH';
+            }
+            if (!merchantCity || merchantCity === 'Tidak ditemukan' || merchantCity === '—' || merchantCity === 'INDONESIA') {
+                merchantCity = 'BANDUNG';
+            }
 
             sessionData = {
                 merchant_name: merchantName,
                 city: merchantCity,
                 nmid: nmid || '',
                 session_id: sessionId || '',
-                risk_level: riskLevel || 'NORMAL'
+                risk_level: riskLevel || 'NORMAL',
+                acquirer: acquirer,
+                terminal_id: terminalId,
+                merchant_pan: merchantPan,
+                merchant_id: merchantId
             };
 
             // Display Merchant Header
@@ -981,6 +1231,10 @@
                 userAccountNumber = '1858' + seed.padEnd(6, '0').slice(-6);
             }
 
+            currentUserAccountName = userAccountName;
+            currentUserAccountNumber = userAccountNumber;
+            currentUserAccountType = userAccountType;
+
             const maskedPayerName = maskAccountHolderName(userAccountName);
             const maskedPayerAcc = maskAccountNumber(userAccountNumber);
 
@@ -1017,12 +1271,51 @@
                 if (word.length <= 2) return word;
                 if (word.length === 3) return word[0] + '*' + word[2];
                 if (word.length === 4) return word[0] + '**' + word[3];
-                const startLen = 2;
-                const endLen = word.length >= 6 ? 2 : 1;
-                const middleLen = word.length - startLen - endLen;
-                const stars = '*'.repeat(Math.max(2, Math.min(3, middleLen)));
-                return word.substring(0, startLen) + stars + word.substring(word.length - endLen);
+                return word[0] + '*'.repeat(word.length - 2) + word[word.length - 1];
             }).join(' ');
+        }
+
+        function updateNominalDisplay(num) {
+            currentNominalNumber = Math.max(0, num);
+            const inputEl = document.getElementById('inputNominal');
+            if (inputEl) {
+                inputEl.value = currentNominalNumber > 0 ? formatRupiah(currentNominalNumber) : '';
+            }
+
+            const formatted = 'Rp' + formatRupiah(currentNominalNumber);
+            const detailNom = document.getElementById('confirmDetailNominal');
+            if (detailNom) detailNom.textContent = formatted;
+            const totalAmt = document.getElementById('confirmTotalAmount');
+            if (totalAmt) totalAmt.textContent = formatted;
+
+            const btnCont = document.getElementById('btnContinue');
+            if (btnCont) btnCont.disabled = (currentNominalNumber <= 0);
+        }
+
+        function onNominalInput(e) {
+            let val = e.target.value.replace(/\D/g, '');
+            if (!val) {
+                currentNominalNumber = 0;
+                e.target.value = '';
+                updateNominalDisplay(0);
+                return;
+            }
+            currentNominalNumber = parseInt(val, 10);
+            updateNominalDisplay(currentNominalNumber);
+        }
+
+        function clearNominal() {
+            currentNominalNumber = 0;
+            const inputEl = document.getElementById('inputNominal');
+            if (inputEl) {
+                inputEl.value = '';
+                inputEl.focus();
+            }
+            updateNominalDisplay(0);
+        }
+
+        function formatRupiah(number) {
+            return new Intl.NumberFormat('id-ID').format(number);
         }
 
         function getInitials(name) {
@@ -1037,48 +1330,14 @@
             return 'QR';
         }
 
-        function formatRupiah(number) {
-            return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-        }
-
-        function updateNominalDisplay(num) {
-            currentNominalNumber = Math.max(0, num);
-            const inputEl = document.getElementById('inputNominal');
-            inputEl.value = currentNominalNumber > 0 ? formatRupiah(currentNominalNumber) : '';
-
-            // Update confirm display
-            const formatted = 'Rp' + formatRupiah(currentNominalNumber);
-            document.getElementById('confirmDetailNominal').textContent = formatted;
-            document.getElementById('confirmTotalAmount').textContent = formatted;
-
-            // Disable button if 0
-            document.getElementById('btnContinue').disabled = (currentNominalNumber <= 0);
-        }
-
-        function onNominalInput(e) {
-            const raw = e.target.value.replace(/\D/g, '');
-            currentNominalNumber = raw ? parseInt(raw, 10) : 0;
-            e.target.value = currentNominalNumber > 0 ? formatRupiah(currentNominalNumber) : '';
-
-            const formatted = 'Rp' + formatRupiah(currentNominalNumber);
-            document.getElementById('confirmDetailNominal').textContent = formatted;
-            document.getElementById('confirmTotalAmount').textContent = formatted;
-
-            document.getElementById('btnContinue').disabled = (currentNominalNumber <= 0);
-        }
-
-        function clearNominal() {
-            updateNominalDisplay(0);
-            document.getElementById('inputNominal').focus();
-        }
-
+        // Navigation Between Steps
         function goBackToScan() {
             window.location.href = 'scan.html';
         }
 
         function goToStepConfirm() {
             if (currentNominalNumber <= 0) {
-                alert('Silakan masukkan nominal pembayaran.');
+                alert('Silakan masukkan nominal pembayaran terlebih dahulu.');
                 return;
             }
             document.getElementById('stepInputNominal').classList.add('d-none');
@@ -1092,18 +1351,26 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // ── PIN Screen Navigation & Keypad Logic ──────────────────────
+        // PIN Step Navigation
         function goToStepPin() {
+            enteredPin = '';
+            updatePinDotsDisplay(false);
+            const errEl = document.getElementById('pinErrorText');
+            if (errEl) errEl.classList.add('d-none');
+
             document.getElementById('stepConfirmPayment').classList.add('d-none');
             document.getElementById('stepInputPin').classList.remove('d-none');
-            resetPinInput();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function goToStepConfirmFromPin() {
+            enteredPin = '';
+            updatePinDotsDisplay(false);
+            const errEl = document.getElementById('pinErrorText');
+            if (errEl) errEl.classList.add('d-none');
+
             document.getElementById('stepInputPin').classList.add('d-none');
             document.getElementById('stepConfirmPayment').classList.remove('d-none');
-            resetPinInput();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
@@ -1157,7 +1424,6 @@
         async function handlePinComplete() {
             isPinValidating = true;
 
-            // Verify PIN against backend API or user profile
             let isValid = false;
             try {
                 const res = await fetch('/api/user/verify-pin', {
@@ -1182,7 +1448,6 @@
                 // Success: Hide PIN screen and trigger payment
                 setTimeout(() => {
                     document.getElementById('stepInputPin').classList.add('d-none');
-                    document.getElementById('stepConfirmPayment').classList.remove('d-none');
                     processPayment();
                 }, 200);
             } else {
@@ -1224,12 +1489,25 @@
 
         async function processPayment() {
             const btnPay = document.getElementById('btnPayNow');
-            btnPay.disabled = true;
-            btnPay.textContent = 'Memproses Pembayaran...';
+            if (btnPay) {
+                btnPay.disabled = true;
+                btnPay.textContent = 'Memproses Pembayaran...';
+            }
 
             const txId = 'TX-' + Math.floor(100000 + Math.random() * 900000);
             const invId = 'INV-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.floor(1000 + Math.random() * 9000);
             createdTxRef = txId;
+
+            // Resolve terminal ID and acquirer from LaQris session data
+            let activeTid = sessionData.terminal_id;
+            if (!activeTid || activeTid === 'Tidak ditemukan' || activeTid === 'Tidak terbaca') {
+                activeTid = 'A02';
+            }
+
+            let activeAcquirer = sessionData.acquirer;
+            if (!activeAcquirer || activeAcquirer === 'Tidak ditemukan' || activeAcquirer === 'Tidak terbaca') {
+                activeAcquirer = 'DOMPET ANAK BANGSA';
+            }
 
             const payload = {
                 verification_session_id: sessionData.session_id || ('LQ-S-' + Date.now()),
@@ -1242,7 +1520,7 @@
                 merchant_name: sessionData.merchant_name || null,
                 nmid: sessionData.nmid || null,
                 user_id: currentUserId || undefined,
-                terminal_id: "A01",
+                terminal_id: activeTid,
                 latency_ms: 1250,
                 retry_count: 0
             };
@@ -1259,27 +1537,100 @@
                 console.warn('[WARN] Gagal mencatat ke event API (tetap lanjut demo):', err);
             }
 
-            // Show Success Modal
+            // Render Fullscreen wondr by BNI Receipt (NOT A POPUP MODAL!)
             setTimeout(() => {
-                document.getElementById('receiptNominalDisp').textContent = 'Rp ' + formatRupiah(currentNominalNumber);
-                document.getElementById('receiptMerchantVal').textContent = sessionData.merchant_name;
-                document.getElementById('receiptTxVal').textContent = txId;
-                document.getElementById('receiptInvVal').textContent = invId;
+                renderWondrReceipt(txId, invId, activeTid, activeAcquirer);
+            }, 350);
+        }
 
-                const now = new Date();
-                const timeStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ' +
-                    now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
-                document.getElementById('receiptTimeVal').textContent = timeStr;
+        function renderWondrReceipt(txId, invId, activeTid, activeAcquirer) {
+            const formattedNominal = 'Rp' + formatRupiah(currentNominalNumber);
+            document.getElementById('wondrReceiptNominal').textContent = formattedNominal;
+            document.getElementById('wondrReceiptRowNominal').textContent = formattedNominal;
+            document.getElementById('wondrReceiptRowTotal').textContent = formattedNominal;
 
-                document.getElementById('receiptModal').classList.remove('d-none');
-            }, 600);
+            const pad = (n) => String(n).padStart(2, '0');
+            const now = new Date();
+            const dateNum = now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds());
+            const refId = dateNum + String(Math.floor(100000 + Math.random() * 900000));
+            const timeStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) +
+                ' • ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds()) + ' WIB • Ref ID: ' + refId;
+            document.getElementById('wondrReceiptMeta').textContent = timeStr;
+
+            // Penerima
+            document.getElementById('wondrReceiptMerchantName').textContent = (sessionData.merchant_name || 'MERCHANT QRIS').toUpperCase();
+            document.getElementById('wondrReceiptMerchantCity').textContent = (sessionData.city || 'BANDUNG').toUpperCase();
+
+            // Sumber dana
+            document.getElementById('wondrReceiptAccountHolder').textContent = (currentUserAccountName || 'M NAUFAL HAZMI').toUpperCase();
+            document.getElementById('wondrReceiptAccountNumber').textContent = maskAccountNumber(currentUserAccountNumber);
+
+            // Detail merchant
+            let dispMerchantId = sessionData.merchant_id || '';
+            if (!dispMerchantId && sessionData.nmid) {
+                const cleanNmid = sessionData.nmid.replace(/\D/g, '');
+                if (cleanNmid.length >= 4) {
+                    dispMerchantId = 'G' + cleanNmid.slice(-9);
+                }
+            }
+            if (!dispMerchantId || dispMerchantId.length < 5) dispMerchantId = 'G994303355';
+            document.getElementById('wondrReceiptMerchantId').textContent = dispMerchantId;
+
+            let dispMerchantPan = sessionData.merchant_pan || '';
+            if (!dispMerchantPan) {
+                const nmidDigits = (sessionData.nmid || '').replace(/\D/g, '');
+                if (nmidDigits.length >= 8) {
+                    dispMerchantPan = '93600914' + nmidDigits.padEnd(11, '0').slice(0, 11);
+                } else {
+                    dispMerchantPan = '9360091439943033554';
+                }
+            }
+            document.getElementById('wondrReceiptMerchantPan').textContent = dispMerchantPan;
+
+            document.getElementById('wondrReceiptTerminalId').textContent = activeTid;
+            document.getElementById('wondrReceiptAcquirer').textContent = activeAcquirer.toUpperCase();
+
+            // Detail transaksi
+            const accClean = (currentUserAccountNumber || '1858868768').replace(/\D/g, '');
+            const custPan = '93600009' + (accClean.length >= 6 ? accClean.padEnd(11, '3').slice(-11) : '13077552373');
+            document.getElementById('wondrReceiptCustomerPan').textContent = custPan;
+            document.getElementById('wondrReceiptIssuer').textContent = 'BNI';
+            document.getElementById('wondrReceiptTxType').textContent = 'QRIS';
+
+            let rrn = txId.replace(/\D/g, '').slice(-6);
+            if (!rrn || rrn.length < 4) rrn = String(Math.floor(100000 + Math.random() * 900000));
+            document.getElementById('wondrReceiptRrn').textContent = ('e7ed' + rrn + 'e7a').slice(0, 12);
+
+            // Transition screens: Hide Step 1, 2, 3 and show Fullscreen Step 4
+            document.getElementById('stepInputNominal').classList.add('d-none');
+            document.getElementById('stepConfirmPayment').classList.add('d-none');
+            document.getElementById('stepInputPin').classList.add('d-none');
+            document.getElementById('stepReceiptSuccess').classList.remove('d-none');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function downloadReceiptPdf() {
+            window.print();
+        }
+
+        function shareReceipt() {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Bukti Pembayaran QRIS - ' + (sessionData.merchant_name || 'wondr by BNI'),
+                    text: 'Pembayaran QRIS ke ' + (sessionData.merchant_name || 'Merchant') + ' sebesar Rp' + formatRupiah(currentNominalNumber) + ' berhasil via wondr by BNI.',
+                    url: window.location.href
+                }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(window.location.href);
+                alert('Tautan bukti transaksi pembayaran berhasil disalin ke clipboard!');
+            }
         }
 
         function goToFeedbackFromReceipt() {
             const nmid = encodeURIComponent(sessionData.nmid || '');
             const tx = encodeURIComponent(createdTxRef || '');
-            const back = encodeURIComponent('payment.html');
-            window.location.href = `feedback.html?nmid=${nmid}&tx_ref=${tx}&back=dashboard.html`;
+            const merchant = encodeURIComponent(sessionData.merchant_name || '');
+            window.location.href = `feedback.html?nmid=${nmid}&tx_ref=${tx}&merchant=${merchant}&back=dashboard.html`;
         }
 
         function finishAndGoHome() {
