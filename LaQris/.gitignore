@@ -1,0 +1,48 @@
+# ==============================================================================
+# LaQris .gitignore
+# ==============================================================================
+
+# ── Python & Bytecode ─────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+
+# ── Virtual Environments ──────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+backend/venv/
+
+# ── Environment & Secrets ────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Database Lokal ────────────────────────────────────────────────────────────
+*.sqlite
+*.sqlite3
+*.db
+backend/database.sqlite
+backend/*.sqlite
+
+# ── Data Hasil Pemrosesan QRIS & Session Uploads ──────────────────────────────
+# Mengabaikan sesi upload dinamis, crops OCR, dan visualisasi deteksi
+backend/static/sessions/
+backend/static/vis_output/
+backend/static/uploads/
+backend/uploads/
+
+# File analisis sementara
+predictions_data.json
+summary_report.txt
+crop_*.jpg
+full_attached.jpg
+
+# ── IDE & Sistem Operasi ──────────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
