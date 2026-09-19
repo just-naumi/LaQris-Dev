@@ -1,0 +1,507 @@
+{
+  "accuracy_real": 96.0,
+  "false_positives_normal": 0,
+  "overconfidence_count": 2,
+  "results": [
+    {
+      "id": "HN_01",
+      "group": "HARD_NORMAL",
+      "text": "Saya membeli makanan di warung dekat kampus dan membayar menggunakan QRIS seperti biasanya. Nominal yang harus dibayar sesuai dengan harga makanan, transaksi berhasil dalam beberapa detik, dan bukti pembayaran juga langsung muncul di aplikasi.",
+      "expected": "TRANSAKSI_SUKSES_NORMAL",
+      "predicted": "TRANSAKSI_SUKSES_NORMAL",
+      "confidence": 99.89,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "HN_02",
+      "group": "HARD_NORMAL",
+      "text": "Kasir ramah menunjukkan barcode di meja, nominal pembayaran saya input pas 35 ribu dan notifikasi uang masuk langsung bunyi di hp penjual.",
+      "expected": "TRANSAKSI_SUKSES_NORMAL",
+      "predicted": "TRANSAKSI_SUKSES_NORMAL",
+      "confidence": 99.88,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "HN_03",
+      "group": "HARD_NORMAL",
+      "text": "Proses pembayaran berlangsung sangat cepat tanpa kendala apapun, struk dan bukti transfer tersimpan rapi di riwayat aplikasi perbankan saya.",
+      "expected": "TRANSAKSI_SUKSES_NORMAL",
+      "predicted": "TRANSAKSI_SUKSES_NORMAL",
+      "confidence": 99.88,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "HN_04",
+      "group": "HARD_NORMAL",
+      "text": "Tadi bayar parkir pakai QRIS statis di pos keluar, nama penerima sesuai pengelola dan transaksi langsung terverifikasi hijau.",
+      "expected": "TRANSAKSI_SUKSES_NORMAL",
+      "predicted": "TRANSAKSI_SUKSES_NORMAL",
+      "confidence": 99.89,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "HN_05",
+      "group": "HARD_NORMAL",
+      "text": "Nominal belanjaan 150 ribu saya bayar dengan scan QRIS di kasir, semua detail informasi pembayaran cocok dan saya langsung dikasih barangnya.",
+      "expected": "TRANSAKSI_SUKSES_NORMAL",
+      "predicted": "TRANSAKSI_SUKSES_NORMAL",
+      "confidence": 99.89,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "HN_06",
+      "group": "HARD_NORMAL",
+      "text": "Pelayanan merchant sangat baik, qr code bersih dan terlindung akrilik, pembayaran sukses seketika tanpa ada biaya potongan tambahan.",
+      "expected": "TRANSAKSI_SUKSES_NORMAL",
+      "predicted": "TRANSAKSI_SUKSES_NORMAL",
+      "confidence": 99.89,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "HN_07",
+      "group": "HARD_NORMAL",
+      "text": "Cek mutasi setelah transaksi nominalnya pas sama yang saya ketik tadi siang di toko buku, pembayaran selesai aman sentosa.",
+      "expected": "TRANSAKSI_SUKSES_NORMAL",
+      "predicted": "TRANSAKSI_SUKSES_NORMAL",
+      "confidence": 99.89,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "HN_08",
+      "group": "HARD_NORMAL",
+      "text": "QRIS statis di warteg ini berfungsi normal, nama warteg muncul di layar konfirmasi dan transaksi langsung berhasil sekali scan.",
+      "expected": "TRANSAKSI_SUKSES_NORMAL",
+      "predicted": "TRANSAKSI_SUKSES_NORMAL",
+      "confidence": 99.87,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "HN_09",
+      "group": "HARD_NORMAL",
+      "text": "Tidak ada masalah sama sekali, pembayaran listrik dan tagihan lewat qris merchant berjalan mulus dan bukti bayar langsung keluar.",
+      "expected": "TRANSAKSI_SUKSES_NORMAL",
+      "predicted": "TRANSAKSI_SUKSES_NORMAL",
+      "confidence": 99.86,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "HN_10",
+      "group": "HARD_NORMAL",
+      "text": "Transaksi berhasil diproses, kasir mengecek terminal soundbox dan nominal yang masuk cocok dengan pesanan saya.",
+      "expected": "TRANSAKSI_SUKSES_NORMAL",
+      "predicted": "TRANSAKSI_SUKSES_NORMAL",
+      "confidence": 99.88,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "IM_01",
+      "group": "IMPLICIT_IDENTITY",
+      "text": "Saya tadi langsung scan kode yang tersedia di meja karena mengira itu memang kode pembayaran toko tersebut. Pembayaran berhasil dan tidak ada pesan kesalahan, tetapi ketika saya melihat kembali detail transaksinya, ada informasi penerima yang sebenarnya tidak terlalu saya kenal dan baru membuat saya bertanya-tanya setelah semuanya selesai.",
+      "expected": "KETIDAKSESUAIAN_IDENTITAS_MERCHANT",
+      "predicted": "FEEDBACK_AMBIGU",
+      "confidence": 99.24,
+      "status": "FAIL",
+      "is_correct": false
+    },
+    {
+      "id": "IM_02",
+      "group": "IMPLICIT_IDENTITY",
+      "text": "Saya makan di Restoran Padang Sederhana, tapi pas di aplikasi nama yang muncul malahan rekening atas nama pribadi Budi Santoso.",
+      "expected": "KETIDAKSESUAIAN_IDENTITAS_MERCHANT",
+      "predicted": "KETIDAKSESUAIAN_IDENTITAS_MERCHANT",
+      "confidence": 99.72,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "IM_03",
+      "group": "IMPLICIT_IDENTITY",
+      "text": "Setelah bayar di counter pulsa, di struk digital nama merchant-nya Yayasan Amal Kasih padahal ini toko aksesoris hp.",
+      "expected": "KETIDAKSESUAIAN_IDENTITAS_MERCHANT",
+      "predicted": "KETIDAKSESUAIAN_IDENTITAS_MERCHANT",
+      "confidence": 98.52,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "IM_04",
+      "group": "IMPLICIT_IDENTITY",
+      "text": "Di banner tertulis Kopi Kenangan Mantan, pas di layar konfirmasi bayar judulnya Konveksi Baju Murah.",
+      "expected": "KETIDAKSESUAIAN_IDENTITAS_MERCHANT",
+      "predicted": "KETIDAKSESUAIAN_IDENTITAS_MERCHANT",
+      "confidence": 99.79,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "IM_05",
+      "group": "IMPLICIT_IDENTITY",
+      "text": "Transaksi berhasil tapi penjual bilang nama penerima yang ada di bukti transfer saya bukan rekening milik outlet mereka.",
+      "expected": "KETIDAKSESUAIAN_IDENTITAS_MERCHANT",
+      "predicted": "KETIDAKSESUAIAN_IDENTITAS_MERCHANT",
+      "confidence": 99.76,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "IM_06",
+      "group": "IMPLICIT_IDENTITY",
+      "text": "Plang depan warung namanya Mie Ayam Bakso Mas Joko, kenapa nama tujuannya CV Abadi Sejahtera di kota lain?",
+      "expected": "KETIDAKSESUAIAN_IDENTITAS_MERCHANT",
+      "predicted": "KETIDAKSESUAIAN_IDENTITAS_MERCHANT",
+      "confidence": 99.84,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "IM_07",
+      "group": "IMPLICIT_IDENTITY",
+      "text": "Pas mau konfirmasi bayar tertera nama PT yang asing dan tidak ada hubungannya sama klinik tempat saya berobat ini.",
+      "expected": "KETIDAKSESUAIAN_IDENTITAS_MERCHANT",
+      "predicted": "KETIDAKSESUAIAN_IDENTITAS_MERCHANT",
+      "confidence": 99.54,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "IM_08",
+      "group": "IMPLICIT_IDENTITY",
+      "text": "Kasir kaget liat bukti bayar saya karena tujuannya ke rekening perorangan yang karyawan toko sendiri tidak tahu itu siapa.",
+      "expected": "KETIDAKSESUAIAN_IDENTITAS_MERCHANT",
+      "predicted": "KETIDAKSESUAIAN_IDENTITAS_MERCHANT",
+      "confidence": 93.2,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "IM_09",
+      "group": "IMPLICIT_IDENTITY",
+      "text": "Curiga pas bayar martabak, nama di barcode akun personal nama cewek padahal abang penjualnya cowok dan bukan nama istrinya.",
+      "expected": "KETIDAKSESUAIAN_IDENTITAS_MERCHANT",
+      "predicted": "KETIDAKSESUAIAN_IDENTITAS_MERCHANT",
+      "confidence": 99.83,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "IM_10",
+      "group": "IMPLICIT_IDENTITY",
+      "text": "Setelah transaksi sukses baru sadar nama merchant terdaftar lokasinya di Medan padahal saya belinya di Bandung.",
+      "expected": "KETIDAKSESUAIAN_IDENTITAS_MERCHANT",
+      "predicted": "KETIDAKSESUAIAN_IDENTITAS_MERCHANT",
+      "confidence": 98.53,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "ID_01",
+      "group": "IMPLICIT_DELAY",
+      "text": "Uang di m-banking saya sudah terpotong 50 ribu tapi penjualnya bersikeras saldo belum masuk dan soundbox kasir tidak bunyi.",
+      "expected": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "predicted": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "confidence": 99.85,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "ID_02",
+      "group": "IMPLICIT_DELAY",
+      "text": "Layarnya loading muter-muter terus lama banget pas saya klik bayar, akhirnya disuruh nunggu 15 menit sama kasirnya.",
+      "expected": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "predicted": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "confidence": 99.79,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "ID_03",
+      "group": "IMPLICIT_DELAY",
+      "text": "Status di aplikasi masih menggantung bertuliskan diproses oleh pihak bank, padahal saya harus buru-buru pergi kerja.",
+      "expected": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "predicted": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "confidence": 99.76,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "ID_04",
+      "group": "IMPLICIT_DELAY",
+      "text": "Muncul tulisan koneksi timeout ke gateway pembayaran, tapi saat saya cek saldo tabungan berkurang.",
+      "expected": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "predicted": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "confidence": 99.78,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "ID_05",
+      "group": "IMPLICIT_DELAY",
+      "text": "Sudah 30 menit kasir nungguin notif settlement gak muncul juga, padahal di history saya sudah ada nomor referensi transfer.",
+      "expected": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "predicted": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "confidence": 92.41,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "ID_06",
+      "group": "IMPLICIT_DELAY",
+      "text": "Di aplikasi dompet digital saya statusnya transaksi tertunda, penjual tidak mau ngasih barangnya sebelum uang mendarat.",
+      "expected": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "predicted": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "confidence": 99.86,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "ID_07",
+      "group": "IMPLICIT_DELAY",
+      "text": "Tiba-tiba app perbankan force close waktu verifikasi pin, saldo kepotong tapi bukti transaksi tidak terbit.",
+      "expected": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "predicted": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "confidence": 99.86,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "ID_08",
+      "group": "IMPLICIT_DELAY",
+      "text": "Kasir bilang server bank lagi gangguan malam ini jadi mutasi lambat masuk, saya disuruh bayar cash dulu.",
+      "expected": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "predicted": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "confidence": 99.87,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "ID_09",
+      "group": "IMPLICIT_DELAY",
+      "text": "Transaksi tidak kunjung selesai diverifikasi padahal kuota sinyal hp full, statusnya masih menunggu konfirmasi penerima.",
+      "expected": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "predicted": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "confidence": 99.74,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "ID_10",
+      "group": "IMPLICIT_DELAY",
+      "text": "Uang sudah keluar dari akun saya tapi kasir bilang belum ada dana masuk ke aplikasi merchant mereka sampai sekarang.",
+      "expected": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "predicted": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "confidence": 99.68,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "NF_01",
+      "group": "NOMINAL_FEE",
+      "text": "Ada tambahan biaya 1000 dari harga aslinya padahal kan aturan BI melarang membebankan biaya admin ke pembeli.",
+      "expected": "SALAH_INPUT_NOMINAL_DOUBLE_BAYAR",
+      "predicted": "SALAH_INPUT_NOMINAL_DOUBLE_BAYAR",
+      "confidence": 99.86,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "NF_02",
+      "group": "NOMINAL_FEE",
+      "text": "Penjual minta saya lebihkan uang seribu rupiah buat biaya MDR katanya kalau bayar non tunai.",
+      "expected": "SALAH_INPUT_NOMINAL_DOUBLE_BAYAR",
+      "predicted": "SALAH_INPUT_NOMINAL_DOUBLE_BAYAR",
+      "confidence": 99.85,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "NF_03",
+      "group": "NOMINAL_FEE",
+      "text": "Saya salah ngetik angka kelebihan nol satu jadi bayar 500 ribu padahal total belanja cuma 50 ribu, kasir bingung balikinnya.",
+      "expected": "SALAH_INPUT_NOMINAL_DOUBLE_BAYAR",
+      "predicted": "SALAH_INPUT_NOMINAL_DOUBLE_BAYAR",
+      "confidence": 99.83,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "NF_04",
+      "group": "NOMINAL_FEE",
+      "text": "Karena tadi dikira belum masuk saya scan dan bayar ulang, ternyata saldo saya kepotong dua kali lipat.",
+      "expected": "SALAH_INPUT_NOMINAL_DOUBLE_BAYAR",
+      "predicted": "SALAH_INPUT_NOMINAL_DOUBLE_BAYAR",
+      "confidence": 71.49,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "NF_05",
+      "group": "NOMINAL_FEE",
+      "text": "Dikenakan biaya surcharge 2000 oleh kasir toko kelontong dengan alasan potongan biaya aplikasi.",
+      "expected": "SALAH_INPUT_NOMINAL_DOUBLE_BAYAR",
+      "predicted": "SALAH_INPUT_NOMINAL_DOUBLE_BAYAR",
+      "confidence": 99.69,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "NF_06",
+      "group": "NOMINAL_FEE",
+      "text": "Tadi jempol kepeleset masukin angka 150000 padahal tagihannya cuma 15000, gimana cara minta refund kelebihannya?",
+      "expected": "SALAH_INPUT_NOMINAL_DOUBLE_BAYAR",
+      "predicted": "SALAH_INPUT_NOMINAL_DOUBLE_BAYAR",
+      "confidence": 90.51,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "NF_07",
+      "group": "NOMINAL_FEE",
+      "text": "Total belanja 45 ribu tapi pas discan kasir nyuruh saya ketik 47 ribu buat biaya charge admin.",
+      "expected": "SALAH_INPUT_NOMINAL_DOUBLE_BAYAR",
+      "predicted": "SALAH_INPUT_NOMINAL_DOUBLE_BAYAR",
+      "confidence": 99.86,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "NF_08",
+      "group": "NOMINAL_FEE",
+      "text": "Saya double transfer karena notifikasi pertama gak keluar, pas dicek mutasi ada 2 penarikan dengan jumlah yang sama persis.",
+      "expected": "SALAH_INPUT_NOMINAL_DOUBLE_BAYAR",
+      "predicted": "TRANSAKSI_PENDING_GAGAL_SISTEM",
+      "confidence": 89.63,
+      "status": "FAIL",
+      "is_correct": false
+    },
+    {
+      "id": "NF_09",
+      "group": "NOMINAL_FEE",
+      "text": "Harusnya bayar 25 ribu tapi saya salah input nominal jadi 250 ribu di barcode qris statis warung.",
+      "expected": "SALAH_INPUT_NOMINAL_DOUBLE_BAYAR",
+      "predicted": "SALAH_INPUT_NOMINAL_DOUBLE_BAYAR",
+      "confidence": 99.84,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "NF_10",
+      "group": "NOMINAL_FEE",
+      "text": "Toko mengenakan biaya tambahan 1500 rupiah khusus untuk transaksi menggunakan qris.",
+      "expected": "SALAH_INPUT_NOMINAL_DOUBLE_BAYAR",
+      "predicted": "SALAH_INPUT_NOMINAL_DOUBLE_BAYAR",
+      "confidence": 99.74,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "AM_01",
+      "group": "AMBIGUOUS_EDGE",
+      "text": "Saya sudah memastikan nominal belanja sebelum melakukan pembayaran dan prosesnya juga langsung selesai tanpa kendala. Beberapa menit kemudian saya membuka kembali bukti transaksi karena ingin memastikan semuanya sudah benar, lalu saya menyadari bahwa ada bagian dari informasi pembayaran yang tidak seperti yang saya bayangkan ketika pertama kali melakukan transaksi.",
+      "expected": "FEEDBACK_AMBIGU",
+      "predicted": "FEEDBACK_AMBIGU",
+      "confidence": 99.87,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "AM_02",
+      "group": "AMBIGUOUS_EDGE",
+      "text": "Tadi waktu bayar rasanya ada yang janggal deh pas saya scan di kasir.",
+      "expected": "FEEDBACK_AMBIGU",
+      "predicted": "FEEDBACK_AMBIGU",
+      "confidence": 99.87,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "AM_03",
+      "group": "AMBIGUOUS_EDGE",
+      "text": "Entah kenapa transaksi saya tadi agak aneh pas selesai, tolong dicek ya tim LaQris.",
+      "expected": "FEEDBACK_AMBIGU",
+      "predicted": "FEEDBACK_AMBIGU",
+      "confidence": 99.88,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "AM_04",
+      "group": "AMBIGUOUS_EDGE",
+      "text": "Saya bayar pakai qris barusan di minimarket tapi kok perasaanku gak enak ya.",
+      "expected": "FEEDBACK_AMBIGU",
+      "predicted": "FEEDBACK_AMBIGU",
+      "confidence": 99.88,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "AM_05",
+      "group": "AMBIGUOUS_EDGE",
+      "text": "Tadi mbak kasirnya sempat ngomong sesuatu pas saya lagi scan barcode tapi gak kedengeran jelas.",
+      "expected": "FEEDBACK_AMBIGU",
+      "predicted": "FEEDBACK_AMBIGU",
+      "confidence": 99.88,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "AM_06",
+      "group": "AMBIGUOUS_EDGE",
+      "text": "Ada yang beda waktu saya coba transaksi barusan di meja depan.",
+      "expected": "FEEDBACK_AMBIGU",
+      "predicted": "FEEDBACK_AMBIGU",
+      "confidence": 99.87,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "AM_07",
+      "group": "AMBIGUOUS_EDGE",
+      "text": "Pembayarannya selesai sih cuma saya bingung aja sama tampilannya.",
+      "expected": "FEEDBACK_AMBIGU",
+      "predicted": "FEEDBACK_AMBIGU",
+      "confidence": 99.87,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "AM_08",
+      "group": "AMBIGUOUS_EDGE",
+      "text": "Kayaknya tadi ada hal yang gak biasa waktu saya mau bayar belanjaan saya.",
+      "expected": "FEEDBACK_AMBIGU",
+      "predicted": "FEEDBACK_AMBIGU",
+      "confidence": 99.87,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "AM_09",
+      "group": "AMBIGUOUS_EDGE",
+      "text": "Transaksi qris barusan apakah sudah terverifikasi dengan benar di sistem kalian?",
+      "expected": "FEEDBACK_AMBIGU",
+      "predicted": "FEEDBACK_AMBIGU",
+      "confidence": 99.81,
+      "status": "PASS",
+      "is_correct": true
+    },
+    {
+      "id": "AM_10",
+      "group": "AMBIGUOUS_EDGE",
+      "text": "Saya tadi bayar tapi lupa liat detailnya langsung saya close aplikasinya.",
+      "expected": "FEEDBACK_AMBIGU",
+      "predicted": "FEEDBACK_AMBIGU",
+      "confidence": 99.88,
+      "status": "PASS",
+      "is_correct": true
+    }
+  ]
+}

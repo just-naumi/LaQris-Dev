@@ -161,17 +161,19 @@ def uji_model_pada_data_test(path_weights_best, path_data_yaml, folder_tujuan):
     skor_map_per_kelas = hasil_ujian.box.maps # Skor mAP50-95 per kelas
 
     if len(skor_map_per_kelas) == len(daftar_nama_kelas):
-        plt.figure(figsize=(10, 5))
+        plt.figure(figsize=(13, 6))
         sns.barplot(x=daftar_nama_kelas, y=skor_map_per_kelas, palette="Blues_d")
         plt.title("Performa Akurasi Deteksi per-Komponen QRIS (Data Test)", fontsize=14, fontweight='bold')
         plt.xlabel("Komponen QRIS", fontsize=12)
         plt.ylabel("Skor Akurasi (mAP@50-95)", fontsize=12)
+        plt.xticks(rotation=25, ha='right', fontsize=9)
         plt.ylim([0, 1.05])
 
         # Tampilkan angka di atas setiap batang diagram
         for idx, nilai in enumerate(skor_map_per_kelas):
-            plt.text(idx, nilai + 0.02, f"{nilai:.3f}", ha='center', fontweight='bold')
+            plt.text(idx, nilai + 0.02, f"{nilai:.3f}", ha='center', fontweight='bold', fontsize=9)
 
+        plt.tight_layout()
         path_chart_kelas = os.path.join(folder_tujuan, "per_class_performance.png")
         plt.savefig(path_chart_kelas, dpi=300, bbox_inches='tight')
         plt.close()

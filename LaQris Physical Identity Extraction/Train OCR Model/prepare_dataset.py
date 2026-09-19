@@ -102,8 +102,8 @@ def pisahkan_dan_siapkan_dataset():
         'names': names_to_use
     }
 
-    with open(path_data_yaml, 'w') as file_yaml:
-        yaml.dump(konfigurasi_yaml, file_yaml, default_flow_style=False, sort_keys=False)
+    with open(path_data_yaml, 'w', encoding='utf-8') as file_yaml:
+        yaml.dump(konfigurasi_yaml, file_yaml, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
     print(f"[OK] File konfigurasi 'data.yaml' berhasil diperbarui ({len(names_to_use)} kelas) di:")
     print(f"     {path_data_yaml}")

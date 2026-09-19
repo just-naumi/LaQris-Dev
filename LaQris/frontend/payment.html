@@ -578,28 +578,52 @@
             }
         }
 
-        /* ── PIN Screen Styles (wondr style) ─────────────────────────── */
+        /* ── PIN Screen Styles (wondr style - Non-scrollable) ────────── */
+        #stepInputPin {
+            position: fixed;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 440px;
+            height: 100vh;
+            height: 100dvh;
+            background: #ffffff;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden !important;
+            touch-action: none;
+            overscroll-behavior: none;
+            -webkit-overflow-scrolling: auto;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
         .pin-screen-body {
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 24px 20px 30px 20px;
+            padding: 8px 20px 24px 20px;
             flex: 1;
-            min-height: calc(100vh - 56px);
-            justify-content: flex-start;
+            height: calc(100% - 56px);
+            justify-content: space-between;
+            overflow: hidden !important;
+            touch-action: none;
+            overscroll-behavior: none;
         }
 
         .pin-header-box {
             text-align: center;
-            margin-top: 16px;
-            margin-bottom: 34px;
+            margin-top: 4px;
+            margin-bottom: 16px;
         }
 
         .pin-title {
             font-size: 1.45rem;
             font-weight: 800;
             color: #0f172a;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             letter-spacing: -0.3px;
         }
 
@@ -613,9 +637,9 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 46px;
-            min-height: 48px;
+            gap: 10px;
+            margin-bottom: 20px;
+            min-height: 44px;
         }
 
         .pin-dots-row {
@@ -623,7 +647,7 @@
             align-items: center;
             justify-content: center;
             gap: 16px;
-            padding: 8px 0;
+            padding: 6px 0;
             transition: transform 0.2s ease;
         }
 
@@ -667,13 +691,13 @@
             width: 100%;
             max-width: 310px;
             margin-top: auto;
-            margin-bottom: 24px;
+            margin-bottom: 16px;
         }
 
         .keypad-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 18px 22px;
+            gap: 16px 22px;
             justify-items: center;
             align-items: center;
         }
@@ -691,9 +715,10 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.15s ease;
+            transition: all 0.12s ease;
             user-select: none;
             -webkit-user-select: none;
+            touch-action: manipulation;
         }
 
         .keypad-btn:hover {
@@ -708,6 +733,7 @@
         .btn-keypad-del {
             background: #f1f5f9;
             color: #0f172a;
+            touch-action: manipulation;
         }
 
         .btn-forgot-pin {
@@ -720,6 +746,7 @@
             padding: 8px;
             white-space: nowrap;
             transition: opacity 0.2s;
+            touch-action: manipulation;
         }
 
         .btn-forgot-pin:hover {
@@ -1351,6 +1378,131 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
+        // ── Audio & Haptic Feedback Engine ───────────────────────────
+        let audioCtx = null;
+
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) {
+                    audioCtx = new AudioContextClass();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function triggerHaptic(type = 'light') {
+            if (!('vibrate' in navigator)) return;
+            try {
+                if (type === 'light') {
+                    navigator.vibrate(22);
+                } else if (type === 'delete') {
+                    navigator.vibrate(30);
+                } else if (type === 'error') {
+                    navigator.vibrate([60, 40, 60, 40, 110]);
+                } else if (type === 'success') {
+                    navigator.vibrate([40, 40, 80]);
+                }
+            } catch (e) {}
+        }
+
+        function playKeypadSound(type = 'tap') {
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+
+                const now = ctx.currentTime;
+                if (type === 'tap') {
+                    // Crisp realistic keypad tap
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(1150, now);
+                    osc.frequency.exponentialRampToValueAtTime(150, now + 0.038);
+
+                    gain.gain.setValueAtTime(0.35, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.038);
+
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+
+                    osc.start(now);
+                    osc.stop(now + 0.038);
+                } else if (type === 'delete') {
+                    // Slightly lower pitched delete click
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(680, now);
+                    osc.frequency.exponentialRampToValueAtTime(110, now + 0.048);
+
+                    gain.gain.setValueAtTime(0.4, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.048);
+
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+
+                    osc.start(now);
+                    osc.stop(now + 0.048);
+                } else if (type === 'error') {
+                    // Low buzz error tone
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(190, now);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.28);
+
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+
+                    osc.start(now);
+                    osc.stop(now + 0.28);
+                } else if (type === 'success') {
+                    // Dual chime on success
+                    [587.33, 880].forEach((freq, idx) => {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        const start = now + (idx * 0.08);
+
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, start);
+
+                        gain.gain.setValueAtTime(0.28, start);
+                        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.22);
+
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+
+                        osc.start(start);
+                        osc.stop(start + 0.22);
+                    });
+                }
+            } catch (e) {
+                console.warn('[AUDIO] Keypad sound error:', e);
+            }
+        }
+
+        function lockPageScroll() {
+            document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden';
+            document.body.style.touchAction = 'none';
+            document.body.style.overscrollBehavior = 'none';
+        }
+
+        function unlockPageScroll() {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            document.body.style.touchAction = '';
+            document.body.style.overscrollBehavior = '';
+        }
+
         // PIN Step Navigation
         function goToStepPin() {
             enteredPin = '';
@@ -1358,12 +1510,16 @@
             const errEl = document.getElementById('pinErrorText');
             if (errEl) errEl.classList.add('d-none');
 
+            // Kunci scroll halaman agar UI PIN tidak bisa digeser naik-turun
+            lockPageScroll();
+
             document.getElementById('stepConfirmPayment').classList.add('d-none');
             document.getElementById('stepInputPin').classList.remove('d-none');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo({ top: 0, behavior: 'instant' });
         }
 
         function goToStepConfirmFromPin() {
+            unlockPageScroll();
             enteredPin = '';
             updatePinDotsDisplay(false);
             const errEl = document.getElementById('pinErrorText');
@@ -1399,6 +1555,11 @@
 
         function pressPinDigit(digit) {
             if (isPinValidating) return;
+
+            // Trigger feedback getaran & suara tap
+            triggerHaptic('light');
+            playKeypadSound('tap');
+
             if (enteredPin.length < 6) {
                 enteredPin += digit.toString();
                 updatePinDotsDisplay(false);
@@ -1413,6 +1574,11 @@
 
         function deletePinDigit() {
             if (isPinValidating) return;
+
+            // Trigger feedback getaran & suara delete
+            triggerHaptic('delete');
+            playKeypadSound('delete');
+
             if (enteredPin.length > 0) {
                 enteredPin = enteredPin.slice(0, -1);
                 updatePinDotsDisplay(false);
@@ -1445,12 +1611,21 @@
             }
 
             if (isValid) {
-                // Success: Hide PIN screen and trigger payment
+                // Suara & getar sukses
+                triggerHaptic('success');
+                playKeypadSound('success');
+
+                // Success: Hide PIN screen, restore scroll, and trigger payment
                 setTimeout(() => {
+                    unlockPageScroll();
                     document.getElementById('stepInputPin').classList.add('d-none');
                     processPayment();
                 }, 200);
             } else {
+                // Suara & getar error
+                triggerHaptic('error');
+                playKeypadSound('error');
+
                 // Error: Highlight red & shake dots
                 updatePinDotsDisplay(true);
                 const row = document.getElementById('pinDotsRow');
@@ -1602,12 +1777,23 @@
             document.getElementById('wondrReceiptRrn').textContent = ('e7ed' + rrn + 'e7a').slice(0, 12);
 
             // Transition screens: Hide Step 1, 2, 3 and show Fullscreen Step 4
+            unlockPageScroll();
             document.getElementById('stepInputNominal').classList.add('d-none');
             document.getElementById('stepConfirmPayment').classList.add('d-none');
             document.getElementById('stepInputPin').classList.add('d-none');
             document.getElementById('stepReceiptSuccess').classList.remove('d-none');
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
+
+        // Prevent dragging / bouncing on PIN screen
+        window.addEventListener('DOMContentLoaded', () => {
+            const pinStepEl = document.getElementById('stepInputPin');
+            if (pinStepEl) {
+                pinStepEl.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                }, { passive: false });
+            }
+        });
 
         function downloadReceiptPdf() {
             window.print();

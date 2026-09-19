@@ -1,0 +1,131 @@
+{
+  "total_samples": 10000,
+  "execution_time_seconds": 36.37,
+  "overall_accuracy": 90.45,
+  "macro_f1": 90.74,
+  "mean_confidence": 93.31,
+  "normal_false_positives": 22,
+  "normal_accuracy": 98.46,
+  "classification_report": {
+    "PENIPUAN_STIKER_QRIS_PALSU": {
+      "precision": 1.0,
+      "recall": 0.8768369489153254,
+      "f1-score": 0.9343773303504848,
+      "support": 1429.0
+    },
+    "KETIDAKSESUAIAN_IDENTITAS_MERCHANT": {
+      "precision": 0.6963937621832359,
+      "recall": 1.0,
+      "f1-score": 0.8210284401034186,
+      "support": 1429.0
+    },
+    "PUNGUTAN_BIAYA_TAMBAHAN_SURCHARGE": {
+      "precision": 1.0,
+      "recall": 0.8285514345696291,
+      "f1-score": 0.9062380405663988,
+      "support": 1429.0
+    },
+    "KONDISI_FISIK_QRIS_RUSAK": {
+      "precision": 1.0,
+      "recall": 0.8089573128061581,
+      "f1-score": 0.8943907156673114,
+      "support": 1429.0
+    },
+    "KUALITAS_LAYANAN_MERCHANT": {
+      "precision": 0.9826446280991735,
+      "recall": 0.8326330532212886,
+      "f1-score": 0.9014404852160728,
+      "support": 1428.0
+    },
+    "QRIS_NORMAL_MERCHANT_TERPERCAYA": {
+      "precision": 1.0,
+      "recall": 0.9845938375350141,
+      "f1-score": 0.9922371206774877,
+      "support": 1428.0
+    },
+    "FEEDBACK_AMBIGU": {
+      "precision": 0.821161587119034,
+      "recall": 1.0,
+      "f1-score": 0.9017998105462582,
+      "support": 1428.0
+    },
+    "accuracy": 0.9045,
+    "macro avg": {
+      "precision": 0.9285999967716349,
+      "recall": 0.9045103695782022,
+      "f1-score": 0.9073588490182046,
+      "support": 10000.0
+    },
+    "weighted avg": {
+      "precision": 0.9285981961491445,
+      "recall": 0.9045,
+      "f1-score": 0.9073515089312661,
+      "support": 10000.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      1253,
+      145,
+      0,
+      0,
+      0,
+      0,
+      31
+    ],
+    [
+      0,
+      1429,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      213,
+      1184,
+      0,
+      21,
+      0,
+      11
+    ],
+    [
+      0,
+      234,
+      0,
+      1156,
+      0,
+      0,
+      39
+    ],
+    [
+      0,
+      31,
+      0,
+      0,
+      1189,
+      0,
+      208
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1406,
+      22
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1428
+    ]
+  ]
+}

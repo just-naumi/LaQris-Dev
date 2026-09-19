@@ -1,5 +1,6 @@
 # Python Virtual Environment
 .venv/
+.venv-gpu/
 venv/
 ENV/
 
@@ -16,10 +17,15 @@ hasil_crop_*/
 hasil_crop_barcode_*/
 _temp_extract/
 
+# Temporary Session Uploads
+LaQris/backend/static/sessions/
+
 # Dataset Zips & Extracted Unnecessary Large Files
 *.zip
 dataset/
 datasets/
+!LaQris Feedback Classification/dataset/
+!LaQris Feedback Classification/dataset/**
 
 # IDE & OS Settings
 .vscode/

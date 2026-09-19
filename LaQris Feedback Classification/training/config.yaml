@@ -1,0 +1,43 @@
+model:
+  pretrained_model_name: "indobenchmark/indobert-base-p1"
+  num_labels: 7
+  max_seq_length: 128
+  id2label:
+    0: "PENIPUAN_STIKER_QRIS_PALSU"
+    1: "KETIDAKSESUAIAN_IDENTITAS_MERCHANT"
+    2: "PUNGUTAN_BIAYA_TAMBAHAN_SURCHARGE"
+    3: "KONDISI_FISIK_QRIS_RUSAK"
+    4: "KUALITAS_LAYANAN_MERCHANT"
+    5: "QRIS_NORMAL_MERCHANT_TERPERCAYA"
+    6: "FEEDBACK_AMBIGU"
+  label2id:
+    "PENIPUAN_STIKER_QRIS_PALSU": 0
+    "KETIDAKSESUAIAN_IDENTITAS_MERCHANT": 1
+    "PUNGUTAN_BIAYA_TAMBAHAN_SURCHARGE": 2
+    "KONDISI_FISIK_QRIS_RUSAK": 3
+    "KUALITAS_LAYANAN_MERCHANT": 4
+    "QRIS_NORMAL_MERCHANT_TERPERCAYA": 5
+    "FEEDBACK_AMBIGU": 6
+
+training:
+  output_dir: "./models/indobert_qris_feedback"
+  num_train_epochs: 4
+  per_device_train_batch_size: 16
+  per_device_eval_batch_size: 32
+  learning_rate: 2e-5
+  warmup_ratio: 0.1
+  weight_decay: 0.01
+  logging_steps: 50
+  eval_strategy: "epoch"
+  save_strategy: "epoch"
+  save_total_limit: 2
+  load_best_model_at_end: true
+  metric_for_best_model: "f1_macro"
+  fp16: true
+
+data:
+  dataset_path: "./dataset/qris_feedback_14k.csv"
+  train_split: 0.80
+  val_split: 0.10
+  test_split: 0.10
+  random_seed: 42
