@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Berikan Feedback — LaQris</title>
-    <meta name="description" content="Ceritakan pengalaman Anda saat bertransaksi menggunakan QRIS untuk dianalisis oleh IndoBERT AI LaQris.">
-    <!-- Font Inter (Sesuai persis dengan scan.html) -->
+    <meta name="description" content="Kirim feedback transaksi QRIS Anda untuk dianalisis oleh AI LaQris.">
+    <!-- Font Inter (Sesuai persis scan.html) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="js/config.js"></script>
     <style>
@@ -81,19 +81,19 @@
             letter-spacing: -0.2px;
         }
 
-        /* ── Body Container (Persis phone-body scan.html) ── */
+        /* ── Body Container ── */
         .phone-body {
             padding: 18px 18px 40px 18px;
             flex: 1;
             background: #f8fafc;
         }
 
-        /* ── Receipt Cards (Persis seperti screenshot scan.html) ── */
+        /* ── Receipt Cards (Persis screenshot scan.html) ── */
         .receipt-card {
             background: #ffffff;
             border: 1px solid #f1f5f9;
             border-radius: 18px;
-            padding: 10px 0;
+            padding: 8px 0;
             margin-bottom: 16px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
         }
@@ -155,16 +155,9 @@
             font-size: 0.82rem;
         }
 
-        /* ── Input Box Teks di dalam Receipt Card ── */
+        /* ── Textarea Input ── */
         .receipt-textarea-container {
-            padding: 8px 16px 14px 16px;
-        }
-
-        .receipt-textarea-hint {
-            font-size: 0.82rem;
-            color: #64748b;
-            margin-bottom: 10px;
-            line-height: 1.45;
+            padding: 6px 16px 12px 16px;
         }
 
         .receipt-textarea {
@@ -177,7 +170,7 @@
             color: #0f172a;
             outline: none;
             resize: vertical;
-            min-height: 130px;
+            min-height: 120px;
             line-height: 1.55;
             transition: all 0.2s ease;
         }
@@ -205,7 +198,7 @@
             color: #0284c7;
         }
 
-        /* ── Action Buttons (Persis scan.html) ── */
+        /* ── Action Buttons ── */
         .btn-feedback-main {
             width: 100%;
             background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
@@ -280,7 +273,6 @@
             to { transform: rotate(360deg); }
         }
 
-        /* ── Result Container ── */
         .d-none {
             display: none !important;
         }
@@ -302,40 +294,37 @@
         <div class="phone-body">
             <!-- ── Form Section ── -->
             <div id="formSection">
-                <!-- CARD 1: INFORMASI MERCHANT (Sesuai persis screenshot scan.html) -->
+                <!-- CARD 1: DETAIL TRANSAKSI -->
                 <div class="receipt-card">
-                    <div class="receipt-section-title">Informasi Merchant</div>
+                    <div class="receipt-section-title">Detail Transaksi</div>
                     <div class="receipt-row">
-                        <span class="receipt-label">Nama Merchant</span>
+                        <span class="receipt-label">Merchant</span>
                         <span class="receipt-val val-safe" id="lblMerchantName">Memuat...</span>
                     </div>
                     <div class="receipt-row">
-                        <span class="receipt-label">NMID QRIS</span>
+                        <span class="receipt-label">NMID</span>
                         <span class="receipt-val val-mono" id="lblNmid">-</span>
                     </div>
                     <div class="receipt-row">
-                        <span class="receipt-label">Kota Merchant</span>
+                        <span class="receipt-label">Kota</span>
                         <span class="receipt-val" id="lblCity">-</span>
                     </div>
-                    <div class="receipt-row">
-                        <span class="receipt-label">Ref. Transaksi</span>
+                    <div class="receipt-row" id="rowTxRef">
+                        <span class="receipt-label">ID Transaksi</span>
                         <span class="receipt-val val-mono" id="lblTxRef">-</span>
                     </div>
                     <div class="receipt-row">
-                        <span class="receipt-label">Tingkat Bukti (Evidence Level)</span>
-                        <span class="receipt-val val-blue" id="lblEvidenceLevel">Level 0 (Ulasan Pengguna)</span>
+                        <span class="receipt-label">Validitas Bukti</span>
+                        <span class="receipt-val val-safe" id="lblEvidenceLevel">Terverifikasi</span>
                     </div>
                 </div>
 
-                <!-- CARD 2: ULASAN PENGALAMAN PENGGUNA (Hanya input teks ulasan) -->
+                <!-- CARD 2: ULASAN TRANSAKSI (Hanya Input Teks Ringkas) -->
                 <div class="receipt-card">
-                    <div class="receipt-section-title">Ulasan Pengalaman Transaksi</div>
+                    <div class="receipt-section-title">Ulasan Transaksi</div>
                     <div class="receipt-textarea-container">
-                        <div class="receipt-textarea-hint">
-                            Tuliskan ulasan pengalaman Anda saat bertransaksi di QRIS ini. Model NLP IndoBERT 7-Kelas akan secara otomatis mengklasifikasikan kategori masalah, mendeteksi indikasi penipuan, dan menentukan tingkat keparahan (Severity).
-                        </div>
-                        <textarea id="fbComment" class="receipt-textarea" rows="5"
-                            placeholder="Tuliskan pengalaman Anda... (Contoh: Transaksi berhasil lancar dan nama toko di kasir sesuai, atau Stiker QRIS terlihat ditimpa stiker baru yang mencurigakan)"></textarea>
+                        <textarea id="fbComment" class="receipt-textarea" rows="4"
+                            placeholder="Ceritakan pengalaman atau kendala Anda saat bertransaksi..."></textarea>
                         
                         <div class="receipt-textarea-footer">
                             <span id="charCount">0 karakter</span>
@@ -343,64 +332,64 @@
                                 <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                                 </svg>
-                                Analisis Otomatis IndoBERT
+                                Analisis Otomatis AI
                             </span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tombol Kirim -->
+                <!-- Tombol Aksi -->
                 <button type="button" class="btn-feedback-main" id="btnSubmit" onclick="handleFeedbackSubmit()">
-                    <span class="btn-text">Kirim Feedback ke LaQris</span>
+                    <span class="btn-text">Kirim Feedback</span>
                     <div class="btn-spinner"></div>
                 </button>
                 <button type="button" class="btn-secondary-action" onclick="goBack()">
-                    Batal &amp; Kembali
+                    Batal
                 </button>
             </div>
 
-            <!-- ── Result Section (Muncul setelah NLP IndoBERT selesai) ── -->
+            <!-- ── Result Section (Muncul setelah selesai) ── -->
             <div id="resultSection" class="d-none">
-                <!-- CARD HASIL ANALISIS INDOBERT AI (Persis gaya screenshot scan.html) -->
+                <!-- CARD 1: HASIL ANALISIS AI -->
                 <div class="receipt-card">
-                    <div class="receipt-section-title">Hasil Analisis IndoBERT AI</div>
+                    <div class="receipt-section-title">Hasil Analisis AI</div>
                     <div class="receipt-row">
-                        <span class="receipt-label">Kategori Terdeteksi</span>
+                        <span class="receipt-label">Kategori Laporan</span>
                         <span class="receipt-val val-blue" id="resCategory">-</span>
                     </div>
                     <div class="receipt-row">
-                        <span class="receipt-label">Tingkat Keparahan</span>
+                        <span class="receipt-label">Tingkat Risiko</span>
                         <span class="receipt-val" id="resSeverity">-</span>
                     </div>
                     <div class="receipt-row">
-                        <span class="receipt-label">Tingkat Bukti (Evidence)</span>
+                        <span class="receipt-label">Validitas Bukti</span>
                         <span class="receipt-val val-safe" id="resEvidence">-</span>
                     </div>
                     <div class="receipt-row">
-                        <span class="receipt-label">Akurasi Model</span>
+                        <span class="receipt-label">Akurasi Deteksi</span>
                         <span class="receipt-val" id="resConfidence">-</span>
                     </div>
                 </div>
 
-                <!-- CARD DAMPAK REPUTASI EMRS -->
+                <!-- CARD 2: REPUTASI TOKO -->
                 <div class="receipt-card">
-                    <div class="receipt-section-title">Pembaruan Reputasi Toko (EMRS)</div>
+                    <div class="receipt-section-title">Reputasi Toko (EMRS)</div>
                     <div class="receipt-row">
-                        <span class="receipt-label">Skor Reputasi Sebelumnya</span>
-                        <span class="receipt-val" id="resPrevScore">75.0 / 100</span>
+                        <span class="receipt-label">Skor Sebelumnya</span>
+                        <span class="receipt-val" id="resPrevScore">75.0</span>
                     </div>
                     <div class="receipt-row">
-                        <span class="receipt-label">Skor Reputasi Baru</span>
-                        <span class="receipt-val val-safe" id="resNewScore">94.0 / 100</span>
+                        <span class="receipt-label">Skor Baru</span>
+                        <span class="receipt-val val-safe" id="resNewScore">94.0</span>
                     </div>
                     <div class="receipt-row">
-                        <span class="receipt-label">Rekomendasi Sistem</span>
-                        <span class="receipt-val" id="resAction" style="font-size: 0.82rem; font-weight: 600;">-</span>
+                        <span class="receipt-label">Status Toko</span>
+                        <span class="receipt-val" id="resAction" style="font-size: 0.85rem; font-weight: 700;">Aman &amp; Terpercaya</span>
                     </div>
                 </div>
 
                 <button type="button" class="btn-feedback-main" onclick="goBack()">
-                    <span class="btn-text">Selesai &amp; Kembali</span>
+                    <span class="btn-text">Selesai</span>
                 </button>
             </div>
         </div>
@@ -412,12 +401,12 @@
         let txRef = params.get('tx_ref') || params.get('transaction_ref') || params.get('transaction_id') || '';
         let sessionId = params.get('session_id') || params.get('verification_id') || '';
         let merchantName = params.get('merchant') || params.get('merchant_name') || '';
-        let backUrl = params.get('back') || 'scan.html';
+        let backUrl = params.get('back') || 'dashboard.html';
 
         let currentUserId = '';
 
         document.addEventListener('DOMContentLoaded', async () => {
-            // A. Ambil profil user jika tersimpan
+            // A. User profile
             try {
                 const rawUser = localStorage.getItem('laqris_user') || sessionStorage.getItem('laqris_user');
                 if (rawUser) {
@@ -426,7 +415,7 @@
                 }
             } catch (e) {}
 
-            // B. Resolve Nama Merchant & Kota
+            // B. Resolve Merchant & City
             if (!merchantName && sessionId) {
                 try {
                     const sRes = await fetch(`/api/v1/verify/${encodeURIComponent(sessionId)}`);
@@ -459,18 +448,18 @@
                 document.getElementById('lblCity').textContent = 'INDONESIA';
             }
 
-            // C. Ref Transaksi & Evidence Level
+            // C. Transaction Ref & Evidence
             if (txRef) {
                 document.getElementById('lblTxRef').textContent = txRef;
-                document.getElementById('lblEvidenceLevel').textContent = 'Level 2 (Transaksi Resmi • 100%)';
+                document.getElementById('lblEvidenceLevel').textContent = 'Terverifikasi Transaksi';
                 document.getElementById('lblEvidenceLevel').className = 'receipt-val val-safe';
             } else if (sessionId) {
-                document.getElementById('lblTxRef').textContent = 'Terikat Sesi: ' + sessionId.slice(-8);
-                document.getElementById('lblEvidenceLevel').textContent = 'Level 1 (Sesi Scan • 50%)';
+                document.getElementById('lblTxRef').textContent = sessionId.slice(-8);
+                document.getElementById('lblEvidenceLevel').textContent = 'Sesi Scan Terdaftar';
                 document.getElementById('lblEvidenceLevel').className = 'receipt-val val-blue';
             } else {
                 document.getElementById('lblTxRef').textContent = 'Tidak Terikat';
-                document.getElementById('lblEvidenceLevel').textContent = 'Level 0 (Ulasan Pengguna • 25%)';
+                document.getElementById('lblEvidenceLevel').textContent = 'Ulasan Pengguna';
                 document.getElementById('lblEvidenceLevel').className = 'receipt-val';
             }
 
@@ -522,7 +511,7 @@
                 if (res.ok && data.success) {
                     renderResult(data);
                 } else {
-                    alert('Gagal memproses feedback: ' + (data.detail || data.message || 'Terjadi kesalahan sistem.'));
+                    alert('Gagal mengirim feedback: ' + (data.detail || data.message || 'Terjadi kesalahan sistem.'));
                     btn.classList.remove('loading');
                     btn.disabled = false;
                 }
@@ -540,40 +529,45 @@
             // Kategori
             document.getElementById('resCategory').textContent = data.category_title || data.event_type || 'Ulasan Terproses';
 
-            // Severity
+            // Severity (Indonesian friendly)
             const sev = (data.severity || 'LOW').toUpperCase();
             const sevEl = document.getElementById('resSeverity');
-            sevEl.textContent = sev;
-            if (sev === 'CRITICAL' || sev === 'HIGH') {
+            if (sev === 'CRITICAL') {
+                sevEl.textContent = 'Kritikal (Berbahaya)';
+                sevEl.className = 'receipt-val val-danger';
+            } else if (sev === 'HIGH') {
+                sevEl.textContent = 'Tinggi (Waspada)';
                 sevEl.className = 'receipt-val val-danger';
             } else if (sev === 'MEDIUM') {
+                sevEl.textContent = 'Sedang';
                 sevEl.className = 'receipt-val val-blue';
             } else {
+                sevEl.textContent = 'Rendah (Aman)';
                 sevEl.className = 'receipt-val val-safe';
             }
 
             // Evidence Level
             const ev = data.evidence_level ?? 0;
             if (ev >= 2) {
-                document.getElementById('resEvidence').textContent = 'Level 2 (Transaksi Resmi)';
+                document.getElementById('resEvidence').textContent = 'Terverifikasi Transaksi';
             } else if (ev === 1) {
-                document.getElementById('resEvidence').textContent = 'Level 1 (Sesi Verifikasi)';
+                document.getElementById('resEvidence').textContent = 'Terikat Sesi Scan';
             } else {
-                document.getElementById('resEvidence').textContent = 'Level 0 (Ulasan Pengguna)';
+                document.getElementById('resEvidence').textContent = 'Ulasan Pengguna';
             }
 
             // Confidence
             const conf = data.confidence != null ? Math.round(data.confidence * 100) : 95;
-            document.getElementById('resConfidence').textContent = `${conf}% Akurasi`;
+            document.getElementById('resConfidence').textContent = `${conf}%`;
 
             // EMRS Score Change
             const prev = data.previous_reputation_score != null ? data.previous_reputation_score.toFixed(1) : '75.0';
             const curr = data.new_reputation_score != null ? data.new_reputation_score.toFixed(1) : '75.0';
-            document.getElementById('resPrevScore').textContent = `${prev} / 100`;
-            document.getElementById('resNewScore').textContent = `${curr} / 100`;
+            document.getElementById('resPrevScore').textContent = prev;
+            document.getElementById('resNewScore').textContent = curr;
 
-            // Action
-            document.getElementById('resAction').textContent = data.recommended_action || 'Merchant terverifikasi aman.';
+            // Action / Status Toko
+            document.getElementById('resAction').textContent = data.recommended_action || 'Aman & Terpercaya';
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
