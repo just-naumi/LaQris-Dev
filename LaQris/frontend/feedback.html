@@ -478,7 +478,8 @@
                 // Fallback informasi proses AI / Sistem
                 const resStatusText = document.getElementById('resStatusText');
                 if (data.detected_category) {
-                    resStatusText.textContent = 'Kategori Terdeteksi: ' + data.detected_category;
+                    const confText = data.confidence ? ` (${Math.round(data.confidence * 100)}%)` : '';
+                    resStatusText.textContent = `${data.detected_category}${confText}`;
                 } else {
                     resStatusText.textContent = 'Feedback sedang diproses oleh sistem';
                 }

@@ -444,8 +444,8 @@ async function submitFeedback() {
 
         closeFeedbackModal();
 
-        const evidenceStatus = hasEvidence ? "Menunggu Verifikasi (Bukti Terlampir)" : "Tanpa Bukti";
-        const processInfo = result.detected_category ? `Kategori Terdeteksi: <strong>${result.detected_category}</strong>` : "Feedback sedang diproses oleh sistem.";
+        const confText = result.confidence ? ` (${Math.round(result.confidence * 100)}%)` : '';
+        const processInfo = result.detected_category ? `Kategori Terdeteksi: <strong>${result.detected_category}${confText}</strong>` : "Feedback sedang diproses oleh sistem.";
 
         if (window.Swal) {
             Swal.fire({
