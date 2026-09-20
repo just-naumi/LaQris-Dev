@@ -316,6 +316,9 @@ class FeedbackResponseSchema(BaseModel):
     message: str
     evidence_level: int
     new_reputation_score: float
+    detected_category: Optional[str] = None
+    detected_category_key: Optional[str] = None
+    confidence: Optional[float] = None
 
 
 # ─────────────────────────────────────────────────────────────

@@ -23,6 +23,7 @@ from engine import (
     get_session_archive_data,
     list_all_scan_sessions
 )
+from nlp_classifier import classify_feedback
 
 # Auto-initialize SQLite database on startup
 init_db()
@@ -203,6 +204,13 @@ def submit_feedback(payload: schemas.FeedbackSubmitSchema):
     )
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result["message"])
+
+    # Jalankan klasifikasi model NLP pada deskripsi pengalaman
+    nlp_res = classify_feedback(payload.description)
+    result["detected_category"] = nlp_res["category_title"]
+    result["detected_category_key"] = nlp_res["category_key"]
+    result["confidence"] = nlp_res["confidence"]
+
     return result
 
 
