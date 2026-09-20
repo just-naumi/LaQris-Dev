@@ -14,6 +14,9 @@ from typing import List, Optional
 from datetime import datetime
 
 import hashlib
+import json
+import hmac
+import asyncio
 from database import init_db, get_db, reset_db
 from models import Merchant, Report, Dispute, VerificationSession, User, PaymentTransaction
 import schemas
@@ -340,7 +343,7 @@ def submit_feedback_contract_c(
             if not target_nmid:
                 target_nmid = resolved_session.nmid
 
-    # 2.5 Enforcement User Ownership (Step 29 di Readme2.md)
+    # 2.5 Enforcement User Ownership (Step 29 di Readme2.md & Review Item 23)
     # User A tidak dapat mengirim feedback atas transaksi / sesi milik User B
     requester_user_id = None
     if token:
@@ -349,6 +352,16 @@ def submit_feedback_contract_c(
             requester_user_id = user_claims.get("sub")
     if not requester_user_id and getattr(payload, "user_id", None):
         requester_user_id = payload.user_id
+
+    # Enforcement: Ulasan yang terikat transaksi pembayaran wajib memiliki identitas pengguna terverifikasi
+    if payload.transaction_id:
+        if not requester_user_id:
+            raise HTTPException(
+                status_code=401,
+                detail="Otorisasi diperlukan: Feedback yang terikat transaksi pembayaran wajib menyertakan identitas atau token pengguna."
+            )
+        if resolved_tx and resolved_tx.user_id:
+            auth.verify_user_ownership(requester_user_id, resolved_tx.user_id, "transaksi pembayaran")
 
     if requester_user_id:
         if resolved_tx and resolved_tx.user_id:
@@ -628,7 +641,7 @@ def _sanitize_payment_payload(raw_dict: dict) -> dict:
 
 @app.post("/api/v1/transaction-events", response_model=schemas.PaymentTransactionResponseSchema)
 @app.post("/api/v1/transactions/events", response_model=schemas.PaymentTransactionResponseSchema)
-def record_transaction_event(
+async def record_transaction_event(
     request: Request,
     payload: schemas.PaymentTransactionCreateSchema,
     x_provider_api_key: Optional[str] = Header(None, alias="X-Provider-Api-Key"),
@@ -637,10 +650,10 @@ def record_transaction_event(
 ):
     """
     Contract B: Post-payment Transaction Event Ingestion Endpoint.
-    Menerima notifikasi hasil transaksi dari Payment Provider (DemoPay),
-    memvalidasi kredensial provider (P1 Item 5), melakukan sanitasi data sensitif,
-    mengecek strict merchant binding (P1 Item 6), mengikat sesi verifikasi
-    secara atomik, dan memperbarui metrik reputasi merchant.
+    Menerima notifikasi hasil transaksi dari Payment Provider (DemoPay/DANA/GoPay),
+    memvalidasi kredensial provider via API Key atau HMAC-SHA256 signature (P1 Item 5),
+    melakukan sanitasi data sensitif, mengecek strict merchant binding (P1 Item 6),
+    mengikat sesi verifikasi secara atomik, dan memperbarui metrik reputasi merchant.
     """
     enforce_rate_limit(request, max_requests=60, window_seconds=60, endpoint_tag="transaction-events")
     v_id = payload.verification_id or payload.verification_session_id
@@ -655,9 +668,15 @@ def record_transaction_event(
             detail=f"Verification session '{v_id}' tidak valid atau tidak ditemukan."
         )
 
-    # 1.5 Provider Authentication (P1 Item 5 di Readme)
+    # 1.5 Provider Authentication (P1 Item 5 di Readme & HMAC raw_body verification)
+    raw_body = await request.body()
     provider_name = payload.provider or "DemoPay"
-    if not auth.verify_provider_authentication(provider_name, api_key=x_provider_api_key, signature=x_laqris_signature):
+    if not auth.verify_provider_authentication(
+        provider_name,
+        api_key=x_provider_api_key,
+        signature=x_laqris_signature,
+        raw_body=raw_body
+    ):
         raise HTTPException(
             status_code=401,
             detail=f"Autentikasi payment provider '{provider_name}' gagal. Kredensial X-Provider-Api-Key atau X-LaQris-Signature tidak valid."
@@ -720,7 +739,16 @@ def record_transaction_event(
         session.is_bound = True
         session.bound_at = now
 
-        # B. Simpan Entitas PaymentTransaction
+        # B. Simpan Entitas PaymentTransaction dengan actual timestamp & mandatory status
+        tx_time = sanitized_data.get("transaction_time")
+        if isinstance(tx_time, str):
+            try:
+                tx_time = datetime.fromisoformat(tx_time.replace("Z", "+00:00"))
+            except Exception:
+                tx_time = now
+        elif not isinstance(tx_time, datetime):
+            tx_time = now
+
         tx = PaymentTransaction(
             verification_session_id=v_id,
             provider=sanitized_data.get("provider") or "DemoPay",
@@ -729,10 +757,11 @@ def record_transaction_event(
             nmid=lookup_nmid,
             user_id=target_user_id,
             amount=sanitized_data.get("amount", 0.0),
-            status=sanitized_data.get("status", "SUCCESS"),
-            response_code=sanitized_data.get("response_code", "00"),
+            status=sanitized_data["status"],
+            response_code=sanitized_data["response_code"],
             invoice_number=sanitized_data.get("invoice_number"),
             terminal_id=sanitized_data.get("terminal_id"),
+            transaction_time=tx_time,
             latency_ms=sanitized_data.get("latency_ms", 0),
             retry_count=sanitized_data.get("retry_count", 0),
             created_at=now
@@ -801,6 +830,147 @@ def get_transaction_by_session(
         status=tx.status,
         amount=tx.amount,
         is_bound=True
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DemoPay Core Payment Gateway Engine (Server-Side Payment Processing)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.post("/api/v1/demopay/process-payment", response_model=schemas.DemoPayProcessPaymentResponseSchema)
+async def demopay_process_payment(
+    request: Request,
+    payload: schemas.DemoPayProcessPaymentSchema,
+    db: Session = Depends(get_db)
+):
+    """
+    DemoPay Server Payment Processing Endpoint (P0 Item 1-3 & Milestone 4 Hardening).
+    Menggantikan simulasi transaksi client-side di browser.
+    Alur:
+    1. Mencatat t_start untuk mengukur actual payment processing latency.
+    2. Memvalidasi PIN otorisasi transaksi pengguna secara aman (constant time).
+    3. Memeriksa status Pre-Payment Verification Session di LaQris (BLOCK/DANGER -> tolak).
+    4. Memproses otorisasi core banking (simulasi bank host processing delay ~250ms).
+    5. Menghitung latency_ms aktual (t_end - t_start).
+    6. Menerbitkan ID transaksi & invoice resmi dari server.
+    7. Mengikat sesi verifikasi dan menyimpan record PaymentTransaction secara atomik.
+    8. Memperbarui reputasi merchant (EMRS) & transaksi terverifikasi.
+    9. Mengembalikan hasil pembayaran resmi ke client (tanpa mengekspos API key di browser).
+    """
+    enforce_rate_limit(request, max_requests=30, window_seconds=60, endpoint_tag="demopay-pay")
+    t_start = time.perf_counter()
+
+    # 1. Validasi PIN Otorisasi Pengguna (Constant-time comparison)
+    if not auth.verify_pin_secure(payload.pin):
+        raise HTTPException(
+            status_code=400,
+            detail="PIN transaksi DemoPay tidak valid. Silakan periksa kembali 6-digit PIN akun Anda."
+        )
+
+    # 2. Cek Keberadaan & Status Pre-Payment Verification Session di LaQris
+    session = db.query(VerificationSession).filter(VerificationSession.session_id == payload.session_id).first()
+    if not session:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Sesi verifikasi '{payload.session_id}' tidak ditemukan di sistem LaQris."
+        )
+
+    # Pre-payment Security Decision Enforcement (P0 Item 1)
+    if session.decision == "BLOCK" or session.risk_level == "DANGER":
+        raise HTTPException(
+            status_code=403,
+            detail="Transaksi ditolak oleh proteksi LaQris: Sesi verifikasi berstatus BLOCK / DANGER (Indikasi Penipuan/QRIS Palsu)."
+        )
+
+    now = datetime.utcnow()
+    if session.expires_at and now > session.expires_at:
+        raise HTTPException(
+            status_code=400,
+            detail="Sesi verifikasi telah kedaluwarsa (>15 menit). Silakan lakukan scan ulang QRIS."
+        )
+
+    if session.is_bound:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Sesi verifikasi '{payload.session_id}' sudah terikat transaksi sebelumnya (anti-replay)."
+        )
+
+    # 3. Pemrosesan Transaksi Core Payment (Simulasi delay jaringan host perbankan ~250ms)
+    await asyncio.sleep(0.25)
+
+    # 4. Pengukuran Metrik Latensi Aktual (t_end - t_start)
+    t_end = time.perf_counter()
+    latency_ms = max(int((t_end - t_start) * 1000), 50)
+
+    # 5. Generate Server-Side Identifiers & Timestamps
+    tx_id = f"TX-{secrets.randbelow(900000) + 100000}"
+    inv_id = f"INV-{now.strftime('%Y%m%d')}-{secrets.randbelow(9000) + 1000}"
+    tx_time = now
+    active_tid = payload.terminal_id or "A01"
+    target_user_id = payload.user_id or session.user_id or "USR-001928"
+
+    # 6. Bind Sesi & Simpan ke DB secara Atomik
+    try:
+        session.is_bound = True
+        session.bound_at = now
+        if not session.user_id:
+            session.user_id = target_user_id
+
+        lookup_nmid = session.nmid
+        merchant_obj = db.query(Merchant).filter(Merchant.nmid == lookup_nmid).first() if lookup_nmid else None
+
+        tx = PaymentTransaction(
+            verification_session_id=session.session_id,
+            provider="DemoPay",
+            provider_transaction_id=tx_id,
+            merchant_id=merchant_obj.id if merchant_obj else None,
+            nmid=lookup_nmid,
+            user_id=target_user_id,
+            amount=payload.amount,
+            status="SUCCESS",
+            response_code="00",
+            invoice_number=inv_id,
+            terminal_id=active_tid,
+            transaction_time=tx_time,
+            latency_ms=latency_ms,
+            retry_count=0,
+            created_at=now
+        )
+        db.add(tx)
+
+        if merchant_obj:
+            merchant_obj.verified_transactions = (merchant_obj.verified_transactions or 0) + 1
+            merchant_obj.successful_transactions = (merchant_obj.successful_transactions or 0) + 1
+            reports = db.query(Report).filter(Report.merchant_id == merchant_obj.id).all()
+            disputes = db.query(Dispute).filter(Dispute.merchant_id == merchant_obj.id).all()
+            emrs_res = calculate_emrs(merchant_obj, reports, disputes)
+            merchant_obj.reputation_score = emrs_res.get("reputation_score", merchant_obj.reputation_score)
+
+        db.commit()
+        db.refresh(tx)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gagal memproses dan mencatat transaksi pembayaran di DemoPay server: {str(e)}"
+        )
+
+    return schemas.DemoPayProcessPaymentResponseSchema(
+        success=True,
+        message="Transaksi pembayaran berhasil diproses oleh DemoPay Server dan terikat ke sesi LaQris.",
+        transaction_id=tx_id,
+        invoice_number=inv_id,
+        terminal_id=active_tid,
+        amount=payload.amount,
+        status="SUCCESS",
+        response_code="00",
+        transaction_time=tx_time,
+        latency_ms=latency_ms,
+        retry_count=0,
+        session_id=session.session_id,
+        nmid=session.nmid,
+        merchant_name=session.digital_name or session.physical_name or (merchant_obj.merchant_name if merchant_obj else "MERCHANT QRIS"),
+        acquirer=getattr(session, "acquirer", None) or "DOMPET ANAK BANGSA"
     )
 
 

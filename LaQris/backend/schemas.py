@@ -284,6 +284,37 @@ TransactionEventResponseSchema = PaymentTransactionResponseSchema
 
 
 # ─────────────────────────────────────────────────────────────
+# DemoPay Server-Side Payment Processing Schemas (P0 Item 1-3)
+# ─────────────────────────────────────────────────────────────
+
+class DemoPayProcessPaymentSchema(BaseModel):
+    session_id: str
+    amount: float
+    pin: str
+    terminal_id: Optional[str] = "A01"
+    user_id: Optional[str] = None
+    account_number: Optional[str] = None
+
+
+class DemoPayProcessPaymentResponseSchema(BaseModel):
+    success: bool
+    message: str
+    transaction_id: str
+    invoice_number: str
+    terminal_id: str
+    amount: float
+    status: str
+    response_code: str
+    transaction_time: datetime
+    latency_ms: int
+    retry_count: int = 0
+    session_id: str
+    nmid: Optional[str] = None
+    merchant_name: Optional[str] = None
+    acquirer: Optional[str] = None
+
+
+# ─────────────────────────────────────────────────────────────
 # Merchant Detail Schema (full)
 # ─────────────────────────────────────────────────────────────
 

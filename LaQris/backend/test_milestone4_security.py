@@ -12,6 +12,9 @@ Sesuai Dokumen Readme2.md (Step 28 - Step 31):
 
 import os
 import sys
+import json
+import hmac
+import hashlib
 from fastapi.testclient import TestClient
 
 # Pastikan path modul terdaftar
@@ -305,6 +308,48 @@ def test_milestone4_provider_authentication():
     assert res_ok.status_code == 200, f"Provider auth gagal: {res_ok.text}"
     print("  -> Provider dengan X-Provider-Api-Key valid diterima (HTTP 200).")
 
+    # 3. Panggilan dengan X-LaQris-Signature (HMAC-SHA256 of raw_body) valid
+    s.is_bound = False
+    db.commit()
+    tx_hmac_payload = {
+        "verification_session_id": s_id,
+        "provider": "DemoPay",
+        "provider_transaction_id": "TX-PROV-HMAC-001",
+        "amount": 30000.0,
+        "status": "SUCCESS",
+        "response_code": "00"
+    }
+    raw_payload_bytes = json.dumps(tx_hmac_payload).encode("utf-8")
+    hmac_sig = hmac.new(
+        b"demopay-service-hmac-secret-2026",
+        raw_payload_bytes,
+        hashlib.sha256
+    ).hexdigest()
+    res_hmac = client.post(
+        "/api/v1/transactions/events",
+        content=raw_payload_bytes,
+        headers={
+            "Content-Type": "application/json",
+            "X-LaQris-Signature": hmac_sig
+        }
+    )
+    assert res_hmac.status_code == 200, f"HMAC provider auth gagal: {res_hmac.text}"
+    print("  -> Provider dengan X-LaQris-Signature (HMAC-SHA256) valid diterima (HTTP 200).")
+
+    # 4. Panggilan dengan signature palsu -> 401
+    s.is_bound = False
+    db.commit()
+    res_bad_sig = client.post(
+        "/api/v1/transactions/events",
+        content=raw_payload_bytes,
+        headers={
+            "Content-Type": "application/json",
+            "X-LaQris-Signature": "invalid-hmac-signature-deadbeef"
+        }
+    )
+    assert res_bad_sig.status_code == 401
+    print("  -> Provider dengan signature palsu berhasil ditolak (HTTP 401).")
+
     os.environ["LAQRIS_ENV"] = "development"
 
 
@@ -370,6 +415,95 @@ def test_milestone4_transaction_status_enum_validation():
     print("  -> Status transaksi di luar enum berhasil ditolak oleh Pydantic schema (HTTP 422).")
 
 
+def test_milestone4_demopay_server_processing():
+    print("\n[TEST 11] Pengujian DemoPay Server-Side Payment Processing Gateway (P0 Item 1-3)...")
+    db = next(get_db())
+
+    # 1. Uji penolakan sesi BLOCK / DANGER oleh DemoPay Server
+    block_s_id = "LQ-V-TEST-DEMOPAY-BLOCK"
+    existing_b = db.query(VerificationSession).filter(VerificationSession.session_id == block_s_id).first()
+    if existing_b:
+        db.delete(existing_b)
+        db.commit()
+
+    s_block = VerificationSession(
+        session_id=block_s_id,
+        user_id="USR-001928",
+        nmid="ID1020000000999",
+        trust_score=10.0,
+        risk_level="DANGER",
+        decision="BLOCK"
+    )
+    db.add(s_block)
+    db.commit()
+
+    res_block = client.post("/api/v1/demopay/process-payment", json={
+        "session_id": block_s_id,
+        "amount": 50000.0,
+        "pin": "123456"
+    })
+    assert res_block.status_code == 403, f"Harusnya 403 BLOCK, dapat {res_block.status_code}"
+    assert "DANGER" in res_block.json()["detail"] or "BLOCK" in res_block.json()["detail"]
+    print(f"  -> DemoPay menolak sesi berstatus BLOCK / DANGER: {res_block.json()['detail']}")
+
+    # 2. Uji PIN salah pada DemoPay Server
+    allow_s_id = "LQ-V-TEST-DEMOPAY-ALLOW"
+    existing_a = db.query(VerificationSession).filter(VerificationSession.session_id == allow_s_id).first()
+    if existing_a:
+        db.delete(existing_a)
+        db.commit()
+
+    s_allow = VerificationSession(
+        session_id=allow_s_id,
+        user_id="USR-001928",
+        nmid="ID1020000000001",
+        digital_name="WARUNG MAKAN SEDAP",
+        trust_score=98.0,
+        risk_level="NORMAL",
+        decision="ALLOW"
+    )
+    db.add(s_allow)
+    db.commit()
+
+    res_wrong_pin = client.post("/api/v1/demopay/process-payment", json={
+        "session_id": allow_s_id,
+        "amount": 25000.0,
+        "pin": "999999"
+    })
+    assert res_wrong_pin.status_code == 400
+    assert "PIN" in res_wrong_pin.json()["detail"]
+    print("  -> DemoPay Server berhasil menolak PIN yang salah (HTTP 400).")
+
+    # 3. Uji pemrosesan pembayaran sukses & pengukuran metrik latensi nyata
+    res_pay_ok = client.post("/api/v1/demopay/process-payment", json={
+        "session_id": allow_s_id,
+        "amount": 25000.0,
+        "pin": "123456",
+        "terminal_id": "A01"
+    })
+    assert res_pay_ok.status_code == 200, f"DemoPay pay gagal: {res_pay_ok.text}"
+    p_data = res_pay_ok.json()
+    assert p_data["success"] is True
+    assert p_data["status"] == "SUCCESS"
+    assert p_data["transaction_id"].startswith("TX-")
+    assert p_data["invoice_number"].startswith("INV-")
+    assert p_data["latency_ms"] >= 100, f"Latency harus diukur nyata (>100ms), dapat {p_data['latency_ms']}ms"
+    assert "transaction_time" in p_data
+    print(f"  -> DemoPay Server sukses memproses: TX={p_data['transaction_id']}, Invoice={p_data['invoice_number']}")
+    print(f"  -> Actual Measured Latency: {p_data['latency_ms']} ms (bukan hard-coded!)")
+
+    # 4. Verifikasi state database (Anti-replay & PaymentTransaction persistence)
+    db.expire_all()
+    s_updated = db.query(VerificationSession).filter(VerificationSession.session_id == allow_s_id).first()
+    assert s_updated.is_bound is True, "Sesi verifikasi harus diikat (is_bound=True)"
+
+    tx_rec = db.query(PaymentTransaction).filter(PaymentTransaction.provider_transaction_id == p_data["transaction_id"]).first()
+    assert tx_rec is not None, "Record PaymentTransaction harus tersimpan di database"
+    assert tx_rec.latency_ms == p_data["latency_ms"]
+    assert tx_rec.status == "SUCCESS"
+    print("  -> Database persistence terverifikasi: Session terikat & PaymentTransaction tersimpan aman.")
+
+
 if __name__ == "__main__":
     print("=" * 70)
     print("MENJALANKAN PENGUJIAN OTOMATIS MILESTONE 4: SECURITY HARDENING")
@@ -384,6 +518,7 @@ if __name__ == "__main__":
     test_milestone4_provider_authentication()
     test_milestone4_strict_merchant_binding()
     test_milestone4_transaction_status_enum_validation()
+    test_milestone4_demopay_server_processing()
     print("=" * 70)
-    print("SELURUH 10 PENGUJIAN KEAMANAN ROADMAP MILESTONE 4 BERHASIL 100%!")
+    print("SELURUH 11 PENGUJIAN KEAMANAN ROADMAP MILESTONE 4 BERHASIL 100%!")
     print("=" * 70)

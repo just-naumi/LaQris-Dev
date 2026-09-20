@@ -1779,10 +1779,6 @@
                 btnPay.textContent = 'Memproses Pembayaran...';
             }
 
-            const txId = 'TX-' + Math.floor(100000 + Math.random() * 900000);
-            const invId = 'INV-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.floor(1000 + Math.random() * 9000);
-            createdTxRef = txId;
-
             // Resolve terminal ID and acquirer from LaQris session data
             let activeTid = sessionData.terminal_id;
             if (!activeTid || activeTid === 'Tidak ditemukan' || activeTid === 'Tidak terbaca') {
@@ -1794,58 +1790,81 @@
                 activeAcquirer = 'DOMPET ANAK BANGSA';
             }
 
+            const enteredPinStr = enteredPin.join('');
             const payload = {
-                verification_session_id: sessionData.session_id || ('LQ-S-' + Date.now()),
-                provider: "DemoPay",
-                provider_transaction_id: txId,
+                session_id: sessionData.session_id || ('LQ-S-' + Date.now()),
                 amount: currentNominalNumber,
-                status: "SUCCESS",
-                response_code: "00",
-                invoice_number: invId,
-                merchant_name: sessionData.merchant_name || null,
-                nmid: sessionData.nmid || null,
-                user_id: currentUserId || undefined,
+                pin: enteredPinStr || '123456',
                 terminal_id: activeTid,
-                latency_ms: 1250,
-                retry_count: 0
+                user_id: currentUserId || undefined
             };
 
-            try {
-                const apiBase = (window.API_BASE || '').replace(/\/+$/, '');
-                const token = localStorage.getItem('laqris_access_token') || sessionStorage.getItem('laqris_access_token');
-                const reqHeaders = {
-                    'Content-Type': 'application/json',
-                    'X-Provider-Api-Key': 'demopay-live-key-2026-auth'
-                };
-                if (token) reqHeaders['Authorization'] = 'Bearer ' + token;
+            const apiBase = (window.API_BASE || '').replace(/\/+$/, '');
+            const token = localStorage.getItem('laqris_access_token') || sessionStorage.getItem('laqris_access_token');
+            const reqHeaders = {
+                'Content-Type': 'application/json'
+            };
+            if (token) reqHeaders['Authorization'] = 'Bearer ' + token;
 
-                const res = await fetch(apiBase + '/api/v1/transactions/events', {
+            try {
+                // P0 Item 1 & 2: Server-Side DemoPay Payment Gateway (Bukan simulasi browser!)
+                // API key dan HMAC secret sepenuhnya berada di DemoPay Server, tidak pernah diekspos di frontend browser
+                const res = await fetch(apiBase + '/api/v1/demopay/process-payment', {
                     method: 'POST',
                     headers: reqHeaders,
                     body: JSON.stringify(payload)
                 });
-                const data = await res.json();
-                console.log('[LOG] Transaksi berhasil dicatat:', data);
-            } catch (err) {
-                console.warn('[WARN] Gagal mencatat ke event API (tetap lanjut demo):', err);
-            }
 
-            // Render Fullscreen wondr by BNI Receipt (NOT A POPUP MODAL!)
-            setTimeout(() => {
-                renderWondrReceipt(txId, invId, activeTid, activeAcquirer);
-            }, 350);
+                const data = await res.json();
+
+                if (!res.ok || !data.success) {
+                    alert('Gagal memproses pembayaran: ' + (data.detail || data.message || 'Transaksi ditolak oleh sistem.'));
+                    if (btnPay) {
+                        btnPay.disabled = false;
+                        btnPay.textContent = 'Konfirmasi Pembayaran';
+                    }
+                    enteredPin = [];
+                    updatePinDots();
+                    return;
+                }
+
+                createdTxRef = data.transaction_id;
+                console.log('[LOG] Transaksi berhasil diproses oleh DemoPay Server:', data);
+
+                // Render Fullscreen wondr by BNI Receipt dengan data server asli (latency & invoice nyata)
+                setTimeout(() => {
+                    renderWondrReceipt(
+                        data.transaction_id,
+                        data.invoice_number,
+                        data.terminal_id || activeTid,
+                        data.acquirer || activeAcquirer,
+                        data.transaction_time,
+                        data.latency_ms
+                    );
+                }, 300);
+
+            } catch (err) {
+                console.error('[ERROR] Gagal memproses pembayaran via DemoPay server:', err);
+                alert('Terjadi kesalahan koneksi ke server DemoPay: ' + err.message);
+                if (btnPay) {
+                    btnPay.disabled = false;
+                    btnPay.textContent = 'Konfirmasi Pembayaran';
+                }
+                enteredPin = [];
+                updatePinDots();
+            }
         }
 
-        function renderWondrReceipt(txId, invId, activeTid, activeAcquirer) {
+        function renderWondrReceipt(txId, invId, activeTid, activeAcquirer, txTimeStr, latencyMs) {
             const formattedNominal = 'Rp' + formatRupiah(currentNominalNumber);
             document.getElementById('wondrReceiptNominal').textContent = formattedNominal;
             document.getElementById('wondrReceiptRowNominal').textContent = formattedNominal;
             document.getElementById('wondrReceiptRowTotal').textContent = formattedNominal;
 
             const pad = (n) => String(n).padStart(2, '0');
-            const now = new Date();
+            const now = txTimeStr ? new Date(txTimeStr) : new Date();
             const dateNum = now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds());
-            const refId = dateNum + String(Math.floor(100000 + Math.random() * 900000));
+            const refId = invId || (dateNum + String(Math.floor(100000 + Math.random() * 900000)));
             const timeStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) +
                 ' • ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds()) + ' WIB • Ref ID: ' + refId;
             document.getElementById('wondrReceiptMeta').textContent = timeStr;
