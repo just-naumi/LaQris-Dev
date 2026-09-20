@@ -46,17 +46,18 @@ from nlp_classifier import classify_feedback
 init_db()
 
 app = FastAPI(
-    title="LaQris POC Tahap 2 — QRIS Fraud Detection & Evidence-Based Merchant Reputation",
+    title="Aplikasi Server LaQris — Deteksi Keaslian QRIS & Reputasi Toko",
     description=(
-        "Backend API untuk deteksi stiker QRIS ditimpa, matching identitas fisik vs digital, "
-        "dan kalkulasi EMRS (Evidence-Based Merchant Reputation Score) berbasis "
-        "T·A·L·C·D dengan time decay dan evidence weighting."
+        "Sistem perlindungan transaksi pembayaran QRIS dari penipuan stiker palsu, "
+        "pencocokan nama fisik toko dengan data QR digital, serta perhitungan reputasi toko "
+        "berdasarkan rekam jejak nyata."
     ),
     version="2.0.0"
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Step 30 di Readme2.md: CORS Restriction & Production Baseline
+# Pengaturan Izin Akses Halaman Web (CORS)
+# Mengizinkan frontend lokal dan jaringan yang aman untuk berkomunikasi dengan server
 # ─────────────────────────────────────────────────────────────────────────────
 ALLOWED_ORIGINS = [
     "http://localhost:8000",
@@ -67,7 +68,7 @@ ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "null"  # Mengizinkan file HTML lokal yang dibuka via protokol file://
+    "null"  # Mengizinkan file HTML lokal yang dibuka langsung di browser
 ]
 custom_origins_env = os.getenv("LAQRIS_ALLOWED_ORIGINS")
 if custom_origins_env:
@@ -87,11 +88,12 @@ app.add_middleware(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Step 30 di Readme2.md: In-Memory Sliding Window Rate Limiter
+# Sistem Pembatas Laju Panggilan (Rate Limiter)
+# Mencegah pengiriman data berlebihan atau serangan otomatis yang membebani server
 # ─────────────────────────────────────────────────────────────────────────────
 class SlidingWindowRateLimiter:
     """
-    In-memory thread-safe rate limiter untuk mencegah brute force dan flooding API.
+    Pengatur antrean panggilan untuk menjaga server tetap stabil dan responsif.
     """
     def __init__(self):
         self._records = defaultdict(list)
@@ -102,7 +104,7 @@ class SlidingWindowRateLimiter:
         cutoff = now - window_seconds
         with self._lock:
             timestamps = self._records[key]
-            # Hapus timestamp di luar window waktu
+            # Hapus catatan waktu panggilan yang sudah melewati batas waktu
             self._records[key] = [t for t in timestamps if t > cutoff]
             if len(self._records[key]) >= max_requests:
                 oldest = self._records[key][0]
@@ -114,7 +116,7 @@ class SlidingWindowRateLimiter:
 rate_limiter = SlidingWindowRateLimiter()
 
 def enforce_rate_limit(request: Request, max_requests: int, window_seconds: int = 60, endpoint_tag: str = "generic"):
-    """Validasi pembatasan laju panggilan (Rate Limiter) per IP client."""
+    """Pemeriksaan kuota panggilan per alamat IP perangkat pengguna."""
     client_ip = request.client.host if request.client else "127.0.0.1"
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
@@ -135,16 +137,17 @@ FOLDER_FRONTEND = os.path.abspath(os.path.join(FOLDER_BACKEND, "..", "frontend")
 os.makedirs(FOLDER_STATIC, exist_ok=True)
 os.makedirs(os.path.join(FOLDER_STATIC, "vis_output"), exist_ok=True)
 
-# Mount static file routes
+# Menghubungkan folder berkas statis gambar
 app.mount("/static", StaticFiles(directory=FOLDER_STATIC), name="static")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Health Check
+# Pemeriksaan Kondisi Server (Health Check)
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.get("/api/health")
 def health_check():
+    """Mengecek apakah server aktif dan database terhubung dengan baik."""
     return {
         "status": "ok",
         "app": "LaQris POC Tahap 2",
@@ -155,7 +158,7 @@ def health_check():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Scan Endpoint (Main Pipeline)
+# Pintu Masuk Pemindaian QRIS (Scan Endpoint)
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.post("/api/scan")
@@ -167,14 +170,12 @@ async def scan_qris_endpoint(
     db: Session = Depends(get_db)
 ):
     """
-    Main pipeline endpoint.
-    Menerima foto QRIS (upload atau nama sampel), menjalankan:
-    1. Dual YOLO + TrOCR physical extraction
-    2. EMVCo QR payload parsing
-    3. Identity matching
-    4. EMRS reputation scoring (terpisah dari QR risk)
-
-    Returns: { session_id, current_qr_risk, merchant_reputation, visualization_url }
+    Alur utama pemindaian QRIS:
+    1. Membaca foto QRIS (unggahan foto atau sampel gambar).
+    2. Mendeteksi barcode dan membaca nama toko pada stiker fisik (AI Vision & OCR).
+    3. Membaca data digital QRIS (NMID, Nama Usaha, Kota, Saldo/Metode).
+    4. Mencocokkan nama stiker fisik vs data digital untuk mendeteksi stiker palsu/ditimpa.
+    5. Menghitung nilai keamanan QR saat ini dan nilai reputasi toko dari database.
     """
     enforce_rate_limit(request, max_requests=30, window_seconds=60, endpoint_tag="scan-verify")
     folder_project_utama = os.path.abspath(os.path.join(FOLDER_BACKEND, "..", ".."))

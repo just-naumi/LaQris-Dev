@@ -3,21 +3,34 @@ from datetime import datetime, timedelta
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-# Path ke file database SQLite
+# Modul Database LaQris
+# Berfungsi untuk mengelola penyimpanan data aplikasi menggunakan SQLite.
+# Data yang disimpan meliputi: akun pengguna, daftar toko/merchant, sesi scan QRIS,
+# riwayat verifikasi, serta laporan dan ulasan dari pembeli.
+
 FOLDER_BACKEND = os.path.dirname(os.path.abspath(__file__))
 PATH_SQLITE_DB = os.path.join(FOLDER_BACKEND, "database.sqlite")
 
+# Alamat koneksi ke file database lokal
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{PATH_SQLITE_DB}"
 
+# Mesin koneksi database SQLite
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
 )
+# Pembuat sesi kerja database untuk membaca atau menulis data
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Fondasi dasar tabel database
 Base = declarative_base()
 
 
 def get_db():
+    """
+    Fungsi pembuka sesi koneksi database.
+    Membuka koneksi saat server membutuhkan data, dan otomatis menutupnya kembali
+    setelah proses selesai agar hemat memori dan tidak mengunci file database.
+    """
     db = SessionLocal()
     try:
         yield db
@@ -27,25 +40,28 @@ def get_db():
 
 def init_db():
     """
-    Inisialisasi tabel SQLite dan auto-seed data reputasi merchant
-    dengan skema EMRS (Evidence-Based Merchant Reputation Score).
+    Fungsi persiapan awal database:
+    1. Membuat seluruh tabel otomatis jika file database masih baru.
+    2. Menyesuaikan kolom tabel secara aman jika ada pembaruan sistem.
+    3. Mengisi beberapa data toko contoh agar aplikasi langsung siap dicoba.
     """
     import models
     from sqlalchemy import inspect
 
+    # Buat seluruh tabel berdasarkan rancangan models.py
     models.Base.metadata.create_all(bind=engine)
 
-    # Auto-migrate/rebuild if 'users' table is from old schema
+    # Pemeriksaan otomatis: jika tabel pengguna menggunakan format lama, perbarui struktur
     inspector = inspect(engine)
     if "users" in inspector.get_table_names():
         cols = [c["name"] for c in inspector.get_columns("users")]
         if "user_id" not in cols:
-            print("[LOG] Skema tabel 'users' lama terdeteksi. Mereset & memperbarui tabel SQLite...")
+            print("[INFO] Format tabel pengguna lama terdeteksi. Memperbarui struktur tabel...")
             models.Base.metadata.drop_all(bind=engine)
             models.Base.metadata.create_all(bind=engine)
             inspector = inspect(engine)
 
-    # Safe in-place migration for verification_sessions hardening
+    # Penambahan kolom baru secara otomatis dan aman jika belum ada
     if "verification_sessions" in inspector.get_table_names():
         v_cols = [c["name"] for c in inspector.get_columns("verification_sessions")]
         with engine.connect() as conn:
@@ -65,7 +81,6 @@ def init_db():
                 conn.execute(text("ALTER TABLE verification_sessions ADD COLUMN amount_locked BOOLEAN DEFAULT 0"))
             conn.commit()
 
-    # Safe in-place migration for payment_transactions user_id
     if "payment_transactions" in inspector.get_table_names():
         p_cols = [c["name"] for c in inspector.get_columns("payment_transactions")]
         with engine.connect() as conn:
@@ -75,11 +90,12 @@ def init_db():
 
     db = SessionLocal()
     try:
+        # Jika data toko sudah ada, lewati proses pengisian awal
         if db.query(models.Merchant).count() > 0:
-            print(f"[OK] Database SQLite sudah terisi {db.query(models.Merchant).count()} merchant.")
+            print(f"[INFO] Database siap digunakan! Terdeteksi {db.query(models.Merchant).count()} data toko.")
             return
 
-        print("[LOG] Mengisi data reputasi EMRS awal (seeding) ke SQLite Database...")
+        print("[INFO] Mengisi data contoh toko dan riwayat scan awal ke database...")
         now = datetime.utcnow()
 
         # ─────────────────────────────────────────────────────────
@@ -324,17 +340,22 @@ def init_db():
 
         db.commit()
 
-        print("[OK] Auto-seeding database EMRS + Observation History berhasil diselesaikan!")
+        print("[OK] Pengisian data awal toko dan riwayat scan selesai!")
     finally:
         db.close()
 
 
 def reset_db():
-    """Drop semua tabel dan rebuild + re-seed dari scratch."""
+    """
+    Fungsi untuk mereset seluruh isi database ke kondisi awal.
+    Menghapus semua tabel lalu membangun ulang dan mengisi data toko bawaan.
+    Hanya dijalankan jika Anda ingin membersihkan seluruh data uji coba.
+    """
     import models
     models.Base.metadata.drop_all(bind=engine)
     init_db()
 
 
 if __name__ == "__main__":
+    # Jalankan penyiapan database saat file ini dieksekusi langsung
     init_db()

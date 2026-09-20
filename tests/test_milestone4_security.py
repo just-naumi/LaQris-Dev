@@ -18,8 +18,9 @@ import hashlib
 from datetime import datetime, timedelta
 from fastapi.testclient import TestClient
 
-# Pastikan path modul terdaftar
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Pastikan path backend terdaftar
+BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "LaQris", "backend"))
+sys.path.insert(0, BACKEND_DIR)
 
 from main import app, rate_limiter
 from database import get_db

@@ -3,18 +3,23 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
+# Modul Skema Data LaQris (Pydantic)
+# Berfungsi untuk mendefinisikan format data yang dikirim dan diterima oleh aplikasi.
+# Memastikan setiap data (seperti scan QRIS, pembayaran, feedback, dan login)
+# memiliki format yang benar dan aman sebelum diproses.
+
 
 class TransactionStatusEnum(str, Enum):
-    """Status transaksi resmi dari payment provider (P1 Item 7 di Readme)."""
-    SUCCESS = "SUCCESS"
-    FAILED = "FAILED"
-    TIMEOUT = "TIMEOUT"
-    CANCELLED = "CANCELLED"
-    REVERSED = "REVERSED"
+    """Status resmi hasil pembayaran dari bank/penyedia dompet digital."""
+    SUCCESS = "SUCCESS"      # Pembayaran berhasil
+    FAILED = "FAILED"        # Pembayaran gagal
+    TIMEOUT = "TIMEOUT"      # Waktu transaksi habis
+    CANCELLED = "CANCELLED"  # Dibatalkan oleh pengguna
+    REVERSED = "REVERSED"    # Dana dikembalikan
 
 
 # ─────────────────────────────────────────────────────────────
-# Report & Dispute Schemas
+# 1. Skema Data Laporan dan Sengketa Toko
 # ─────────────────────────────────────────────────────────────
 
 class ReportSchema(BaseModel):
@@ -42,45 +47,47 @@ class DisputeSchema(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────
-# LaQris Observation History Schema
-# (Data dikumpulkan dari verification_sessions — BUKAN transaksi)
+# 2. Skema Riwayat Pengamatan QRIS Toko
+# Dikumpulkan dari riwayat scan para pengguna LaQris untuk melihat
+# konsistensi dan rekam jejak toko dari waktu ke waktu.
 # ─────────────────────────────────────────────────────────────
 
 class ObservationHistorySchema(BaseModel):
-    total_observations: int           # Total scan QRIS oleh pengguna LaQris
-    unique_observers: int             # Jumlah user unik yang pernah scan merchant ini
-    first_observed: Optional[str]     # Tanggal pertama kali di-scan ("dd MMM yyyy")
-    last_observed: Optional[str]      # Tanggal terakhir di-scan
-    identity_match: int               # Jumlah scan yang identitasnya MATCH
-    identity_mismatch: int            # Jumlah scan yang identitasnya MISMATCH
-    physical_anomaly: int             # Jumlah scan yang terindikasi anomali fisik
-    identity_match_rate: float        # match / total (0.0 - 100.0 %)
-    complaint_rate: Optional[float]   # verified_complaints / total_observations (%)
-    verified_feedback: int            # Total feedback terverifikasi (evidence_level == 2)
-    complaints: int                   # Total complaint/report
-    disputes: int                     # Total dispute (sengketa terverifikasi)
+    total_observations: int           # Berapa kali QRIS toko ini pernah di-scan oleh pengguna
+    unique_observers: int             # Berapa orang unik yang pernah melakukan scan
+    first_observed: Optional[str]     # Tanggal pertama kali QRIS toko ini dipindai
+    last_observed: Optional[str]      # Tanggal terakhir kali QRIS toko ini dipindai
+    identity_match: int               # Jumlah scan di mana nama stiker fisik cocok dengan data QR
+    identity_mismatch: int            # Jumlah scan yang nama fisiknya mencurigakan / berbeda
+    physical_anomaly: int             # Jumlah scan dengan stiker tumpukan atau anomali fisik
+    identity_match_rate: float        # Persentase kecocokan nama (0% - 100%)
+    complaint_rate: Optional[float]   # Persentase keluhan dari total scan (%)
+    verified_feedback: int            # Total ulasan yang terbukti sah
+    complaints: int                   # Jumlah laporan keluhan
+    disputes: int                     # Jumlah sengketa transaksi
 
 
 # ─────────────────────────────────────────────────────────────
-# EMRS Component Breakdown
+# 3. Komponen Nilai Reputasi Toko (EMRS)
+# Nilai 0 - 100 yang menilai kelayakan dan keamanan sebuah toko.
 # ─────────────────────────────────────────────────────────────
 
 class EMRSComponents(BaseModel):
-    A: float                          # Authenticity / Identity Consistency (40%)
-    C: float                          # Complaint Score (30%)
-    D: float                          # Dispute Score (20%)
-    L: float                          # Observed Longevity & History (10%)
+    A: float                          # Nilai Keaslian & Kesesuaian Nama Toko (bobot 40%)
+    C: float                          # Nilai Bebas Keluhan (bobot 30%)
+    D: float                          # Nilai Bebas Sengketa Pembayaran (bobot 20%)
+    L: float                          # Nilai Masa Aktif & Pengalaman Toko (bobot 10%)
     T_observed: Optional[float] = None
 
 
 class ReputationScoreSchema(BaseModel):
-    reputation_score: Optional[float]          # 0–100 final EMRS (None jika belum terdaftar)
-    grade: str                         # "Excellent" | "Very Good" | "Good" | "Fair" | "Poor" | "Belum Terdaftar"
-    confidence_level: str              # "HIGH" | "MEDIUM" | "LOW"
-    confidence_score: float            # 0–100%
-    data_sufficiency_status: str       # "SUFFICIENT DATA" | "INSUFFICIENT HISTORY"
+    reputation_score: Optional[float]          # Skor akhir 0 - 100 (kosong jika toko baru pertama kali ditemukan)
+    grade: str                         # Predikat toko: "Sangat Baik", "Baik", "Cukup", atau "Buruk"
+    confidence_level: str              # Tingkat keyakinan data: TINGGI, SEDANG, atau RENDAH
+    confidence_score: float            # Angka persentase keyakinan (0 - 100%)
+    data_sufficiency_status: str       # Apakah data historis sudah mencukupi atau masih baru
     components: EMRSComponents
-    evidence_quality: str              # "HIGH" | "MEDIUM" | "LOW" | "INSUFFICIENT"
+    evidence_quality: str              # Kualitas bukti laporan
     total_evidence_count: int
     found_in_db: bool
     nmid: Optional[str] = None
@@ -92,7 +99,7 @@ class ReputationScoreSchema(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────
-# QRIS Raw EMVCo Payload Analysis
+# 4. Skema Analisis Kode QRIS dan Bukti Identitas
 # ─────────────────────────────────────────────────────────────
 
 class QRISRawAnalysisSchema(BaseModel):
@@ -104,10 +111,6 @@ class QRISRawAnalysisSchema(BaseModel):
     currency: str
     crc_checksum: Optional[str] = None
 
-
-# ─────────────────────────────────────────────────────────────
-# Identity Evidence Sub-Schema
-# ─────────────────────────────────────────────────────────────
 
 class IdentityFieldEvidenceSchema(BaseModel):
     physical: Optional[str] = None
@@ -125,21 +128,23 @@ class IdentityEvidenceSchema(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────
-# Current QR Risk Schema (4-Level: NORMAL/CAUTION/WARNING/DANGER)
+# 5. Skema Tingkat Risiko Scan QRIS Saat Ini
+# Menentukan keputusan apakah pembayaran: AMAN (ALLOW),
+# WASPADA (WARN), atau DIBLOKIR KARENA BAHAYA (BLOCK).
 # ─────────────────────────────────────────────────────────────
 
 class CurrentQRRiskSchema(BaseModel):
-    risk_level: str                    # "NORMAL" | "CAUTION" | "WARNING" | "DANGER"
-    risk_label: str                    # Human-readable label
-    risk_color: str                    # "green" | "yellow" | "orange" | "red"
+    risk_level: str                    # Tingkat risiko: "NORMAL", "CAUTION", "WARNING", "DANGER"
+    risk_label: str                    # Keterangan yang mudah dibaca pengguna
+    risk_color: str                    # Warna indikator: hijau, kuning, oranye, merah
     overall_risk_score: float
     trust_score: float
-    decision: str = "ALLOW"            # "ALLOW" | "WARN" | "BLOCK" (Security Decision Contract)
-    reason_codes: List[str] = []       # e.g. ["NMID_MISMATCH"], ["CRC_INVALID"], ["NAME_COMPLETELY_DIFFERENT"]
+    decision: str = "ALLOW"            # Keputusan sistem: "ALLOW", "WARN", atau "BLOCK"
+    reason_codes: List[str] = []       # Kode alasan (contoh: NMID_MISMATCH jika nama beda)
     is_mismatch: bool
     name_similarity: float
     match_level: str
-    explanation: str                   # Pesan aman secara hukum untuk user
+    explanation: str                   # Pesan penjelasan ramah untuk pengguna
     physical_merchant: str
     digital_merchant: str
     digital_city: str
@@ -162,7 +167,8 @@ class ScanResponseSchema(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────
-# Pre-Payment Verification Schemas (Contract A: /api/v1/verify)
+# 6. Skema Verifikasi Pra-Pembayaran (Sebelum Saldo Dipotong)
+# Digunakan oleh aplikasi pembayaran untuk mengecek keaslian QRIS.
 # ─────────────────────────────────────────────────────────────
 
 class VerifyRequestSchema(BaseModel):
@@ -197,7 +203,7 @@ class VerifyResponseSchema(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────
-# Verification Session Detail Schema
+# 7. Skema Detail Sesi Pemindaian QRIS
 # ─────────────────────────────────────────────────────────────
 
 class VerificationSessionDetailSchema(BaseModel):
@@ -223,7 +229,8 @@ class VerificationSessionDetailSchema(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────
-# Payment Transaction Schemas (Post-Payment Event Layer - Contract B)
+# 8. Skema Pencatatan Bukti Transaksi Pembayaran
+# Menerima laporan sukses/gagal dari bank/dompet digital setelah bayar.
 # ─────────────────────────────────────────────────────────────
 
 class PaymentTransactionSchema(BaseModel):
@@ -254,8 +261,8 @@ class PaymentTransactionCreateSchema(BaseModel):
     provider: str = "DemoPay"
     provider_transaction_id: str
     amount: float
-    status: TransactionStatusEnum        # Mandatory TransactionStatusEnum (P1 Item 7)
-    response_code: str                   # Mandatory ISO 8583 / ASPI Response Code (e.g. "00")
+    status: TransactionStatusEnum        # Status transaksi (contoh: SUCCESS)
+    response_code: str                   # Kode respon bank (contoh: "00" jika berhasil)
     merchant_id: Optional[Any] = None
     merchant_name: Optional[str] = None
     nmid: Optional[str] = None
@@ -278,13 +285,14 @@ class PaymentTransactionResponseSchema(BaseModel):
     merchant_reputation_impact: Optional[Dict[str, Any]] = None
 
 
-# Contract B Aliases
+# Alias nama skema transaksi untuk kemudahan pemanggilan
 TransactionEventCreateSchema = PaymentTransactionCreateSchema
 TransactionEventResponseSchema = PaymentTransactionResponseSchema
 
 
 # ─────────────────────────────────────────────────────────────
-# DemoPay Server-Side Payment Processing Schemas (P0 Item 1-3)
+# 9. Skema Proses Pembayaran Dompet Digital DemoPay
+# Digunakan saat pengguna memasukkan PIN dan menekan tombol Bayar.
 # ─────────────────────────────────────────────────────────────
 
 class DemoPayProcessPaymentSchema(BaseModel):
@@ -294,7 +302,7 @@ class DemoPayProcessPaymentSchema(BaseModel):
     terminal_id: Optional[str] = "A01"
     user_id: Optional[str] = None
     account_number: Optional[str] = None
-    scenario: Optional[str] = "SUCCESS"  # P0 Item 4: "SUCCESS" | "FAILED" | "TIMEOUT" | "CANCELLED"
+    scenario: Optional[str] = "SUCCESS"  # Pilihan uji coba: "SUCCESS", "FAILED", "TIMEOUT", "CANCELLED"
 
 
 class DemoPayProcessPaymentResponseSchema(BaseModel):
@@ -316,7 +324,8 @@ class DemoPayProcessPaymentResponseSchema(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────
-# Payment Intent / Confirmed Amount Schema (P0 Item 2)
+# 10. Skema Kunci Nominal Pembayaran
+# Memastikan nominal yang dibayar cocok persis dengan sesi scan.
 # ─────────────────────────────────────────────────────────────
 
 class PaymentIntentSchema(BaseModel):
@@ -333,7 +342,7 @@ class PaymentIntentResponseSchema(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────
-# Merchant Detail Schema (full)
+# 11. Skema Informasi Lengkap Profil Toko
 # ─────────────────────────────────────────────────────────────
 
 class MerchantSchema(BaseModel):
@@ -358,13 +367,14 @@ class MerchantSchema(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────
-# Feedback Submission Schema (Legacy + Contract C)
+# 12. Skema Pengiriman Ulasan / Feedback Pembeli
+# Menerima ulasan pengalaman berbelanja untuk dianalisis oleh AI.
 # ─────────────────────────────────────────────────────────────
 
 class FeedbackSubmitSchema(BaseModel):
     nmid: str
-    category: str           # "PENIPUAN_STIKER_QRIS_PALSU", "KETIDAKSESUAIAN_IDENTITAS_MERCHANT", dll
-    severity: str = "MEDIUM"# "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+    category: str           # Kategori keluhan (misal: penipuan stiker atau salah nama)
+    severity: str = "MEDIUM"# Tingkat keparahan: "LOW", "MEDIUM", "HIGH", "CRITICAL"
     description: Optional[str] = None
     transaction_ref: Optional[str] = None
     has_evidence: bool = False
@@ -384,30 +394,30 @@ class FeedbackResponseSchema(BaseModel):
 
 class FeedbackContractCSchema(BaseModel):
     """
-    Contract C: Post-Payment User Feedback Payload
-    Sesuai Bagian 32 & 37 Dokumen Roadmap LaQris.
+    Format pengiriman ulasan setelah transaksi berhasil.
+    Pengguna dapat menceritakan pengalamannya tanpa perlu menghafal kategori teknis.
     """
-    verification_id: Optional[str] = None      # e.g. "LQ-V-001"
-    transaction_id: Optional[str] = None       # e.g. "TX-001"
-    comment: str                               # Cerita/ulasan pengalaman pengguna
-    nmid: Optional[str] = None                 # Opsional jika verification_id disertakan
-    manual_category: Optional[str] = None      # Opsional input manual pengguna
-    has_evidence: bool = False                 # Apakah mengunggah file bukti fisik
-    user_id: Optional[str] = None              # Identitas akun pengguna pengulas
+    verification_id: Optional[str] = None      # Nomor verifikasi scan QRIS
+    transaction_id: Optional[str] = None       # Nomor transaksi pembayaran
+    comment: str                               # Teks ulasan atau keluhan dari pengguna
+    nmid: Optional[str] = None                 # Nomor identitas QRIS toko
+    manual_category: Optional[str] = None      # Kategori manual jika dipilih pengguna
+    has_evidence: bool = False                 # Apakah menyertakan foto bukti fisik
+    user_id: Optional[str] = None              # Identitas akun pengguna yang memberi ulasan
 
 
 class FeedbackContractCResponseSchema(BaseModel):
     """
-    Contract C: Post-Payment Feedback Response
-    Mengembalikan hasil inferensi NLP IndoBERT, tingkat bukti, dan dampak EMRS toko.
+    Format balasan setelah ulasan dibaca oleh AI IndoBERT.
+    Menampilkan kategori masalah yang terdeteksi dan pembaruan reputasi toko.
     """
     success: bool = True
     message: str
-    event_type: str                            # e.g. "KETIDAKSESUAIAN_IDENTITAS_MERCHANT"
-    category_title: str                        # Judul ramah pengguna
-    severity: str                              # "CRITICAL" | "HIGH" | "MEDIUM" | "LOW"
-    evidence_level: int                        # 0: comment only, 1: +verification, 2: +tx event
-    confidence: float                          # Confidence model (0.0 - 1.0)
+    event_type: str                            # Kategori masalah yang terdeteksi AI
+    category_title: str                        # Judul masalah dalam bahasa yang ramah pengguna
+    severity: str                              # Tingkat keparahan ("CRITICAL", "HIGH", "MEDIUM", "LOW")
+    evidence_level: int                        # Tingkat keabsahan bukti (0: hanya teks, 1: ada scan, 2: ada transaksi resmi)
+    confidence: float                          # Tingkat keyakinan AI (0.0 - 1.0)
     merchant_reputation_updated: bool = True
     previous_reputation_score: Optional[float] = None
     new_reputation_score: float
@@ -419,7 +429,7 @@ class FeedbackContractCResponseSchema(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────
-# User Authentication Schemas
+# 13. Skema Pendaftaran dan Masuk Akun Pengguna
 # ─────────────────────────────────────────────────────────────
 
 class UserRegisterSchema(BaseModel):

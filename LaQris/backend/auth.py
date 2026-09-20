@@ -1,10 +1,5 @@
-"""
-auth.py - LaQris Security Hardening Module (Milestone 4 / Step 28 & 29)
-Mengimplementasikan:
-1. Argon2id Password Hashing dengan verifikasi mundur kompatibel (SHA-256 migration).
-2. JWT Access Token (HS256) untuk autentikasi stateless yang aman.
-3. User Ownership Enforcement (mencegah feedback/transaksi unauthorized antar pengguna).
-"""
+# auth.py - Modul Keamanan & Autentikasi Akun LaQris
+# Mengatur keamanan kata sandi, tiket login (JWT token), PIN pembayaran, dan proteksi hak akses pengguna.
 
 import os
 import time
@@ -19,67 +14,67 @@ import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, InvalidHashError
 
-# Inisialisasi Password Hasher Argon2id (rekomendasi OWASP)
+# Mesin pengacak kata sandi berstandar tinggi (Argon2id)
+# Mengubah kata sandi asli menjadi kode acak panjang sehingga aman dari pencurian data.
 argon2_hasher = PasswordHasher(
-    time_cost=3,        # 3 iterasi
-    memory_cost=65536,  # 64 MB
-    parallelism=4,      # 4 thread paralel
+    time_cost=3,
+    memory_cost=65536,
+    parallelism=4,
     hash_len=32,
     salt_len=16
 )
 
-# Konfigurasi JWT Secret & Expiry
+# Kunci rahasia untuk membuat tiket login (JWT)
 SECRET_KEY = os.getenv("LAQRIS_JWT_SECRET", "laqris-security-hardened-jwt-secret-key-2026-v2-production-grade")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # 24 Jam
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # Tiket aktif selama 24 jam
 
-# OAuth2 Scheme untuk FastAPI Swagger UI & Bearer extraction
+# Penampung header otorisasi login untuk API
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login", auto_error=False)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Password Hashing & Verification (Argon2id + Legacy SHA-256 Migration)
+# 1. Pengamanan Kata Sandi (Password Hashing)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def hash_password(password: str) -> str:
-    """Menghasilkan hash password Argon2id dengan salt kriptografis unik."""
+    """Mengacak kata sandi asli pengguna menjadi kode acak yang tidak dapat dibaca orang lain."""
     return argon2_hasher.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
-    Memvalidasi kecocokan password.
-    Mendukung format Argon2id ($argon2id$...) dan backward-compatibility SHA-256
-    agar user existing/seed data tidak terkunci.
+    Memeriksa apakah kata sandi yang dimasukkan saat login cocok dengan kode rahasia di database.
+    Mendukung format modern (Argon2id) dan format akun lama (SHA-256) secara mulus.
     """
     if not hashed_password or not plain_password:
         return False
 
-    # Format Argon2id
+    # Pemeriksaan untuk akun berformat modern Argon2id
     if hashed_password.startswith("$argon2"):
         try:
             return argon2_hasher.verify(hashed_password, plain_password)
         except (VerifyMismatchError, InvalidHashError):
             return False
 
-    # Format Legacy SHA-256 (64 hex characters)
+    # Pemeriksaan mundur untuk akun lama (SHA-256)
     legacy_hash = hashlib.sha256(plain_password.encode("utf-8")).hexdigest()
     return legacy_hash == hashed_password
 
 
 def is_legacy_hash(hashed_password: str) -> bool:
-    """Mengecek apakah hash masih menggunakan algoritma lama (SHA-256) yang butuh rehash."""
+    """Mengecek apakah format kata sandi akun masih menggunakan format lama yang perlu diperbarui."""
     return not (hashed_password and hashed_password.startswith("$argon2"))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# JWT Token Generation & Verification
+# 2. Pembuatan & Pemeriksaan Tiket Login (JWT Access Token)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
     """
-    Membuat token JWT terenkripsi dengan klaim sub (user_id), email, role,
-    serta expiry timestamp (iat & exp).
+    Membuat tiket digital (JWT token) resmi saat pengguna berhasil login.
+    Di dalam tiket tersimpan ID pengguna, email, peran (pembeli/toko), dan batas waktu aktif.
     """
     to_encode = data.copy()
     now = datetime.utcnow()
@@ -95,8 +90,8 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
 
 def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
     """
-    Membedah dan memvalidasi integritas JWT token.
-    Mengembalikan payload dictionary jika valid, atau None jika expired/tampered.
+    Membaca dan memastikan keaslian tiket digital (JWT token).
+    Jika tiket sah dan belum kedaluwarsa, data pengguna dikembalikan. Jika palsu, tolak (None).
     """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -106,7 +101,7 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# FastAPI Dependencies & User Ownership
+# 3. Pemeriksaan Akun Pengguna & Proteksi Hak Milik (User Ownership)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def get_current_user_optional(
@@ -114,8 +109,8 @@ def get_current_user_optional(
     db: Optional[Session] = None
 ) -> Optional[Dict[str, Any]]:
     """
-    Ekstrak data pengguna dari Bearer token tanpa melempar error 401 jika anonim.
-    Sangat berguna untuk endpoint hybrid (bisa anonim atau terotentikasi).
+    Membaca akun pengguna dari tiket login jika ada, tanpa menolak jika pengguna belum login.
+    Cocok untuk fitur yang bisa diakses siapa saja namun memiliki fitur tambahan jika login.
     """
     if not token:
         return None
@@ -126,19 +121,19 @@ def get_current_user_required(
     token: Optional[str] = Depends(oauth2_scheme)
 ) -> Dict[str, Any]:
     """
-    Wajibkan Bearer token valid. Melempar HTTP 401 jika token hilang atau kedaluwarsa.
+    Mewajibkan pengguna sudah login. Jika tidak ada tiket login yang sah, tolak dengan pesan 401.
     """
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token otentikasi Bearer diperlukan untuk mengakses endpoint ini.",
+            detail="Silakan login terlebih dahulu untuk mengakses layanan ini.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     payload = decode_access_token(token)
     if not payload or not payload.get("sub"):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token otentikasi tidak valid atau sudah kedaluwarsa.",
+            detail="Sesi login Anda sudah kedaluwarsa. Silakan login kembali.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return payload
@@ -146,9 +141,9 @@ def get_current_user_required(
 
 def verify_user_ownership(requester_user_id: Optional[str], resource_owner_id: Optional[str], resource_name: str = "transaksi"):
     """
-    Enforce Step 29 di Readme2.md & P1 Item 8 di Readme.md (Strict User Ownership Rule):
-    User A tidak dapat mengakses/memodifikasi transaksi/sesi milik User B.
-    Jika resource memiliki pemilik, requester WAJIB terotentikasi (fail closed).
+    Perlindungan Hak Milik Data:
+    Memastikan Pengguna A tidak bisa mengakses atau mengubah riwayat transaksi milik Pengguna B.
+    Jika data memiliki pemilik resmi, pembeli lain yang mencoba mengakses akan langsung ditolak.
     """
     if resource_owner_id:
         if not requester_user_id:
@@ -159,12 +154,12 @@ def verify_user_ownership(requester_user_id: Optional[str], resource_owner_id: O
         if requester_user_id != resource_owner_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"User ownership violation: Akun '{requester_user_id}' tidak memiliki hak otorisasi atas {resource_name} milik '{resource_owner_id}'."
+                detail=f"Akses ditolak: Akun '{requester_user_id}' tidak memiliki hak otorisasi atas {resource_name} milik '{resource_owner_id}'."
             )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Step 25 di Readme2.md & P1 Item 7: Payment Provider S2S Auth + Anti-Replay
+# 4. Keamanan Pembayaran Antar Server (Bank / Dompet Digital & Anti-Replay)
 # ─────────────────────────────────────────────────────────────────────────────
 import hmac
 
@@ -175,8 +170,9 @@ PROVIDER_API_KEYS = {
     "GOPAY": os.getenv("GOPAY_API_KEY", "gopay-gw-secret-key-2026")
 }
 
-# Cache in-memory untuk melacak nonce guna mencegah serangan replay (P1 Item 7)
+# Daftar kode unik sementara (nonce) untuk mencegah transaksi dikirim ulang oleh penipu
 SEEN_NONCES = set()
+
 
 def verify_provider_authentication(
     provider: str,
@@ -187,11 +183,12 @@ def verify_provider_authentication(
     nonce: Optional[str] = None
 ) -> bool:
     """
-    Verifikasi service-to-service autentikasi payment provider (Step 25 / P1 Item 7).
-    Mendukung X-Provider-Api-Key atau X-LaQris-Signature (HMAC-SHA256) dengan
-    proteksi anti-replay callback (X-LaQris-Timestamp & X-LaQris-Nonce).
+    Memverifikasi keaslian pesan dari server bank / aplikasi dompet digital:
+    1. Memeriksa waktu pengiriman (maksimal jeda 5 menit agar data lama tidak disalahgunakan).
+    2. Memeriksa kode unik pengiriman (nonce) agar transaksi tidak dapat diduplikat (anti-replay).
+    3. Memeriksa kunci rahasia API atau tanda tangan digital HMAC.
     """
-    # 1. Anti-Replay Check (Timestamp freshness & Nonce uniqueness)
+    # 1. Pengecekan Waktu & Kode Unik Anti-Duplikasi
     if timestamp:
         try:
             if str(timestamp).replace(".", "", 1).isdigit():
@@ -203,7 +200,7 @@ def verify_provider_authentication(
                     dt = dt.replace(tzinfo=timezone.utc)
                 req_ts = dt.timestamp()
             now_ts = time.time()
-            # Toleransi jeda waktu jaringan maksimal 5 menit (300 detik)
+            # Toleransi jeda waktu sinyal maksimal 5 menit (300 detik)
             if abs(now_ts - req_ts) > 300:
                 return False
         except Exception:
@@ -211,19 +208,19 @@ def verify_provider_authentication(
 
     if nonce:
         if nonce in SEEN_NONCES:
-            return False  # Nonce sudah pernah dipakai -> REPLAY ATTACK TERTOLAK!
+            return False  # Kode unik ini sudah pernah dipakai -> Tolak upaya transaksi duplikat!
         SEEN_NONCES.add(nonce)
         if len(SEEN_NONCES) > 10000:
             SEEN_NONCES.clear()
 
-    # 2. Verifikasi Kredensial Provider
+    # 2. Pemeriksaan Kunci API Resmi Bank
     if api_key:
         expected_key = PROVIDER_API_KEYS.get(provider, PROVIDER_API_KEYS.get("DemoPay"))
         if expected_key and hmac.compare_digest(api_key, expected_key):
             return True
 
+    # 3. Pemeriksaan Tanda Tangan Digital (HMAC)
     if signature and raw_body:
-        # A. Cek kecocokan HMAC langsung terhadap raw_body
         expected_sig_raw = hmac.new(
             PROVIDER_SECRET_KEY.encode("utf-8"),
             raw_body,
@@ -232,7 +229,6 @@ def verify_provider_authentication(
         if hmac.compare_digest(signature, expected_sig_raw):
             return True
 
-        # B. Cek kecocokan HMAC dengan format timestamp + "." + raw_body
         if timestamp:
             expected_sig_ts = hmac.new(
                 PROVIDER_SECRET_KEY.encode("utf-8"),
@@ -242,9 +238,8 @@ def verify_provider_authentication(
             if hmac.compare_digest(signature, expected_sig_ts):
                 return True
 
-    # 3. Fail-Closed: Di mode non-development, tolak seluruh request tanpa auth valid
+    # 4. Mode Pengujian Lokal
     if is_development_mode():
-        # Hanya izinkan jika request sama sekali tidak membawa header auth di mode lokal
         if not api_key and not signature:
             return True
 
@@ -252,15 +247,15 @@ def verify_provider_authentication(
 
 
 def is_development_mode() -> bool:
-    """Mengecek apakah sistem berjalan dalam mode development lokal."""
+    """Mengecek apakah aplikasi sedang dijalankan dalam mode uji coba lokal."""
     return os.getenv("LAQRIS_ENV", "development").lower() == "development"
 
 
 def verify_pin_secure(input_pin: str, stored_pin: Optional[str] = None) -> bool:
     """
-    Verifikasi PIN transaksi secara aman dengan constant-time comparison (P0 Item 1.B).
-    Mencegah timing attack. PIN wajib diverifikasi dari database user;
-    di mode local development, jika stored_pin belum diset maka fallback ke '123456'.
+    Memeriksa 6 angka PIN transaksi secara aman dan waktu tetap (constant-time)
+    agar tidak mudah ditebak oleh pihak tidak berwenang.
+    PIN wajib diverifikasi dari data akun pengguna di database.
     """
     if not input_pin:
         return False

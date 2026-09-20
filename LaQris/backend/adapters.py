@@ -1,18 +1,18 @@
-"""
-adapters.py - Provider Payload Normalizer & Canonical Adapter (P1 Item 9 di Readme.md)
-Mendukung normalisasi payload transaksi dari beragam payment provider (DemoPay, DANA, GoPay, dll.)
-menjadi format Canonical Transaction Event LaQris yang aman, tervalidasi, dan tersanitasi.
-"""
+# adapters.py - Penyeragam Format Transaksi Bank / Dompet Digital
+# Modul ini bertugas mengubah format laporan transaksi dari berbagai aplikasi pembayaran
+# (seperti DemoPay, DANA, GoPay, dan BCA) menjadi satu format standar yang seragam di LaQris.
 
 import re
 from datetime import datetime
 from typing import Dict, Any, Optional
 
+# Daftar data rahasia perbankan yang wajib dibuang agar tidak tersimpan di sistem
 SENSITIVE_FIELDS = {
     "card_number", "pan", "full_pan", "cvv", "cvc", "pin", "password",
     "auth_token", "secret", "card_expiry", "private_key"
 }
 
+# Kamus penerjemah status transaksi ke format standar LaQris
 STATUS_MAPPING = {
     "00": "SUCCESS",
     "0": "SUCCESS",
@@ -35,7 +35,10 @@ STATUS_MAPPING = {
 
 
 def sanitize_raw_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Menghapus seluruh field sensitif pembayaran (P1 Item 9 & Step 15)."""
+    """
+    Menghapus data sensitif seperti nomor kartu debit/kredit, PIN, dan kode CVV
+    sebelum data transaksi diproses lebih lanjut demi keamanan privasi pengguna.
+    """
     clean = {}
     for k, v in payload.items():
         if k.lower() in SENSITIVE_FIELDS:
@@ -49,7 +52,11 @@ def normalize_provider_transaction(
     provider_name: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Mengonversi payload heterogen dari berbagai payment provider menjadi Canonical Event LaQris.
+    Mengubah data transaksi dari penyedia pembayaran menjadi satu format standar LaQris:
+    1. Membersihkan data rahasia (PIN, kartu).
+    2. Menemukan nama penyedia (DemoPay/DANA/GoPay/BCA).
+    3. Menyamakan status transaksi (SUCCESS/FAILED/TIMEOUT/CANCELLED).
+    4. Mengembalikan data yang siap disimpan ke database LaQris.
     """
     clean_dict = sanitize_raw_payload(raw_payload)
     

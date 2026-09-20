@@ -1,68 +1,78 @@
+# models.py - Struktur Tabel Database LaQris
+# Berisi model data untuk toko, laporan masalah, sesi scan QRIS, transaksi, dan akun pengguna.
+
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
 
-# Unified Constant Lifecycle Sesi Verifikasi LaQris (P0 Item 3 di Readme.md)
+# Masa berlaku sesi verifikasi QRIS (30 menit)
 VERIFICATION_SESSION_TTL_MINUTES = 30
 
 
 class Merchant(Base):
+    """
+    Tabel Toko / Merchant QRIS:
+    Menyimpan profil toko, nomor identitas resmi (NMID), bank penerbit (acquirer),
+    serta riwayat skor reputasi toko berdasarkan kejujuran transaksi.
+    """
     __tablename__ = "merchants"
 
     id = Column(Integer, primary_key=True, index=True)
-    nmid = Column(String, unique=True, index=True, nullable=False)
-    merchant_name = Column(String, nullable=False)
-    acquirer = Column(String, default="93600014")
+    nmid = Column(String, unique=True, index=True, nullable=False)   # ID Nasional Toko QRIS
+    merchant_name = Column(String, nullable=False)                  # Nama resmi toko
+    acquirer = Column(String, default="93600014")                   # Bank / e-wallet pengelola toko
 
-    # ── Longevity (L) ──────────────────────────────────────────
+    # Data Usia & Waktu Pendaftaran Toko
     registered_at = Column(DateTime, default=datetime.utcnow)
 
-    # ── Transaction Reliability (T) ────────────────────────────
-    verified_transactions = Column(Integer, default=0)
-    successful_transactions = Column(Integer, default=0)
-    failed_transactions = Column(Integer, default=0)
+    # Catatan Transaksi Toko
+    verified_transactions = Column(Integer, default=0)              # Total transaksi yang diawasi sistem
+    successful_transactions = Column(Integer, default=0)            # Transaksi yang berhasil
+    failed_transactions = Column(Integer, default=0)                # Transaksi yang gagal
 
-    # ── Authenticity / Identity Consistency (A) ─────────────────
-    identity_match_count = Column(Integer, default=0)
-    identity_mismatch_count = Column(Integer, default=0)
-    critical_mismatch_count = Column(Integer, default=0)  # severity = CRITICAL mismatch
+    # Catatan Keaslian QRIS Toko
+    identity_match_count = Column(Integer, default=0)               # Jumlah scan yang cocok (nama asli sesuai barcode)
+    identity_mismatch_count = Column(Integer, default=0)            # Jumlah scan tidak cocok (indikasi beda nama)
+    critical_mismatch_count = Column(Integer, default=0)            # Jumlah scan palsu/stiker ditimpa penipu
 
-    # ── Legacy / UI fields ─────────────────────────────────────
-    rating = Column(Float, default=5.0)
-    total_reports = Column(Integer, default=0)
-    verified_reports = Column(Integer, default=0)
+    # Data Tambahan & Skor Penilaian
+    rating = Column(Float, default=5.0)                             # Bintang penilaian toko (skala 1-5)
+    total_reports = Column(Integer, default=0)                      # Total laporan keluhan
+    verified_reports = Column(Integer, default=0)                   # Laporan yang terbukti valid
 
-    # ── Cached EMRS Score (updated on each scan/feedback) ──────
+    # Skor Reputasi Toko Terkini (0 - 100)
     reputation_score = Column(Float, default=50.0)
 
-    # ── Relationships ──────────────────────────────────────────
+    # Hubungan dengan data laporan dan sengketa
     reports = relationship("Report", back_populates="merchant", cascade="all, delete-orphan")
     disputes = relationship("Dispute", back_populates="merchant", cascade="all, delete-orphan")
 
 
 class Report(Base):
     """
-    Complaint / laporan dari pengguna.
-    Bisa tanpa bukti (evidence_level=1) atau dengan bukti transaksi (evidence_level=2).
+    Tabel Laporan Masalah dari Pembeli:
+    Menampung ulasan atau laporan pembeli jika menemukan stiker QRIS mencurigakan,
+    nama toko berbeda, atau kasir meminta biaya tambahan ilegal.
     """
     __tablename__ = "reports"
 
     id = Column(Integer, primary_key=True, index=True)
     merchant_id = Column(Integer, ForeignKey("merchants.id"), nullable=False)
 
-    # Kategori: "QRIS Replacement" | "Additional Fee" | "Merchant Mismatch" | "General Complaint"
+    # Jenis keluhan (misal: nama toko beda, pungutan biaya tambahan, atau stiker rusak)
     category = Column(String, nullable=False)
 
-    # Severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+    # Tingkat keparahan keluhan: "LOW" (ringan), "MEDIUM" (sedang), "HIGH" (berat), "CRITICAL" (sangat bahaya)
     severity = Column(String, default="MEDIUM")
 
+    # Ulasan / cerita keluhan dari pembeli
     description = Column(Text, nullable=True)
 
-    # Evidence Level: 1 = tanpa bukti transaksi, 2 = ada bukti terverifikasi
+    # Bukti transaksi: 1 = ulasan umum, 2 = terhubung langsung dengan bukti bayar resmi
     evidence_level = Column(Integer, default=1)
 
-    # Referensi transaksi untuk cegah duplikat feedback per transaksi
+    # Nomor transaksi referensi agar satu pembayaran tidak bisa dilaporkan berkali-kali
     transaction_ref = Column(String, nullable=True)
 
     is_verified = Column(Boolean, default=True)
@@ -73,17 +83,17 @@ class Report(Base):
 
 class Dispute(Base):
     """
-    Dispute = sengketa transaksi yang sudah TERVERIFIKASI.
-    Berbeda dari Report (complaint): dispute lebih berat bobotnya dalam EMRS.
+    Tabel Sengketa Transaksi:
+    Menampung klaim sengketa keuangan yang sudah terverifikasi valid oleh sistem.
     """
     __tablename__ = "disputes"
 
     id = Column(Integer, primary_key=True, index=True)
     merchant_id = Column(Integer, ForeignKey("merchants.id"), nullable=False)
-    description = Column(Text, nullable=True)
-    evidence_ref = Column(String, nullable=True)     # referensi bukti transaksi
+    description = Column(Text, nullable=True)                       # Rincian sengketa
+    evidence_ref = Column(String, nullable=True)                    # Bukti nomor transaksi
 
-    # Severity: "MEDIUM" | "HIGH" | "CRITICAL"
+    # Tingkat dampak sengketa: "MEDIUM", "HIGH", "CRITICAL"
     severity = Column(String, default="HIGH")
 
     is_verified = Column(Boolean, default=False)
@@ -93,55 +103,60 @@ class Dispute(Base):
 
 
 class VerificationSession(Base):
+    """
+    Tabel Sesi Pemeriksaan Scan QRIS:
+    Mencatat hasil pemeriksaan kamera saat pembeli memindai QRIS fisik.
+    Memastikan barcode yang discan asli dan nama toko cocok sebelum uang ditransfer.
+    """
     __tablename__ = "verification_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
-    session_id = Column(String, unique=True, index=True)
-    user_id = Column(String, index=True, nullable=True) # User ID penanda pemilik scan
-    nmid = Column(String, nullable=True)
-    digital_name = Column(String, nullable=True)
-    physical_name = Column(String, nullable=True)
-    scanned_at = Column(DateTime, default=datetime.utcnow)
-    status = Column(String, default="PENDING")       # "MATCH" | "MISMATCH"
-    trust_score = Column(Float, default=0.0)
-    risk_level = Column(String, default="LOW")
-    reputation_score = Column(Float, default=50.0)   # EMRS score saat scan
+    session_id = Column(String, unique=True, index=True)            # Kode unik sesi scan
+    user_id = Column(String, index=True, nullable=True)             # Akun pembeli yang melakukan scan
+    nmid = Column(String, nullable=True)                            # Nomor ID toko hasil scan
+    digital_name = Column(String, nullable=True)                    # Nama toko yang ada di dalam barcode digital
+    physical_name = Column(String, nullable=True)                   # Nama toko yang tertulis di banner fisik
+    scanned_at = Column(DateTime, default=datetime.utcnow)          # Waktu pemindaian
+    status = Column(String, default="PENDING")                      # "MATCH" (cocok) atau "MISMATCH" (beda)
+    trust_score = Column(Float, default=0.0)                        # Nilai kepercayaan hasil scan (0-100)
+    risk_level = Column(String, default="LOW")                      # Tingkat risiko: NORMAL, CAUTION, WARNING, DANGER
+    reputation_score = Column(Float, default=50.0)                  # Skor toko saat scan dilakukan
 
-    # ── Session Hardening & Security Decision ─────────────────
-    decision = Column(String, default="ALLOW")       # "ALLOW" | "WARN" | "BLOCK"
-    reason_codes = Column(Text, default="[]")        # JSON string array e.g. '["NMID_MISMATCH"]'
-    expires_at = Column(DateTime, nullable=True)     # Sesi kedaluwarsa setelah 30 menit (VERIFICATION_SESSION_TTL_MINUTES)
-    is_bound = Column(Boolean, default=False)        # Anti-replay: True jika sudah diikat transaksi
-    bound_at = Column(DateTime, nullable=True)       # Waktu sesi diikat ke transaksi
-    amount = Column(Float, nullable=True)            # Nominal transaksi yang dikunci (Payment Intent anti-tamper)
-    amount_locked = Column(Boolean, default=False)   # Status penguncian nominal di server
+    # Keputusan Keamanan Sistem
+    decision = Column(String, default="ALLOW")                      # "ALLOW" (boleh bayar), "WARN" (waspada), "BLOCK" (tolak)
+    reason_codes = Column(Text, default="[]")                       # Alasan deteksi jika ada bahaya
+    expires_at = Column(DateTime, nullable=True)                    # Waktu batas sesi aktif (30 menit)
+    is_bound = Column(Boolean, default=False)                       # Menandai apakah sesi sudah dipakai membayar
+    bound_at = Column(DateTime, nullable=True)                      # Waktu pembayaran dilakukan
+    amount = Column(Float, nullable=True)                           # Jumlah uang yang disetujui untuk dibayar
+    amount_locked = Column(Boolean, default=False)                  # Tanda nominal sudah dikunci di server
 
-    # Relasi 0..1 ke transaksi pembayaran (Post-Payment Transaction Event)
+    # Hubungan langsung ke data pembayaran
     payment_transaction = relationship("PaymentTransaction", back_populates="verification_session", uselist=False)
 
 
 class PaymentTransaction(Base):
     """
-    Entity transaksi pembayaran resmi yang terhubung dengan VerificationSession.
-    Menjadi jembatan antara fase Pre-Payment Verification dan Post-Payment Result.
+    Tabel Bukti Transaksi Pembayaran:
+    Menyimpan riwayat pembayaran resmi yang diproses oleh server pembayaran.
     """
     __tablename__ = "payment_transactions"
 
     id = Column(Integer, primary_key=True, index=True)
     verification_session_id = Column(String, ForeignKey("verification_sessions.session_id"), nullable=True, index=True)
-    provider = Column(String, default="DemoPay")                 # "DemoPay" | "DANA" | "GOPAY" | "BCA"
-    provider_transaction_id = Column(String, unique=True, index=True, nullable=False) # e.g. "TX-001"
+    provider = Column(String, default="DemoPay")                    # Nama aplikasi pembayaran (DemoPay, DANA, GoPay, BCA)
+    provider_transaction_id = Column(String, unique=True, index=True, nullable=False) # Nomor ID resmi transaksi
     merchant_id = Column(Integer, ForeignKey("merchants.id"), nullable=True)
-    nmid = Column(String, nullable=True)
-    user_id = Column(String, index=True, nullable=True)          # User ownership tracking
-    amount = Column(Float, nullable=False, default=0.0)
-    status = Column(String, default="SUCCESS")                   # "SUCCESS" | "FAILED" | "BLOCKED"
-    response_code = Column(String, default="00")                 # ISO 8583 / ASPI Response Code
-    invoice_number = Column(String, nullable=True)
-    terminal_id = Column(String, nullable=True)
-    transaction_time = Column(DateTime, default=datetime.utcnow)
-    latency_ms = Column(Integer, default=0)
-    retry_count = Column(Integer, default=0)
+    nmid = Column(String, nullable=True)                            # ID toko tujuan pembayaran
+    user_id = Column(String, index=True, nullable=True)             # Akun pembeli yang membayar
+    amount = Column(Float, nullable=False, default=0.0)             # Jumlah uang yang dibayar (Rupiah)
+    status = Column(String, default="SUCCESS")                      # Status: SUCCESS, FAILED, TIMEOUT, CANCELLED
+    response_code = Column(String, default="00")                    # Kode status bank (00 = sukses)
+    invoice_number = Column(String, nullable=True)                  # Nomor invoice digital
+    terminal_id = Column(String, nullable=True)                     # Kode mesin kasir / terminal
+    transaction_time = Column(DateTime, default=datetime.utcnow)    # Waktu pemrosesan bank
+    latency_ms = Column(Integer, default=0)                         # Kecepatan proses bank (milidetik)
+    retry_count = Column(Integer, default=0)                        # Percobaan ulang jika sinyal terganggu
     created_at = Column(DateTime, default=datetime.utcnow)
 
     verification_session = relationship("VerificationSession", back_populates="payment_transaction")
@@ -149,21 +164,26 @@ class PaymentTransaction(Base):
 
 
 class User(Base):
+    """
+    Tabel Pengguna Aplikasi:
+    Menyimpan data akun pembeli maupun pemilik toko yang terdaftar di aplikasi LaQris.
+    """
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, unique=True, index=True, nullable=False)
-    username = Column(String, nullable=False)
-    full_name = Column(String, nullable=True)
-    email = Column(String, unique=True, index=True, nullable=False)
-    phone = Column(String, nullable=True)
-    role = Column(String, default="PENGGUNA")        # "PENGGUNA" | "MERCHANT"
-    password_hash = Column(String, nullable=False)
-    status = Column(String, default="ACTIVE")        # "ACTIVE" | "PENDING" | "SUSPENDED"
-    account_number = Column(String, default="1858868768")
-    account_type = Column(String, default="TAPLUS")
-    pin = Column(String, default="123456")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    user_id = Column(String, unique=True, index=True, nullable=False) # Kode unik pengguna (contoh: USR-123456)
+    username = Column(String, nullable=False)                         # Nama pengguna untuk login
+    full_name = Column(String, nullable=True)                         # Nama lengkap pengguna
+    email = Column(String, unique=True, index=True, nullable=False)   # Alamat email aktif
+    phone = Column(String, nullable=True)                             # Nomor telepon / WhatsApp
+    role = Column(String, default="PENGGUNA")                         # Peran: "PENGGUNA" atau "MERCHANT"
+    password_hash = Column(String, nullable=False)                    # Kata sandi yang sudah dienkripsi aman
+    status = Column(String, default="ACTIVE")                         # Status akun: ACTIVE, PENDING, SUSPENDED
+    account_number = Column(String, default="1858868768")             # Nomor rekening dompet digital
+    account_type = Column(String, default="TAPLUS")                   # Tipe rekening tabungan
+    pin = Column(String, default="123456")                            # 6-digit PIN keamanan pembayaran
+    created_at = Column(DateTime, default=datetime.utcnow)           # Tanggal pembuatan akun
+
 
 
 

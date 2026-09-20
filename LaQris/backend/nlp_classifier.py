@@ -1,15 +1,16 @@
 """
-nlp_classifier.py - Modul NLP Klasifikasi Feedback QRIS untuk LaQris EMRS
-Tersambung langsung dengan Model IndoBERT Fine-Tuned (7 Kelas Resmi LaQris).
+nlp_classifier.py - Modul Kecerdasan Buatan (NLP) Pembaca Ulasan Pembeli
+Berfungsi untuk membaca kalimat ulasan dari pengguna setelah berbelanja,
+lalu mengelompokkannya secara otomatis ke dalam salah satu dari 7 kategori.
 
-7 Kelas EMRS:
-0. PENIPUAN_STIKER_QRIS_PALSU        (CRITICAL)
-1. KETIDAKSESUAIAN_IDENTITAS_MERCHANT (HIGH)
-2. PUNGUTAN_BIAYA_TAMBAHAN_SURCHARGE (HIGH)
-3. KONDISI_FISIK_QRIS_RUSAK           (MEDIUM)
-4. KUALITAS_LAYANAN_MERCHANT          (MEDIUM)
-5. QRIS_NORMAL_MERCHANT_TERPERCAYA    (LOW)
-6. FEEDBACK_AMBIGU                    (MEDIUM)
+7 Kategori Deteksi LaQris:
+1. PENIPUAN_STIKER_QRIS_PALSU        (Risiko Kritis  - Stiker QRIS ditimpa stiker penipu)
+2. KETIDAKSESUAIAN_IDENTITAS_MERCHANT (Risiko Tinggi  - Nama rekening beda dari nama toko)
+3. PUNGUTAN_BIAYA_TAMBAHAN_SURCHARGE (Risiko Tinggi  - Dimintai biaya admin tambahan)
+4. KONDISI_FISIK_QRIS_RUSAK           (Risiko Sedang  - Stiker pudar, sobek, atau buram)
+5. KUALITAS_LAYANAN_MERCHANT          (Risiko Sedang  - Kasir menolak QRIS / layanan kurang baik)
+6. QRIS_NORMAL_MERCHANT_TERPERCAYA    (Risiko Rendah  - Transaksi lancar, aman, dan memuaskan)
+7. FEEDBACK_AMBIGU                    (Perlu Pantau   - Ulasan terlalu singkat / belum jelas)
 """
 
 import os
@@ -19,54 +20,55 @@ from typing import Dict, Any, Optional
 
 logger = logging.getLogger("laqris.nlp")
 
+# Rincian 7 Kategori Masalah beserta Tindakan Penanganannya
 CATEGORIES = {
     "PENIPUAN_STIKER_QRIS_PALSU": {
         "title": "Penipuan Stiker QRIS Palsu / Ditimpa",
-        "description": "Barcode QRIS fisik ditempeli stiker baru atau ditimpa di atas akrilik resmi toko",
+        "description": "Barcode fisik toko ditempeli stiker baru oleh oknum penipu",
         "severity": "CRITICAL",
-        "action": "Kirim peringatan darurat pembekuan sementara QRIS toko ke tim investigasi LaQris dan reset skor keaslian (Authenticity Score) ke 0.",
+        "action": "Kirim peringatan darurat ke tim investigasi dan kunci sementara status keaslian toko demi melindungi pembeli lain.",
         "emrs_penalty": "RESET_A"
     },
     "KETIDAKSESUAIAN_IDENTITAS_MERCHANT": {
-        "title": "Ketidaksesuaian Identitas Merchant",
-        "description": "Nama penerima atau NMID di aplikasi berbeda dengan nama usaha resmi toko",
+        "title": "Ketidaksesuaian Identitas Toko",
+        "description": "Nama penerima di aplikasi dompet digital berbeda dengan plang/nama toko sebenarnya",
         "severity": "HIGH",
-        "action": "Tandai penalti Identity Match pada skor EMRS merchant dan instruksikan verifikasi ulang kesesuaian dokumen legalitas toko.",
+        "action": "Beri tanda peringatan ketidaksesuaian identitas dan minta pemilik toko untuk verifikasi dokumen resmi.",
         "emrs_penalty": "PENALTY_IDENTITY"
     },
     "PUNGUTAN_BIAYA_TAMBAHAN_SURCHARGE": {
-        "title": "Pungutan Biaya Tambahan / Surcharge",
-        "description": "Pengguna dikenakan biaya admin/surcharge atau markup harga saat membayar dengan QRIS",
+        "title": "Pungutan Biaya Tambahan (Surcharge)",
+        "description": "Pembeli ditarik biaya tambahan atau harga dinaikkan saat membayar menggunakan QRIS",
         "severity": "HIGH",
-        "action": "Beri surat peringatan pelanggaran regulasi Bank Indonesia (larangan surcharge QRIS) dan kenakan penalti kepatuhan merchant.",
+        "action": "Beri peringatan terkait larangan pungutan tambahan QRIS sesuai aturan Bank Indonesia.",
         "emrs_penalty": "PENALTY_COMPLIANCE"
     },
     "KONDISI_FISIK_QRIS_RUSAK": {
         "title": "Kondisi Fisik QRIS Rusak / Pudar",
-        "description": "Stiker sobek, luntur panas, retak minyak, atau buram sehingga sulit discan",
+        "description": "Stiker sobek, luntur kena panas, atau kusam sehingga susah dipindai kamera",
         "severity": "MEDIUM",
-        "action": "Kirim notifikasi otomatis ke tim operasional LaQris untuk mengirimkan materi cetak stiker/stand akrilik QRIS baru kepada merchant.",
+        "action": "Kirimkan pemberitahuan agar pemilik toko dapat mencetak ulang stiker QRIS yang baru dan jelas.",
         "emrs_penalty": "NOTICE_OPERATIONAL"
     },
     "KUALITAS_LAYANAN_MERCHANT": {
-        "title": "Kualitas Layanan Merchant & Kepatuhan",
-        "description": "Kasir menolak pembayaran QRIS secara sepihak, menetapkan batas minimal belanja, atau bersikap judes",
+        "title": "Kualitas Layanan Toko",
+        "description": "Kasir menolak menerima QRIS secara sepihak atau menentukan syarat minimal belanja",
         "severity": "MEDIUM",
-        "action": "Catat keluhan penolakan transaksi/layanan kasir ke evaluasi bulanan merchant dan sesuaikan skor reputasi layanan.",
+        "action": "Catat masukan pelayanan ini sebagai bahan evaluasi kenyamanan pelanggan.",
         "emrs_penalty": "PENALTY_SERVICE"
     },
     "QRIS_NORMAL_MERCHANT_TERPERCAYA": {
-        "title": "QRIS Normal & Merchant Terpercaya",
-        "description": "Transaksi berhasil lancar, barcode resmi, nominal sesuai, dan identitas terverifikasi",
+        "title": "Transaksi Lancar & Toko Terpercaya",
+        "description": "Pembayaran sukses tanpa kendala, nama penerima sesuai, dan kasir melayani dengan baik",
         "severity": "LOW",
-        "action": "Tidak ada eskalasi kendala. Feedback positif otomatis menambahkan poin reputasi Trust Score merchant di direktori LaQris.",
+        "action": "Ulasan positif ini otomatis menambah nilai reputasi dan kepercayaan toko di aplikasi LaQris.",
         "emrs_penalty": "BOOST_TRUST"
     },
     "FEEDBACK_AMBIGU": {
-        "title": "Feedback Ambigu / Belum Spesifik",
-        "description": "Komentar umum, tidak jelas, atau tanpa rincian bukti transaksi yang konkret",
+        "title": "Ulasan Kurang Spesifik / Perlu Rincian",
+        "description": "Komentar terlalu pendek atau belum menyebutkan kejadian secara rinci",
         "severity": "MEDIUM",
-        "action": "Informasi laporan belum spesifik. Sistem memasukkan ke antrean klarifikasi dan meminta pembeli menyertakan foto struk/detail transaksi.",
+        "action": "Ulasan dicatat dan sistem menyarankan pengguna melengkapi cerita jika menemukan kendala.",
         "emrs_penalty": "NONE"
     }
 }
@@ -102,7 +104,10 @@ _model_loaded = False
 
 
 def _load_custom_indobert():
-    """Memuat model IndoBERT fine-tuned 7-kelas dari direktori training."""
+    """
+    Fungsi untuk memuat model kecerdasan buatan IndoBERT ke dalam memori.
+    Model ini bertugas membaca teks ulasan berbahasa Indonesia dan memahami artinya.
+    """
     global _indobert_model, _indobert_tokenizer, _model_device, _model_loaded
     if _model_loaded:
         return _indobert_model is not None
@@ -119,7 +124,7 @@ def _load_custom_indobert():
             import torch
             from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-            logger.info("Memuat model IndoBERT 7-Kelas dari: %s", target_dir)
+            logger.info("Memuat model kecerdasan buatan IndoBERT dari: %s", target_dir)
             _indobert_tokenizer = AutoTokenizer.from_pretrained(target_dir)
             _indobert_model = AutoModelForSequenceClassification.from_pretrained(target_dir)
             
@@ -127,18 +132,19 @@ def _load_custom_indobert():
             _indobert_model.to(_model_device)
             _indobert_model.eval()
             
-            logger.info("Model IndoBERT LaQris EMRS berhasil dimuat di device: %s", _model_device)
+            logger.info("Model IndoBERT LaQris siap digunakan pada: %s", _model_device)
             return True
         except Exception as e:
-            logger.warning("Gagal memuat model IndoBERT (%s). Menggunakan semantic fallback.", e)
+            logger.warning("Model IndoBERT belum dapat dimuat (%s). Menggunakan sistem pencocokan kata cadangan.", e)
 
     return False
 
 
 def _semantic_baseline_classify(text: str) -> Dict[str, Any]:
     """
-    Engine semantik baseline berbasis N-Gram kontekstual & operator relasional
-    sebagai fallback instan jika model neural network belum dapat diakses.
+    Sistem pencocokan kata cadangan (Semantic Fallback):
+    Mencocokkan kata kunci keluhan atau pujian dalam kalimat ulasan secara cepat,
+    sebagai cadangan jika model kecerdasan buatan utama sedang tidak aktif.
     """
     clean_text = text.lower()
     clean_text = re.sub(r"[^a-zA-Z0-9\s]", " ", clean_text)
@@ -211,10 +217,10 @@ def _semantic_baseline_classify(text: str) -> Dict[str, Any]:
 
 def _apply_hybrid_guard(text: str, predicted_cat: str, confidence: float) -> tuple:
     """
-    Hybrid Guard (P1 Item 11 di Readme.md):
-    Mendeteksi pernyataan identitas positif / ulasan transaksi normal yang sering mengalami
-    boundary false-positive pada model klasifikasi teks (misal: "nama merchant sama dengan nama toko").
-    Mencegah feedback positif salah diprediksi sebagai KETIDAKSESUAIAN_IDENTITAS_MERCHANT.
+    Pelindung Ulasan Positif (Hybrid Guard):
+    Memastikan ulasan pembeli yang bernada memuji dan menyatakan transaksi sukses
+    (misal: "nama toko sama persis dan pembayaran lancar")
+    tidak keliru dikategorikan sebagai masalah penipuan.
     """
     text_clean = text.lower()
     positive_cues = [
@@ -239,10 +245,10 @@ def _apply_hybrid_guard(text: str, predicted_cat: str, confidence: float) -> tup
 
 def classify_feedback(text: Optional[str]) -> Dict[str, Any]:
     """
-    Fungsi utama klasifikasi feedback:
-    Menerima teks deskripsi dan mengembalikan kategori 7-kelas EMRS,
-    confidence, severity, rekomendasi aksi, dan tipe penalti EMRS.
-    Dilengkapi Hybrid Guard untuk mencegah boundary false-positive (P1 Item 11).
+    Fungsi utama analisis ulasan pembeli:
+    Menerima kalimat ulasan lalu menentukan kategori masalah, tingkat keparahan,
+    serta rekomendasi tindak lanjut bagi toko.
+    Dilengkapi pelindung otomatis agar ulasan kepuasan pelanggan dinilai secara akurat.
     """
     if not text or not text.strip():
         cat_meta = CATEGORIES["FEEDBACK_AMBIGU"]
