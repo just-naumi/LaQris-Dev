@@ -1,377 +1,1136 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LaQris - Berikan Feedback</title>
+    <title>Berikan Feedback — LaQris</title>
     <meta name="description" content="Ceritakan pengalaman Anda saat bertransaksi menggunakan QRIS untuk membantu reputasi merchant di LaQris.">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Google Font: Plus Jakarta Sans (Konsisten dengan payment.html & dashboard.html) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="js/config.js"></script>
     <style>
-        * { box-sizing: border-box; font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; }
         :root {
-            --primary: #3b82f6; --primary-dark: #2563eb; --primary-light: rgba(59,130,246,0.10);
-            --danger: #ef4444; --danger-light: rgba(239,68,68,0.12);
-            --warning: #f59e0b; --warning-light: rgba(245,158,11,0.12);
-            --success: #10b981; --success-light: rgba(16,185,129,0.12);
-            --bg: #f8fafc; --card-bg: #ffffff; --border: #e2e8f0;
-            --text-main: #0f172a; --text-muted: #64748b;
-            --radius: 16px; --radius-sm: 10px;
-            --shadow: 0 4px 20px rgba(15,23,42,0.06);
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #eff6ff;
+            --primary-border: #bfdbfe;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --text-sub: #94a3b8;
+            --bg-page: #f1f5f9;
+            --bg-card: #ffffff;
+            --border-light: #f1f5f9;
+            --border-card: #e2e8f0;
+            --success: #16a34a;
+            --success-light: #f0fdf4;
+            --success-border: #bbf7d0;
+            --warning: #d97706;
+            --warning-light: #fefce8;
+            --warning-border: #fef08a;
+            --danger: #dc2626;
+            --danger-light: #fef2f2;
+            --danger-border: #fecaca;
+            --radius-xl: 24px;
+            --radius-lg: 18px;
+            --radius-md: 14px;
+            --radius-sm: 10px;
         }
-        body { background: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 0 0 40px; }
 
-        /* ── Top Navigation ── */
-        .top-nav { width: 100%; max-width: 560px; display: flex; align-items: center; gap: 12px; padding: 18px 20px 10px; }
-        .btn-back { width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--border); background: var(--card-bg); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; color: var(--text-main); flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
-        .btn-back:hover { background: var(--primary-light); border-color: var(--primary); color: var(--primary); transform: translateX(-2px); }
-        .nav-title { font-size: 16px; font-weight: 700; }
-
-        /* ── Hero Banner ── */
-        .hero-banner { width: calc(100% - 40px); max-width: 560px; margin: 0 0 16px; padding: 22px; background: linear-gradient(135deg, #1e3a5f, #1a56db); border-radius: var(--radius); position: relative; overflow: hidden; box-shadow: 0 8px 28px rgba(26,86,219,0.24); }
-        .hero-banner::before { content:''; position: absolute; top: -40px; right: -30px; width: 150px; height: 150px; border-radius: 50%; background: rgba(255,255,255,0.06); }
-        .hero-icon { width: 44px; height: 44px; border-radius: 12px; background: rgba(255,255,255,0.18); display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
-        .hero-title { font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 6px; }
-        .hero-subtitle { font-size: 13px; color: rgba(255,255,255,0.8); line-height: 1.5; max-width: 380px; }
-
-        /* ── Merchant / QRIS Strip ── */
-        .merchant-strip { width: calc(100% - 40px); max-width: 560px; margin: 0 0 16px; padding: 14px 16px; background: var(--card-bg); border: 1.5px solid var(--border); border-radius: var(--radius-sm); display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow); }
-        .merchant-strip.hidden { display: none; }
-        .merchant-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--success); flex-shrink: 0; box-shadow: 0 0 0 3px var(--success-light); }
-        .merchant-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
-        .merchant-value { font-size: 13.5px; font-weight: 700; font-family: 'Courier New', monospace; color: var(--text-main); margin-top: 1px; }
-
-        /* ── Form Card ── */
-        .form-card { width: calc(100% - 40px); max-width: 560px; margin: 0 0 16px; background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; border: 1px solid var(--border); }
-        .form-body { padding: 22px 20px; display: flex; flex-direction: column; gap: 20px; }
-
-        /* ── Form Fields ── */
-        .field-group { display: flex; flex-direction: column; gap: 7px; }
-        .field-header { display: flex; justify-content: space-between; align-items: baseline; }
-        .field-label { font-size: 13.5px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px; }
-        .field-subtext { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
-        .badge-required { font-size: 10px; font-weight: 600; color: var(--danger); background: var(--danger-light); padding: 2px 6px; border-radius: 4px; }
-        .badge-optional { font-size: 10px; color: var(--text-muted); background: #f1f5f9; padding: 2px 6px; border-radius: 4px; }
-        .field-hint-ai { font-size: 11.5px; color: #2563eb; display: flex; align-items: center; gap: 5px; margin-top: 4px; }
-
-        select.form-input, input.form-input, textarea.form-input {
-            width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-            font-size: 13.5px; color: var(--text-main); background: #f8fafc; transition: all 0.2s ease; outline: none;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
-        select.form-input:focus, input.form-input:focus, textarea.form-input:focus {
-            border-color: var(--primary); background: #fff; box-shadow: 0 0 0 3px var(--primary-light);
+
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
         }
-        textarea.form-input { resize: vertical; min-height: 110px; line-height: 1.6; }
 
-        /* ── File Upload Area ── */
-        .fb-upload-box {
-            border: 1.5px dashed #94a3b8; border-radius: var(--radius-sm); padding: 18px; text-align: center;
-            background: #f8fafc; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; gap: 6px;
+        /* ── Mobile App Container (Konsisten 440px seperti payment.html) ── */
+        .mobile-container {
+            width: 100%;
+            max-width: 440px;
+            min-height: 100vh;
+            min-height: 100dvh;
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+            overflow-x: hidden;
         }
-        .fb-upload-box:hover { border-color: var(--primary); background: var(--primary-light); }
-        .fb-upload-btn {
-            display: inline-flex; align-items: center; gap: 6px; background: #e0f2fe; color: #0284c7;
-            font-size: 12.5px; font-weight: 700; padding: 7px 14px; border-radius: 8px; border: none; cursor: pointer;
+
+        /* ── Top App Bar (Sesuai payment.html) ── */
+        .app-bar {
+            height: 56px;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            position: sticky;
+            top: 0;
+            background: #ffffff;
+            z-index: 50;
+            border-bottom: 1px solid #f1f5f9;
         }
-        .fb-upload-hint { font-size: 11px; color: var(--text-muted); }
 
-        /* File Preview Container */
-        .fb-file-preview {
-            display: none; align-items: center; justify-content: space-between; padding: 12px 14px;
-            background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: var(--radius-sm);
+        .btn-back-nav {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            margin-left: -8px;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+            border-radius: 50%;
+            transition: background 0.2s ease;
         }
-        .fb-file-preview.active { display: flex; }
-        .fb-file-info { display: flex; align-items: center; gap: 10px; overflow: hidden; }
-        .fb-file-icon { font-size: 20px; flex-shrink: 0; }
-        .fb-file-name { font-size: 13px; font-weight: 600; color: #166534; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; }
-        .fb-file-size { font-size: 11px; color: #15803d; }
-        .fb-file-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-        .btn-change-file { background: transparent; border: 1px solid #86efac; color: #166534; font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 6px; cursor: pointer; }
-        .btn-change-file:hover { background: #dcfce7; }
-        .btn-remove-file { background: transparent; border: none; color: #dc2626; font-size: 16px; font-weight: 700; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
-        .btn-remove-file:hover { background: #fee2e2; }
 
-        /* Upload Status Badge */
-        .upload-status-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px; margin-top: 4px; }
-        .upload-status-badge.pending { background: #fef3c7; color: #92400e; }
+        .btn-back-nav:hover {
+            background: #f1f5f9;
+        }
 
-        /* ── Risk & Privacy Notices ── */
-        .system-note { padding: 12px 14px; border-radius: var(--radius-sm); background: #f1f5f9; border-left: 3px solid #64748b; font-size: 11.5px; color: #475569; line-height: 1.5; }
-        .privacy-box { padding: 12px 14px; border-radius: var(--radius-sm); background: var(--primary-light); border: 1px solid rgba(59,130,246,0.2); display: flex; gap: 10px; align-items: flex-start; }
-        .privacy-box-icon { font-size: 16px; flex-shrink: 0; }
-        .privacy-box-text { font-size: 11.5px; color: #1e3a8a; line-height: 1.5; }
+        .app-bar-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.3px;
+        }
 
-        /* ── Action Buttons ── */
-        .action-area { width: calc(100% - 40px); max-width: 560px; display: flex; flex-direction: column; gap: 10px; }
-        .btn-submit { width: 100%; padding: 14px; border: none; border-radius: var(--radius); background: linear-gradient(135deg, #1a56db, #3b82f6); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; box-shadow: 0 4px 16px rgba(26,86,219,0.28); }
-        .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(26,86,219,0.36); }
-        .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        .btn-cancel { width: 100%; padding: 13px; border: 1.5px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text-muted); font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .btn-cancel:hover { border-color: var(--text-muted); color: var(--text-main); }
+        /* ── Content Body ── */
+        .content-body {
+            flex: 1;
+            padding: 18px 20px 110px 20px;
+            overflow-y: auto;
+        }
 
-        /* ── Success Screen ── */
-        .success-card { width: calc(100% - 40px); max-width: 560px; display: none; background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--border); padding: 36px 24px; text-align: center; }
-        .success-circle { width: 72px; height: 72px; border-radius: 50%; background: var(--success-light); display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 16px; }
-        .success-title { font-size: 20px; font-weight: 800; color: var(--text-main); margin-bottom: 8px; }
-        .success-desc { font-size: 13.5px; color: var(--text-muted); line-height: 1.6; margin-bottom: 20px; }
-        .feedback-result-pill { background: #f8fafc; border: 1px solid var(--border); border-radius: 12px; padding: 14px; text-align: left; margin-bottom: 20px; font-size: 12.5px; }
-        .feedback-result-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
-        .feedback-result-row:last-child { margin-bottom: 0; }
-        .btn-back-scan { width: 100%; padding: 13px; border: none; border-radius: var(--radius-sm); background: linear-gradient(135deg, #1a56db, #3b82f6); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 14px rgba(26,86,219,0.28); }
+        /* ── Merchant Header Box (Gaya payment.html) ── */
+        .merchant-header-box {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 16px;
+            background: #ffffff;
+            border: 1.5px solid var(--border-card);
+            border-radius: var(--radius-lg);
+            margin-bottom: 14px;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+        }
 
-        /* Spinner */
-        .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
-        .btn-submit.loading .spinner { display: block; }
-        .btn-submit.loading .btn-text { display: none; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .merchant-avatar-circle {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #e2f7f4;
+            color: #0f766e;
+            font-weight: 800;
+            font-size: 1.05rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border: 1px solid #ccfbf1;
+        }
 
-        @media (max-width: 560px) {
-            .hero-banner, .merchant-strip, .form-card, .action-area, .success-card { width: 100%; border-radius: 0; }
-            .hero-banner { border-radius: 0 0 var(--radius) var(--radius); }
+        .merchant-info-text {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow: hidden;
+            flex: 1;
+        }
+
+        .merchant-name-title {
+            font-size: 0.96rem;
+            font-weight: 800;
+            color: var(--text-main);
+            line-height: 1.35;
+            text-transform: uppercase;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .merchant-sub-tags {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .merchant-nmid-badge {
+            font-size: 0.76rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            font-family: 'Courier New', monospace;
+            background: #f8fafc;
+            padding: 1px 6px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .merchant-city-tag {
+            font-size: 0.74rem;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+
+        /* ── Evidence Level Banner (Sesuai EMRS LaQris) ── */
+        .evidence-level-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: var(--radius-md);
+            margin-bottom: 20px;
+            font-size: 0.82rem;
+            line-height: 1.4;
+            transition: all 0.3s ease;
+        }
+
+        .evidence-level-card.level-2 {
+            background: var(--success-light);
+            border: 1.5px solid var(--success-border);
+            color: #166534;
+        }
+
+        .evidence-level-card.level-1 {
+            background: var(--primary-light);
+            border: 1.5px solid var(--primary-border);
+            color: #1e40af;
+        }
+
+        .evidence-level-card.level-0 {
+            background: #f8fafc;
+            border: 1.5px solid #e2e8f0;
+            color: #475569;
+        }
+
+        .evidence-icon-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+            background: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+        }
+
+        .evidence-text-group {
+            flex: 1;
+        }
+
+        .evidence-badge-title {
+            font-weight: 800;
+            font-size: 0.82rem;
+            display: block;
+        }
+
+        .evidence-badge-sub {
+            font-size: 0.74rem;
+            opacity: 0.88;
+        }
+
+        /* ── Form Section Groups ── */
+        .form-section {
+            margin-bottom: 20px;
+        }
+
+        .section-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .section-title-label {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .pill-badge {
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .pill-badge.required {
+            background: var(--danger-light);
+            color: var(--danger);
+        }
+
+        .pill-badge.optional {
+            background: #f1f5f9;
+            color: var(--text-muted);
+        }
+
+        .section-desc {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            line-height: 1.45;
+        }
+
+        /* ── Quick Scenario Chips ── */
+        .scenario-chips-container {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+            scrollbar-width: none;
+        }
+
+        .scenario-chips-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .chip-btn {
+            background: #f8fafc;
+            border: 1px solid var(--border-card);
+            color: var(--text-main);
+            font-size: 0.76rem;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .chip-btn:hover, .chip-btn:active {
+            background: var(--primary-light);
+            border-color: var(--primary-border);
+            color: var(--primary-dark);
+        }
+
+        /* ── Form Inputs (Clean Fintech Style) ── */
+        .text-input-field, .select-input-field {
+            width: 100%;
+            background: #ffffff;
+            border: 1.5px solid var(--border-card);
+            border-radius: var(--radius-md);
+            padding: 12px 14px;
+            font-size: 0.88rem;
+            color: var(--text-main);
+            outline: none;
+            transition: all 0.2s ease;
+            line-height: 1.5;
+        }
+
+        .text-input-field:focus, .select-input-field:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+
+        textarea.text-input-field {
+            min-height: 110px;
+            resize: vertical;
+        }
+
+        .char-counter-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 6px;
+            font-size: 0.72rem;
+            color: var(--text-sub);
+        }
+
+        .ai-hint-box {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.74rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-top: 6px;
+            padding: 8px 10px;
+            background: var(--primary-light);
+            border-radius: var(--radius-sm);
+        }
+
+        /* ── Expandable Context Card (Metadata Contract C) ── */
+        .context-toggle-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-md);
+            padding: 12px 14px;
+            margin-bottom: 20px;
+        }
+
+        .context-toggle-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .context-toggle-title {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #334155;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .context-toggle-icon {
+            font-size: 0.75rem;
+            color: #64748b;
+            transition: transform 0.2s ease;
+        }
+
+        .context-details-body {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #cbd5e1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 0.78rem;
+        }
+
+        .context-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .context-key {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .context-val {
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            color: var(--text-main);
+            background: #ffffff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+        }
+
+        /* ── File Upload Drop Area ── */
+        .upload-dropzone {
+            border: 1.5px dashed #cbd5e1;
+            border-radius: var(--radius-md);
+            padding: 16px 14px;
+            text-align: center;
+            background: #f8fafc;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .upload-dropzone:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .upload-dropzone-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #475569;
+        }
+
+        .upload-dropzone-text {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .upload-dropzone-hint {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+
+        /* File Preview Box */
+        .file-preview-card {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            background: var(--success-light);
+            border: 1.5px solid var(--success-border);
+            border-radius: var(--radius-md);
+        }
+
+        .file-preview-card.active {
+            display: flex;
+        }
+
+        .file-info-col {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            overflow: hidden;
+        }
+
+        .file-preview-icon {
+            font-size: 1.4rem;
+        }
+
+        .file-name-txt {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #166534;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 210px;
+        }
+
+        .file-size-txt {
+            font-size: 0.72rem;
+            color: #15803d;
+        }
+
+        .file-action-btn {
+            background: none;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ── Sticky Bottom Action Bar (Sesuai payment.html) ── */
+        .bottom-action-bar {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 440px;
+            background: #ffffff;
+            padding: 14px 20px;
+            box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.08);
+            z-index: 40;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        .btn-submit-main {
+            width: 100%;
+            padding: 15px;
+            background: #0f172a;
+            color: #ffffff;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 0.95rem;
+            font-weight: 800;
+            letter-spacing: -0.2px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.2);
+            transition: all 0.2s ease;
+        }
+
+        .btn-submit-main:hover:not(:disabled) {
+            background: #1e293b;
+            transform: translateY(-1px);
+        }
+
+        .btn-submit-main:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-submit-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2.5px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+            display: none;
+        }
+
+        .btn-submit-main.loading .btn-submit-spinner {
+            display: block;
+        }
+
+        .btn-submit-main.loading .btn-submit-text {
+            display: none;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ── Fullscreen AI Result Screen (Gaya Struk wondr di payment.html) ── */
+        .result-screen-wrapper {
+            display: none;
+            padding: 24px 20px 60px 20px;
+            animation: fadeIn 0.35s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-success-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: #dcfce7;
+            color: #16a34a;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            border: 4px solid #bbf7d0;
+        }
+
+        .result-main-title {
+            font-size: 1.25rem;
+            font-weight: 900;
+            color: var(--text-main);
+            text-align: center;
+            margin-bottom: 6px;
+            letter-spacing: -0.3px;
+        }
+
+        .result-main-sub {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            text-align: center;
+            line-height: 1.45;
+            margin-bottom: 22px;
+        }
+
+        /* Diagnostics Pill Card */
+        .diagnostics-card {
+            background: #ffffff;
+            border: 1.5px solid var(--border-card);
+            border-radius: var(--radius-lg);
+            padding: 18px 16px;
+            box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
+            margin-bottom: 20px;
+        }
+
+        .diag-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 9px 0;
+            font-size: 0.82rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .diag-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .diag-label {
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .diag-val-badge {
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .diag-val-badge.sev-critical { background: #fee2e2; color: #991b1b; }
+        .diag-val-badge.sev-high     { background: #ffedd5; color: #9a3412; }
+        .diag-val-badge.sev-medium   { background: #fef3c7; color: #92400e; }
+        .diag-val-badge.sev-low      { background: #dcfce7; color: #166534; }
+
+        .score-change-container {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-md);
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+
+        .score-change-label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #334155;
+        }
+
+        .score-change-numbers {
+            font-size: 0.95rem;
+            font-weight: 900;
+            color: var(--primary-dark);
+            letter-spacing: -0.2px;
+        }
+
+        .recommendation-alert {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: var(--radius-md);
+            padding: 12px 14px;
+            font-size: 0.8rem;
+            color: #1e40af;
+            line-height: 1.45;
+            margin-bottom: 24px;
+        }
+
+        .btn-finish-home {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary);
+            color: #ffffff;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 0.92rem;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+            transition: all 0.2s ease;
+        }
+
+        .btn-finish-home:hover {
+            background: var(--primary-dark);
         }
     </style>
 </head>
+
 <body>
-
-<nav class="top-nav">
-    <button class="btn-back" id="btnBack">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
-        </svg>
-    </button>
-    <div class="nav-title">Berikan Feedback</div>
-</nav>
-
-<div class="hero-banner" id="heroBanner">
-    <div class="hero-icon">
-        <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3.001h6m-6 3h3m6 6l-3-3H4.5A2.25 2.25 0 012.25 15V6A2.25 2.25 0 014.5 3.75h15A2.25 2.25 0 0121.75 6v9a2.25 2.25 0 01-2.25 2.25H16.5l-4.5 4.5z"/>
-        </svg>
-    </div>
-    <div class="hero-title">Berikan Feedback</div>
-    <div class="hero-subtitle">Bantu kami memahami pengalaman Anda saat bertransaksi dengan QRIS ini.</div>
-</div>
-
-<!-- 1. Identitas Merchant / QRIS -->
-<div class="merchant-strip" id="merchantStrip">
-    <div class="merchant-dot"></div>
-    <div>
-        <div class="merchant-label">Merchant / QRIS</div>
-        <div class="merchant-value" id="merchantNmidDisplay">Memuat...</div>
-    </div>
-</div>
-
-<!-- Form Card -->
-<div class="form-card" id="formCard">
-    <div class="form-body">
-
-        <!-- 2. Ceritakan Pengalaman Anda (Textarea Utama) -->
-        <div class="field-group">
-            <div class="field-header">
-                <label class="field-label" for="fbDescription">
-                    Ceritakan Pengalaman Anda
-                    <span class="badge-required">Wajib</span>
-                </label>
-            </div>
-            <div class="field-subtext">Jelaskan apa yang Anda lihat atau alami saat menggunakan QRIS ini.</div>
-            <textarea id="fbDescription" class="form-input" rows="4"
-                placeholder="Contoh: Nama penerima pembayaran berbeda dengan nama merchant yang tertera."></textarea>
-            <div class="field-hint-ai">
-                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z"/>
+    <div class="mobile-container">
+        <!-- ── Top App Bar ── -->
+        <div class="app-bar">
+            <button type="button" class="btn-back-nav" onclick="goBack()" title="Kembali">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
-                AI akan membantu mengklasifikasikan feedback Anda secara otomatis.
-            </div>
+            </button>
+            <div class="app-bar-title">Berikan Feedback</div>
         </div>
 
-        <!-- 3. Kategori Masalah (Opsional Dropdown) -->
-        <div class="field-group">
-            <div class="field-header">
-                <label class="field-label" for="fbManualCategory">
-                    Kategori Masalah
-                    <span class="badge-optional">Opsional</span>
-                </label>
-            </div>
-            <select id="fbManualCategory" class="form-input">
-                <option value="">Pilih kategori jika Anda mengetahuinya</option>
-                <option value="PENIPUAN_STIKER_QRIS_PALSU">🚨 Stiker QRIS Diduga Palsu / Ditimpa (Kritikal)</option>
-                <option value="KETIDAKSESUAIAN_IDENTITAS_MERCHANT">⚠️ Nama Merchant / NMID Berbeda (Tinggi)</option>
-                <option value="PUNGUTAN_BIAYA_TAMBAHAN_SURCHARGE">💸 Pungutan Biaya Tambahan / Surcharge (Tinggi)</option>
-                <option value="KONDISI_FISIK_QRIS_RUSAK">🔍 Kondisi Fisik QRIS Rusak / Pudar / Sobek</option>
-                <option value="KUALITAS_LAYANAN_MERCHANT">👤 Kasir Menolak QRIS / Ketus / Batas Belanja</option>
-                <option value="QRIS_NORMAL_MERCHANT_TERPERCAYA">✅ Transaksi Normal & QRIS Toko Asli (Aman)</option>
-                <option value="FEEDBACK_AMBIGU">💬 Pertanyaan / Kendala Umum Lainnya</option>
-            </select>
-            <div class="field-subtext" style="font-size: 11px;">Jika tidak yakin, biarkan kosong. Sistem akan membantu mengklasifikasikan feedback Anda.</div>
-        </div>
-
-        <!-- Catatan Risiko Sistem (Pengganti Input Severity) -->
-        <div class="system-note">
-            🛡️ <strong>Analisis Otomatis:</strong> Tingkat risiko akan dianalisis oleh sistem berdasarkan isi feedback dan bukti yang diberikan.
-        </div>
-
-        <!-- 4. Detail Transaksi (Opsional) -->
-        <div class="field-group">
-            <div class="field-header">
-                <label class="field-label" for="fbTxRef">
-                    Detail Transaksi
-                    <span class="badge-optional">Opsional</span>
-                </label>
-            </div>
-            <div class="field-subtext">Nomor Referensi Transaksi</div>
-            <input type="text" id="fbTxRef" class="form-input" placeholder="Contoh: TRX-9920183">
-            <div class="field-subtext" style="font-size: 11px;">Nomor ini dapat ditemukan pada riwayat atau notifikasi pembayaran Anda.</div>
-        </div>
-
-        <!-- 5. Bukti Pembayaran (Upload Komponen) -->
-        <div class="field-group">
-            <div class="field-header">
-                <label class="field-label">
-                    Bukti Pembayaran
-                    <span class="badge-optional">Opsional</span>
-                </label>
-            </div>
-            <div class="field-subtext">Unggah bukti pembayaran untuk membantu proses verifikasi feedback Anda.</div>
-
-            <!-- Upload Box Drop Area -->
-            <div class="fb-upload-box" id="fbUploadArea" onclick="triggerFileSelect()">
-                <button type="button" class="fb-upload-btn">
-                    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                    </svg>
-                    Upload Bukti Pembayaran
-                </button>
-                <div class="fb-upload-hint">Format: JPG, PNG, atau PDF. Maksimal 5 MB.</div>
-            </div>
-            <input type="file" id="fbFileInput" accept=".jpg,.jpeg,.png,.pdf" style="display:none;" onchange="handleFileSelected(event)">
-
-            <!-- File Preview Area -->
-            <div class="fb-file-preview" id="fbFilePreview">
-                <div class="fb-file-info">
-                    <span class="fb-file-icon" id="fbFileIcon">📄</span>
-                    <div>
-                        <div class="fb-file-name" id="fbFileName">-</div>
-                        <div class="fb-file-size" id="fbFileSize">-</div>
+        <!-- ── Main Form Screen ── -->
+        <div class="content-body" id="mainFormContainer">
+            <!-- 1. Merchant Header Box -->
+            <div class="merchant-header-box">
+                <div class="merchant-avatar-circle" id="merchantAvatar">QR</div>
+                <div class="merchant-info-text">
+                    <div class="merchant-name-title" id="merchantNameDisplay">MERCHANT QRIS</div>
+                    <div class="merchant-sub-tags">
+                        <span class="merchant-nmid-badge" id="merchantNmidDisplay">NMID: ID1020000000000</span>
+                        <span class="merchant-city-tag" id="merchantCityDisplay">KOTA</span>
                     </div>
                 </div>
-                <div class="fb-file-actions">
-                    <button type="button" class="btn-change-file" onclick="triggerFileSelect()">Ganti</button>
-                    <button type="button" class="btn-remove-file" onclick="removeSelectedFile()" title="Hapus file">&times;</button>
+            </div>
+
+            <!-- 2. Dynamic Evidence Level Banner -->
+            <div class="evidence-level-card level-0" id="evidenceLevelBanner">
+                <div class="evidence-icon-circle" id="evidenceIcon">💬</div>
+                <div class="evidence-text-group">
+                    <span class="evidence-badge-title" id="evidenceTitle">Level 0: Ulasan Pengguna (Bobot 25%)</span>
+                    <span class="evidence-badge-sub" id="evidenceSubtitle">Ulasan tanpa referensi transaksi terverifikasi.</span>
                 </div>
             </div>
 
-            <!-- Status Awal Verifikasi -->
-            <div id="fbUploadStatusContainer" style="display:none;">
-                <span class="upload-status-badge pending">
-                    ⏳ Status: Menunggu verifikasi
-                </span>
+            <!-- 3. Section: Ulasan Pengalaman (Wajib) -->
+            <div class="form-section">
+                <div class="section-header-row">
+                    <label class="section-title-label" for="fbDescription">
+                        Ceritakan Pengalaman Anda
+                        <span class="pill-badge required">Wajib</span>
+                    </label>
+                </div>
+                <div class="section-desc">
+                    Tuliskan kendala atau observasi Anda saat memindai dan bertransaksi di QRIS ini.
+                </div>
+
+                <!-- Quick Scenario Chips -->
+                <div class="scenario-chips-container">
+                    <button type="button" class="chip-btn" onclick="applyQuickScenario('transaksi_lancar')">
+                        ✅ Transaksi Lancar &amp; Sesuai
+                    </button>
+                    <button type="button" class="chip-btn" onclick="applyQuickScenario('nama_beda')">
+                        ⚠️ Nama Toko Berbeda
+                    </button>
+                    <button type="button" class="chip-btn" onclick="applyQuickScenario('stiker_palsu')">
+                        🚨 Stiker Ditimpa / Palsu
+                    </button>
+                    <button type="button" class="chip-btn" onclick="applyQuickScenario('rekening_pribadi')">
+                        💳 Rekening Pribadi
+                    </button>
+                    <button type="button" class="chip-btn" onclick="applyQuickScenario('qris_rusak')">
+                        ❌ QRIS Rusak / Pudar
+                    </button>
+                </div>
+
+                <textarea id="fbDescription" class="text-input-field" rows="4"
+                    placeholder="Contoh: Nama penerima di struk sesuai dengan papan nama toko dan kasir sangat ramah..."></textarea>
+
+                <div class="char-counter-row">
+                    <span id="charCount">0 karakter</span>
+                    <span>Minimal 5 karakter</span>
+                </div>
+
+                <div class="ai-hint-box">
+                    <span>✨</span>
+                    <span>IndoBERT AI 7-Kelas mengklasifikasikan keparahan &amp; sentimen secara otomatis.</span>
+                </div>
+            </div>
+
+            <!-- 4. Section: Kategori Masalah (Opsional) -->
+            <div class="form-section">
+                <div class="section-header-row">
+                    <label class="section-title-label" for="fbManualCategory">
+                        Kategori Feedback
+                        <span class="pill-badge optional">Opsional</span>
+                    </label>
+                </div>
+                <div class="section-desc">
+                    Pilih kategori jika Anda mengetahui jenis laporannya, atau biarkan AI mendeteksinya.
+                </div>
+
+                <select id="fbManualCategory" class="select-input-field">
+                    <option value="">✨ Deteksi Otomatis oleh IndoBERT AI (Direkomendasikan)</option>
+                    <option value="PENIPUAN_STIKER_QRIS_PALSU">🚨 Stiker QRIS Diduga Palsu / Ditimpa (Kritikal)</option>
+                    <option value="KETIDAKSESUAIAN_IDENTITAS_MERCHANT">⚠️ Nama Merchant / NMID Berbeda (Tinggi)</option>
+                    <option value="REKENING_PRIBADI_TIDAK_SESUAI">💳 QRIS Mengarah ke Rekening Pribadi (Tinggi)</option>
+                    <option value="PUNGUTAN_BIAYA_TAMBAHAN_SURCHARGE">💸 Pungutan Biaya Tambahan / Surcharge (Tinggi)</option>
+                    <option value="KONDISI_FISIK_QRIS_RUSAK">🔍 Kondisi Fisik QRIS Rusak / Pudar / Sobek (Sedang)</option>
+                    <option value="KUALITAS_LAYANAN_MERCHANT">👤 Kasir Menolak QRIS / Masalah Layanan (Sedang)</option>
+                    <option value="QRIS_NORMAL_MERCHANT_TERPERCAYA">✅ Transaksi Normal &amp; Toko Terpercaya (Aman)</option>
+                    <option value="FEEDBACK_AMBIGU">💬 Pertanyaan / Ulasan Umum Lainnya</option>
+                </select>
+            </div>
+
+            <!-- 5. Section: Bukti Foto / Struk (Opsional) -->
+            <div class="form-section">
+                <div class="section-header-row">
+                    <label class="section-title-label">
+                        Unggah Bukti Fisik / Struk
+                        <span class="pill-badge optional">Opsional</span>
+                    </label>
+                </div>
+                <div class="section-desc">
+                    Menyertakan foto struk atau stiker QRIS meningkatkan bobot bukti menjadi <strong>Level 2</strong>.
+                </div>
+
+                <!-- Upload Area -->
+                <div class="upload-dropzone" id="uploadDropzone" onclick="triggerFileSelect()">
+                    <div class="upload-dropzone-icon">
+                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+                        </svg>
+                    </div>
+                    <div class="upload-dropzone-text">Ambil Foto atau Pilih File</div>
+                    <div class="upload-dropzone-hint">Format JPG, PNG, atau PDF (Maks. 5 MB)</div>
+                </div>
+                <input type="file" id="fbFileInput" accept=".jpg,.jpeg,.png,.pdf,image/*" style="display:none;" onchange="handleFileSelected(event)">
+
+                <!-- File Preview Card -->
+                <div class="file-preview-card" id="filePreviewCard">
+                    <div class="file-info-col">
+                        <span class="file-preview-icon" id="filePreviewIcon">🖼️</span>
+                        <div>
+                            <div class="file-name-txt" id="fileNameTxt">-</div>
+                            <div class="file-size-txt" id="fileSizeTxt">-</div>
+                        </div>
+                    </div>
+                    <button type="button" class="file-action-btn" onclick="removeSelectedFile()" title="Hapus file">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 6. Section: Metadata Konteks Backend (Contract C) -->
+            <div class="context-toggle-card">
+                <div class="context-toggle-header" onclick="toggleContextDetails()">
+                    <span class="context-toggle-title">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                        </svg>
+                        Parameter Konteks Transaksi
+                    </span>
+                    <span class="context-toggle-icon" id="contextChevron">▼</span>
+                </div>
+                <div class="context-details-body" id="contextBody">
+                    <div class="context-row">
+                        <span class="context-key">Ref. Transaksi:</span>
+                        <span class="context-val" id="ctxTxRef">-</span>
+                    </div>
+                    <div class="context-row">
+                        <span class="context-key">ID Sesi Verifikasi:</span>
+                        <span class="context-val" id="ctxSessionId">-</span>
+                    </div>
+                    <div class="context-row">
+                        <span class="context-key">NMID Terhubung:</span>
+                        <span class="context-val" id="ctxNmid">-</span>
+                    </div>
+                    <div class="context-row">
+                        <span class="context-key">Akun Pengguna:</span>
+                        <span class="context-val" id="ctxUserId">-</span>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- 6. Informasi Privasi -->
-        <div class="privacy-box">
-            <span class="privacy-box-icon">🔒</span>
-            <div class="privacy-box-text">
-                <strong>Privasi:</strong> Feedback dapat dikirim secara anonim dan digunakan sebagai salah satu sumber informasi untuk sistem reputasi LaQris.
-            </div>
+        <!-- ── Sticky Bottom Action Bar ── -->
+        <div class="bottom-action-bar" id="bottomActionBar">
+            <button type="button" class="btn-submit-main" id="btnSubmitFeedback" onclick="handleFeedbackSubmit()">
+                <div class="btn-submit-spinner"></div>
+                <span class="btn-submit-text">Kirim Feedback ke LaQris</span>
+            </button>
         </div>
 
-    </div>
-</div>
+        <!-- ── Result Screen (Muncul setelah submit sukses) ── -->
+        <div class="result-screen-wrapper" id="resultScreenWrapper">
+            <div class="result-success-icon">✓</div>
+            <h2 class="result-main-title">Feedback Berhasil Diproses</h2>
+            <p class="result-main-sub">Model AI IndoBERT telah menganalisis ulasan Anda dan memperbarui skor reputasi toko secara real-time.</p>
 
-<!-- 7. Tombol Kirim Feedback -->
-<div class="action-area" id="actionArea">
-    <button class="btn-submit" id="btnSubmit" onclick="handleFeedbackSubmit()">
-        <div class="spinner"></div>
-        <span class="btn-text" style="display:flex;align-items:center;gap:8px;">
-            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/>
-            </svg>
-            Kirim Feedback
-        </span>
-    </button>
-    <button class="btn-cancel" onclick="goBack()">Batal &amp; Kembali</button>
-</div>
+            <div class="diagnostics-card">
+                <div class="diag-row">
+                    <span class="diag-label">Klasifikasi AI</span>
+                    <span class="diag-val-badge" id="resCategoryBadge" style="background:#eff6ff; color:#1d4ed8;">-</span>
+                </div>
+                <div class="diag-row">
+                    <span class="diag-label">Tingkat Keparahan</span>
+                    <span class="diag-val-badge" id="resSeverityBadge">-</span>
+                </div>
+                <div class="diag-row">
+                    <span class="diag-label">Tingkat Bukti</span>
+                    <span class="diag-val-badge" id="resEvidenceBadge" style="background:#f0fdf4; color:#15803d;">-</span>
+                </div>
+                <div class="diag-row">
+                    <span class="diag-label">Confidence Model</span>
+                    <span class="diag-val-badge" id="resConfidenceBadge" style="background:#f8fafc; color:#334155; border: 1px solid #e2e8f0;">-</span>
+                </div>
 
-    <!-- Success Screen Card -->
-    <div class="success-card" id="successCard">
-        <div class="success-circle">&#9989;</div>
-        <div class="success-title">Feedback Berhasil Diproses</div>
-        <div class="success-desc">AI IndoBERT &amp; LaQris Intelligence telah menganalisis laporan Anda untuk pembaruan reputasi merchant.</div>
+                <div class="score-change-container">
+                    <span class="score-change-label">Dampak Reputasi EMRS:</span>
+                    <span class="score-change-numbers" id="resScoreChange">75.0 → 92.5 / 100</span>
+                </div>
+            </div>
 
-        <div class="feedback-result-pill" id="feedbackResultPill">
-            <div class="feedback-result-row">
-                <span style="color: var(--text-muted);">Klasifikasi AI:</span>
-                <strong id="resStatusText" style="color:#0284c7;">-</strong>
+            <div class="recommendation-alert" id="resRecommendationBox">
+                <strong>Rekomendasi LaQris:</strong>
+                <span id="resRecommendationText" style="display:block; margin-top:2px;">Merchant terverifikasi aman. Transaksi dapat dilanjutkan secara normal.</span>
             </div>
-            <div class="feedback-result-row">
-                <span style="color: var(--text-muted);">Tingkat Risiko:</span>
-                <strong id="resSeverityText" style="color:#ef4444;">-</strong>
-            </div>
-            <div class="feedback-result-row">
-                <span style="color: var(--text-muted);">Tingkat Bukti:</span>
-                <strong id="resEvidenceText" style="color:#10b981;">-</strong>
-            </div>
-            <div class="feedback-result-row">
-                <span style="color: var(--text-muted);">Skor Reputasi Toko:</span>
-                <strong id="resReputationText" style="color:#1e3a8a;">-</strong>
-            </div>
-            <div class="feedback-result-row" id="resActionRow" style="display:none; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1;">
-                <span style="color: var(--text-muted); font-size: 11px;">Rekomendasi LaQris:</span>
-                <span id="resActionText" style="font-size: 11px; color:#475569; text-align: right; max-width: 260px;">-</span>
-            </div>
+
+            <button type="button" class="btn-finish-home" onclick="goBack()">
+                Selesai &amp; Kembali
+            </button>
         </div>
-
-        <button class="btn-back-scan" onclick="goBack()">Kembali ke Halaman Sebelumnya</button>
     </div>
 
     <script>
-        const params    = new URLSearchParams(window.location.search);
-        const nmid      = params.get('nmid') || '';
-        const backUrl   = params.get('back') || 'dashboard.html';
-        const txRef     = params.get('tx_ref') || params.get('transaction_ref') || params.get('transaction_id') || '';
-        const sessionId = params.get('session_id') || params.get('verification_id') || '';
+        // ── 1. Parameter URL & Storage Initialization ──
+        const params = new URLSearchParams(window.location.search);
+        let nmid = params.get('nmid') || '';
+        let txRef = params.get('tx_ref') || params.get('transaction_ref') || params.get('transaction_id') || '';
+        let sessionId = params.get('session_id') || params.get('verification_id') || '';
+        let merchantName = params.get('merchant') || params.get('merchant_name') || '';
+        let backUrl = params.get('back') || 'dashboard.html';
 
         let selectedEvidenceFile = null;
+        let currentUserId = '';
 
-        // Inisialisasi tampilan NMID
-        const nmidDisplay = document.getElementById('merchantNmidDisplay');
-        if (nmidDisplay) nmidDisplay.textContent = nmid || 'NMID terhubung sesi';
-        if (!nmid && !sessionId) document.getElementById('merchantStrip').classList.add('hidden');
+        document.addEventListener('DOMContentLoaded', async () => {
+            // A. Load User Profile dari Storage / Token
+            try {
+                const rawUser = localStorage.getItem('laqris_user') || sessionStorage.getItem('laqris_user');
+                if (rawUser) {
+                    const uObj = JSON.parse(rawUser);
+                    currentUserId = uObj.user_id || uObj.id || '';
+                }
+            } catch (e) {}
 
-        // Auto-fill nomor referensi jika ada dari navigasi sebelumnya
-        if (txRef) {
-            const txInput = document.getElementById('fbTxRef');
-            if (txInput) txInput.value = txRef;
+            if (!currentUserId) {
+                try {
+                    const uRes = await fetch('/api/user/current');
+                    if (uRes.ok) {
+                        const uData = await uRes.json();
+                        currentUserId = uData.user_id || uData.id || '';
+                    }
+                } catch (e) {}
+            }
+
+            // B. Render Merchant Header
+            if (!merchantName && sessionId) {
+                // Coba fetch nama merchant dari sesi verifikasi jika belum ada
+                try {
+                    const sRes = await fetch(`/api/v1/verify/${encodeURIComponent(sessionId)}`);
+                    if (sRes.ok) {
+                        const sData = await sRes.json();
+                        if (sData.merchant_info) {
+                            if (!merchantName) merchantName = sData.merchant_info.digital_name || sData.merchant_info.physical_name;
+                            if (!nmid) nmid = sData.merchant_info.nmid;
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            if ((!merchantName || merchantName === 'MERCHANT QRIS') && nmid) {
+                try {
+                    const mRes = await fetch(`/api/merchants/${encodeURIComponent(nmid)}`);
+                    if (mRes.ok) {
+                        const mData = await mRes.json();
+                        if (mData.merchant_name) {
+                            merchantName = mData.merchant_name;
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            if (!merchantName) merchantName = 'MERCHANT QRIS';
+            document.getElementById('merchantNameDisplay').textContent = merchantName;
+            document.getElementById('merchantAvatar').textContent = getInitials(merchantName);
+            document.getElementById('merchantNmidDisplay').textContent = nmid ? `NMID: ${nmid}` : 'NMID SESI AKTIF';
+            document.getElementById('merchantCityDisplay').textContent = 'INDONESIA';
+
+            // C. Render Metadata Context Rows
+            document.getElementById('ctxTxRef').textContent = txRef || '(Tidak Terikat)';
+            document.getElementById('ctxSessionId').textContent = sessionId || '(Tidak Terikat)';
+            document.getElementById('ctxNmid').textContent = nmid || '(Auto-resolve)';
+            document.getElementById('ctxUserId').textContent = currentUserId || 'PENGGUNA';
+
+            // D. Hitung & Update Evidence Level Awal
+            updateEvidenceLevelBadge();
+
+            // E. Textarea Input Listener
+            const descInput = document.getElementById('fbDescription');
+            descInput.addEventListener('input', () => {
+                const len = descInput.value.length;
+                document.getElementById('charCount').textContent = `${len} karakter`;
+                descInput.style.borderColor = '';
+            });
+        });
+
+        // ── 2. Helper Evidence Level Calculator ──
+        function updateEvidenceLevelBadge() {
+            const hasFile = Boolean(selectedEvidenceFile);
+            const banner = document.getElementById('evidenceLevelBanner');
+            const icon = document.getElementById('evidenceIcon');
+            const title = document.getElementById('evidenceTitle');
+            const sub = document.getElementById('evidenceSubtitle');
+
+            if (txRef || (sessionId && hasFile)) {
+                // Level 2: Transaction-linked Evidence (Bobot 100%)
+                banner.className = 'evidence-level-card level-2';
+                icon.textContent = '🛡️';
+                title.textContent = 'Level 2: Bukti Terikat Transaksi (Bobot 100%)';
+                sub.textContent = 'Laporan terikat pada transaksi pembayaran resmi & memiliki bobot tertinggi di EMRS.';
+            } else if (sessionId) {
+                // Level 1: Verification Session Linked (Bobot 50%)
+                banner.className = 'evidence-level-card level-1';
+                icon.textContent = '🔍';
+                title.textContent = 'Level 1: Bukti Terikat Sesi Scan (Bobot 50%)';
+                sub.textContent = 'Laporan terhubung dengan sesi pemindaian QRIS yang valid.';
+            } else {
+                // Level 0: Pure User Feedback (Bobot 25%)
+                banner.className = 'evidence-level-card level-0';
+                icon.textContent = '💬';
+                title.textContent = 'Level 0: Ulasan Pengguna (Bobot 25%)';
+                sub.textContent = 'Ulasan naratif umum tanpa referensi sesi atau transaksi terverifikasi.';
+            }
         }
 
-        document.getElementById('btnBack').addEventListener('click', goBack);
+        // ── 3. Quick Scenario Chips Applier ──
+        function applyQuickScenario(type) {
+            const descEl = document.getElementById('fbDescription');
+            const catSelect = document.getElementById('fbManualCategory');
 
-        function goBack() {
-            window.location.href = backUrl;
+            if (type === 'transaksi_lancar') {
+                descEl.value = 'Transaksi pembayaran QRIS berjalan normal dan nama toko sesuai dengan identitas fisik kasir.';
+                catSelect.value = 'QRIS_NORMAL_MERCHANT_TERPERCAYA';
+            } else if (type === 'nama_beda') {
+                descEl.value = 'Nama penerima pada aplikasi berbeda dengan nama fisik merchant yang tertera di kasir toko.';
+                catSelect.value = 'KETIDAKSESUAIAN_IDENTITAS_MERCHANT';
+            } else if (type === 'stiker_palsu') {
+                descEl.value = 'Stiker QRIS tampak ditimpa stiker baru yang mencurigakan di atas barcode asli toko.';
+                catSelect.value = 'PENIPUAN_STIKER_QRIS_PALSU';
+            } else if (type === 'rekening_pribadi') {
+                descEl.value = 'QRIS ini ternyata mengarah ke rekening perorangan/pribadi dan bukan akun resmi merchant.';
+                catSelect.value = 'REKENING_PRIBADI_TIDAK_SESUAI';
+            } else if (type === 'qris_rusak') {
+                descEl.value = 'Kondisi fisik cetakan stiker QRIS rusak, sobek, dan pudar sehingga sulit dipindai.';
+                catSelect.value = 'KONDISI_FISIK_QRIS_RUSAK';
+            }
+
+            document.getElementById('charCount').textContent = `${descEl.value.length} karakter`;
+            descEl.focus();
         }
 
-        // Upload & File Handling
+        // ── 4. File Upload Handling ──
         function triggerFileSelect() {
             document.getElementById('fbFileInput').click();
         }
 
-        function handleFileSelected(event) {
-            const file = event.target.files && event.target.files[0];
+        function handleFileSelected(e) {
+            const file = e.target.files && e.target.files[0];
             if (!file) return;
 
-            const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-            const allowedExts  = ['.jpg', '.jpeg', '.png', '.pdf'];
+            const allowedExts = ['.jpg', '.jpeg', '.png', '.pdf'];
             const fileExt = '.' + file.name.split('.').pop().toLowerCase();
-
-            if (!allowedTypes.includes(file.type) && !allowedExts.includes(fileExt)) {
+            if (!allowedExts.includes(fileExt)) {
                 alert('Format file tidak valid. Harap pilih format JPG, PNG, atau PDF.');
                 resetFileInput();
                 return;
             }
 
-            const maxSize = 5 * 1024 * 1024;
+            const maxSize = 5 * 1024 * 1024; // 5 MB
             if (file.size > maxSize) {
                 alert('Ukuran file melebihi batas maksimal 5 MB.');
                 resetFileInput();
@@ -379,26 +1138,27 @@
             }
 
             selectedEvidenceFile = file;
+            document.getElementById('fileNameTxt').textContent = file.name;
+            document.getElementById('fileSizeTxt').textContent = formatFileSize(file.size);
+            document.getElementById('filePreviewIcon').textContent = (fileExt === '.pdf') ? '📑' : '🖼️';
 
-            document.getElementById('fbFileName').textContent = file.name;
-            document.getElementById('fbFileSize').textContent = formatFileSize(file.size);
-            document.getElementById('fbFileIcon').textContent = file.type === 'application/pdf' ? '📑' : '🖼️';
-            document.getElementById('fbFilePreview').classList.add('active');
-            document.getElementById('fbUploadArea').style.display = 'none';
-            document.getElementById('fbUploadStatusContainer').style.display = 'block';
+            document.getElementById('filePreviewCard').classList.add('active');
+            document.getElementById('uploadDropzone').style.display = 'none';
+
+            updateEvidenceLevelBadge();
         }
 
         function removeSelectedFile() {
             resetFileInput();
-            document.getElementById('fbFilePreview').classList.remove('active');
-            document.getElementById('fbUploadArea').style.display = 'flex';
-            document.getElementById('fbUploadStatusContainer').style.display = 'none';
+            document.getElementById('filePreviewCard').classList.remove('active');
+            document.getElementById('uploadDropzone').style.display = 'flex';
+            updateEvidenceLevelBadge();
         }
 
         function resetFileInput() {
             selectedEvidenceFile = null;
-            const fileInput = document.getElementById('fbFileInput');
-            if (fileInput) fileInput.value = '';
+            const input = document.getElementById('fbFileInput');
+            if (input) input.value = '';
         }
 
         function formatFileSize(bytes) {
@@ -407,144 +1167,141 @@
             return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
         }
 
-        // Submit Feedback (Menggunakan Contract C /api/v1/feedback)
+        // ── 5. Toggle Metadata Card ──
+        function toggleContextDetails() {
+            const body = document.getElementById('contextBody');
+            const chevron = document.getElementById('contextChevron');
+            if (body.style.display === 'none') {
+                body.style.display = 'flex';
+                chevron.textContent = '▲';
+            } else {
+                body.style.display = 'none';
+                chevron.textContent = '▼';
+            }
+        }
+
+        // ── 6. Submit Feedback (Contract C: POST /api/v1/feedback) ──
         async function handleFeedbackSubmit() {
             const descInput = document.getElementById('fbDescription');
-            const description = descInput.value.trim();
+            const comment = descInput.value.trim();
 
-            if (!description) {
+            if (!comment || comment.length < 5) {
                 descInput.focus();
-                descInput.style.borderColor = '#ef4444';
-                descInput.style.boxShadow = '0 0 0 3px rgba(239,68,68,0.15)';
+                descInput.style.borderColor = '#dc2626';
+                alert('Harap tuliskan ulasan pengalaman Anda (minimal 5 karakter).');
                 return;
             }
 
-            const btn = document.getElementById('btnSubmit');
-            btn.classList.add('loading');
-            btn.disabled = true;
+            const btnSubmit = document.getElementById('btnSubmitFeedback');
+            btnSubmit.classList.add('loading');
+            btnSubmit.disabled = true;
 
             const manualCat = document.getElementById('fbManualCategory').value || null;
-            const txReference = document.getElementById('fbTxRef').value.trim() || null;
             const hasEvidence = Boolean(selectedEvidenceFile);
 
-            // Payload resmi Contract C LaQris Roadmap
+            // Canonical Contract C Payload
             const payload = {
                 verification_id: sessionId || null,
-                transaction_id: txReference || null,
-                comment: description,
+                transaction_id: txRef || null,
+                comment: comment,
                 nmid: nmid || null,
                 manual_category: manualCat,
-                has_evidence: hasEvidence
+                has_evidence: hasEvidence,
+                user_id: currentUserId || undefined
             };
 
             try {
                 const apiBase = (window.API_BASE || '').replace(/\/+$/, '');
                 const token = localStorage.getItem('laqris_access_token') || sessionStorage.getItem('laqris_access_token');
                 const reqHeaders = { 'Content-Type': 'application/json' };
-                if (token) {
-                    reqHeaders['Authorization'] = 'Bearer ' + token;
-                }
+                if (token) reqHeaders['Authorization'] = 'Bearer ' + token;
 
-                let res = await fetch(apiBase + '/api/v1/feedback', {
+                const res = await fetch(`${apiBase}/api/v1/feedback`, {
                     method: 'POST',
                     headers: reqHeaders,
                     body: JSON.stringify(payload)
                 });
 
-                let data = await res.json();
-
-                // Fallback ke legacy /api/feedback jika v1 belum tersedia
-                if (!res.ok && res.status === 404) {
-                    const legacyPayload = {
-                        nmid: nmid,
-                        description: description,
-                        category: manualCat || 'FEEDBACK_AMBIGU',
-                        severity: 'MEDIUM',
-                        transaction_ref: txReference,
-                        has_evidence: hasEvidence
-                    };
-                    res = await fetch(apiBase + '/api/feedback', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(legacyPayload)
-                    });
-                    data = await res.json();
-                }
+                const data = await res.json();
 
                 if (res.ok && data.success) {
-                    // Sembunyikan Form Card
-                    document.getElementById('heroBanner').style.display = 'none';
-                    document.getElementById('merchantStrip').style.display = 'none';
-                    document.getElementById('formCard').style.display = 'none';
-                    document.getElementById('actionArea').style.display = 'none';
-
-                    // Tampilkan Success Card
-                    const successCard = document.getElementById('successCard');
-                    successCard.style.display = 'block';
-
-                    // 1. Kategori & Confidence AI
-                    const catTitle = data.category_title || data.detected_category || 'Feedback Diproses';
-                    const confVal = data.confidence != null ? Math.round(data.confidence * 100) : 0;
-                    document.getElementById('resStatusText').textContent = `${catTitle} (${confVal}%)`;
-
-                    // 2. Severity Badge
-                    const sev = (data.severity || 'MEDIUM').toUpperCase();
-                    const sevEl = document.getElementById('resSeverityText');
-                    sevEl.textContent = sev;
-                    if (sev === 'CRITICAL') sevEl.style.color = '#dc2626';
-                    else if (sev === 'HIGH') sevEl.style.color = '#ea580c';
-                    else if (sev === 'MEDIUM') sevEl.style.color = '#d97706';
-                    else sevEl.style.color = '#16a34a';
-
-                    // 3. Evidence Level
-                    const evLevel = data.evidence_level != null ? data.evidence_level : (hasEvidence ? 2 : 1);
-                    const evEl = document.getElementById('resEvidenceText');
-                    if (evLevel >= 2) {
-                        evEl.textContent = 'Level 2: Terverifikasi Transaksi (100% Bobot)';
-                        evEl.style.color = '#16a34a';
-                    } else if (evLevel === 1) {
-                        evEl.textContent = 'Level 1: Terverifikasi Sesi Scan (50% Bobot)';
-                        evEl.style.color = '#2563eb';
-                    } else {
-                        evEl.textContent = 'Level 0: Ulasan Pengguna (25% Bobot)';
-                        evEl.style.color = '#64748b';
-                    }
-
-                    // 4. Skor EMRS
-                    const repEl = document.getElementById('resReputationText');
-                    if (data.new_reputation_score != null) {
-                        const prev = data.previous_reputation_score != null ? data.previous_reputation_score.toFixed(1) : null;
-                        const curr = data.new_reputation_score.toFixed(1);
-                        repEl.textContent = prev ? `${prev} → ${curr} / 100` : `${curr} / 100`;
-                    } else {
-                        repEl.textContent = 'Diperbarui';
-                    }
-
-                    // 5. Rekomendasi Tindakan
-                    if (data.recommended_action || data.action) {
-                        document.getElementById('resActionRow').style.display = 'flex';
-                        document.getElementById('resActionText').textContent = data.recommended_action || data.action;
-                    }
-
-                    setTimeout(() => {
-                        window.location.href = backUrl;
-                    }, 4000);
+                    renderAiResultScreen(data);
                 } else {
                     alert('Gagal memproses feedback: ' + (data.detail || data.message || 'Terjadi kesalahan sistem.'));
-                    btn.classList.remove('loading');
-                    btn.disabled = false;
+                    btnSubmit.classList.remove('loading');
+                    btnSubmit.disabled = false;
                 }
             } catch (err) {
                 alert('Terjadi kesalahan koneksi saat mengirim feedback: ' + err.message);
-                btn.classList.remove('loading');
-                btn.disabled = false;
+                btnSubmit.classList.remove('loading');
+                btnSubmit.disabled = false;
             }
         }
 
-        document.getElementById('fbDescription').addEventListener('input', function() {
-            this.style.borderColor = '';
-            this.style.boxShadow = '';
-        });
+        // ── 7. Render AI Result Screen ──
+        function renderAiResultScreen(data) {
+            // Sembunyikan form dan tombol submit bawah
+            document.getElementById('mainFormContainer').style.display = 'none';
+            document.getElementById('bottomActionBar').style.display = 'none';
+
+            // Kategori AI
+            const catTitle = data.category_title || data.event_type || 'Ulasan Terproses';
+            document.getElementById('resCategoryBadge').textContent = catTitle;
+
+            // Tingkat Keparahan (Severity)
+            const sev = (data.severity || 'LOW').toUpperCase();
+            const sevBadge = document.getElementById('resSeverityBadge');
+            sevBadge.textContent = sev;
+            sevBadge.className = 'diag-val-badge sev-' + sev.toLowerCase();
+
+            // Tingkat Bukti (Evidence Level)
+            const evLvl = data.evidence_level != null ? data.evidence_level : 0;
+            const evBadge = document.getElementById('resEvidenceBadge');
+            if (evLvl >= 2) {
+                evBadge.textContent = 'Level 2 (Transaksi Resmi)';
+                evBadge.style.background = '#dcfce7';
+                evBadge.style.color = '#15803d';
+            } else if (evLvl === 1) {
+                evBadge.textContent = 'Level 1 (Sesi Verifikasi)';
+                evBadge.style.background = '#eff6ff';
+                evBadge.style.color = '#1d4ed8';
+            } else {
+                evBadge.textContent = 'Level 0 (Ulasan Naratif)';
+                evBadge.style.background = '#f8fafc';
+                evBadge.style.color = '#64748b';
+            }
+
+            // Confidence
+            const conf = data.confidence != null ? Math.round(data.confidence * 100) : 95;
+            document.getElementById('resConfidenceBadge').textContent = `${conf}% Akurasi`;
+
+            // Dampak Skor Reputasi EMRS
+            const prevScore = data.previous_reputation_score != null ? data.previous_reputation_score.toFixed(1) : '75.0';
+            const newScore = data.new_reputation_score != null ? data.new_reputation_score.toFixed(1) : '75.0';
+            document.getElementById('resScoreChange').textContent = `${prevScore} → ${newScore} / 100`;
+
+            // Rekomendasi Tindakan
+            if (data.recommended_action) {
+                document.getElementById('resRecommendationText').textContent = data.recommended_action;
+            }
+
+            // Tampilkan Result Screen
+            document.getElementById('resultScreenWrapper').style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function getInitials(name) {
+            if (!name) return 'QR';
+            const parts = name.trim().split(/\s+/).filter(Boolean);
+            if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+            if (parts.length === 1 && parts[0].length >= 2) return parts[0].slice(0, 2).toUpperCase();
+            return 'QR';
+        }
+
+        function goBack() {
+            window.location.href = backUrl;
+        }
     </script>
 </body>
+
 </html>
