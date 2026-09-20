@@ -631,12 +631,15 @@ def _sanitize_payment_payload(raw_dict: dict) -> dict:
 def record_transaction_event(
     request: Request,
     payload: schemas.PaymentTransactionCreateSchema,
+    x_provider_api_key: Optional[str] = Header(None, alias="X-Provider-Api-Key"),
+    x_laqris_signature: Optional[str] = Header(None, alias="X-LaQris-Signature"),
     db: Session = Depends(get_db)
 ):
     """
     Contract B: Post-payment Transaction Event Ingestion Endpoint.
     Menerima notifikasi hasil transaksi dari Payment Provider (DemoPay),
-    melakukan sanitasi data sensitif, mengikat (binding) sesi verifikasi
+    memvalidasi kredensial provider (P1 Item 5), melakukan sanitasi data sensitif,
+    mengecek strict merchant binding (P1 Item 6), mengikat sesi verifikasi
     secara atomik, dan memperbarui metrik reputasi merchant.
     """
     enforce_rate_limit(request, max_requests=60, window_seconds=60, endpoint_tag="transaction-events")
@@ -650,6 +653,14 @@ def record_transaction_event(
         raise HTTPException(
             status_code=404,
             detail=f"Verification session '{v_id}' tidak valid atau tidak ditemukan."
+        )
+
+    # 1.5 Provider Authentication (P1 Item 5 di Readme)
+    provider_name = payload.provider or "DemoPay"
+    if not auth.verify_provider_authentication(provider_name, api_key=x_provider_api_key, signature=x_laqris_signature):
+        raise HTTPException(
+            status_code=401,
+            detail=f"Autentikasi payment provider '{provider_name}' gagal. Kredensial X-Provider-Api-Key atau X-LaQris-Signature tidak valid."
         )
 
     # 2. Enforcement Session Binding & Security Decision (Step 3 & 18 di Readme)
@@ -671,6 +682,14 @@ def record_transaction_event(
             status_code=409,
             detail=f"Sesi verifikasi '{v_id}' sudah terikat pada transaksi pembayaran lain (anti-replay)."
         )
+
+    # 2.5 Strict Merchant/Session Binding (P1 Item 6 di Readme)
+    if payload.nmid and session.nmid:
+        if payload.nmid.strip().upper() != session.nmid.strip().upper():
+            raise HTTPException(
+                status_code=422,
+                detail=f"Strict merchant binding mismatch: NMID transaksi '{payload.nmid}' tidak sesuai dengan NMID sesi verifikasi '{session.nmid}'."
+            )
 
     # 3. Sanitasi Payload (Step 15 di Readme)
     sanitized_data = _sanitize_payment_payload(payload.model_dump())
@@ -859,8 +878,7 @@ def register_user(
             "full_name": user.full_name,
             "role": user.role,
             "account_number": getattr(user, "account_number", acc_num),
-            "account_type": getattr(user, "account_type", "TAPLUS"),
-            "pin": getattr(user, "pin", "123456") or "123456"
+            "account_type": getattr(user, "account_type", "TAPLUS")
         }
     }
 
@@ -909,8 +927,7 @@ def login_user(
             "phone": user.phone,
             "role": user.role,
             "account_number": getattr(user, "account_number", "1858868768") or "1858868768",
-            "account_type": getattr(user, "account_type", "TAPLUS") or "TAPLUS",
-            "pin": getattr(user, "pin", "123456") or "123456"
+            "account_type": getattr(user, "account_type", "TAPLUS") or "TAPLUS"
         }
     }
 
@@ -940,8 +957,7 @@ def get_current_user_profile(
             "username": "yantoalim",
             "full_name": "Yanto Alim",
             "account_number": "1858868768",
-            "account_type": "TAPLUS",
-            "pin": "123456"
+            "account_type": "TAPLUS"
         }
     return {
         "id": user.id,
@@ -952,14 +968,13 @@ def get_current_user_profile(
         "phone": user.phone,
         "role": user.role,
         "account_number": getattr(user, "account_number", "1858868768") or "1858868768",
-        "account_type": getattr(user, "account_type", "TAPLUS") or "TAPLUS",
-        "pin": getattr(user, "pin", "123456") or "123456"
+        "account_type": getattr(user, "account_type", "TAPLUS") or "TAPLUS"
     }
 
 
 @app.post("/api/user/verify-pin")
 def verify_user_pin(payload: dict, db: Session = Depends(get_db)):
-    """Verifikasi PIN transaksi pengguna."""
+    """Verifikasi PIN transaksi pengguna secara aman (constant-time)."""
     input_pin = str(payload.get("pin", "")).strip()
     user_id = payload.get("user_id")
     user = None
@@ -970,7 +985,9 @@ def verify_user_pin(payload: dict, db: Session = Depends(get_db)):
     correct_pin = getattr(user, "pin", "123456") if user else "123456"
     if not correct_pin:
         correct_pin = "123456"
-    if input_pin == correct_pin:
+
+    is_valid = auth.verify_pin_secure(input_pin, correct_pin)
+    if is_valid:
         return {"valid": True, "message": "PIN benar."}
     return {"valid": False, "message": "PIN tidak sesuai. Silakan coba lagi."}
 

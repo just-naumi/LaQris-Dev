@@ -137,9 +137,14 @@ def test_demo_b_tampered_attack_loop():
         "provider": "DemoPay",
         "provider_transaction_id": f"TX-ILLEGAL-{int(datetime.utcnow().timestamp())}",
         "amount": 100000.0,
-        "status": "SUCCESS"
+        "status": "SUCCESS",
+        "response_code": "00"
     }
-    res_tx = client.post("/api/v1/transactions/events", json=tx_payload)
+    res_tx = client.post(
+        "/api/v1/transactions/events",
+        json=tx_payload,
+        headers={"X-Provider-Api-Key": "demopay-live-key-2026-auth"}
+    )
     assert res_tx.status_code == 403
     print(f"[2] Enforcement DB Transaction Layer:")
     print(f"    - Hasil: HTTP 403 Forbidden - {res_tx.json()['detail']}")

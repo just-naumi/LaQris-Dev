@@ -205,16 +205,169 @@ def test_milestone4_seed_endpoint_protection():
 def test_milestone4_rate_limiting():
     print("\n[TEST 6] Pengujian Sliding Window Rate Limiter (Step 30 di Readme2.md)...")
     # Rate limit untuk login adalah 10 req / 60 detik
-    rate_limiter._records.clear() # Reset state
-    
+    rate_limiter._records.clear()  # Reset state
+
     status_codes = []
     for i in range(12):
         res = client.post("/api/login", json={"email": "nonexistent@gmail.com", "password": "wrong"})
         status_codes.append(res.status_code)
-    
+
     # Permintaan ke-11 dan 12 harus 429 Too Many Requests
     assert 429 in status_codes, f"Rate limiter tidak menembak 429: {status_codes}"
     print(f"  -> Rate limiting berhasil: status codes = {status_codes[-3:]} (HTTP 429 aktif)")
+
+
+def test_milestone4_pin_and_pan_credential_hygiene():
+    print("\n[TEST 7] Pengujian Credential Hygiene: PIN Tidak Boleh Bocor di API (P0 Item 4)...")
+    rate_limiter._records.clear()  # Reset rate limiter agar tidak terhalang test 6
+    # 1. Cek response register
+    email = "test_hygiene@laqris.id"
+    payload = {
+        "username": "hygieneuser",
+        "email": email,
+        "password": "Password123#",
+        "full_name": "Hygiene User"
+    }
+    db = next(get_db())
+    existing = db.query(User).filter(User.email == email).first()
+    if existing:
+        db.delete(existing)
+        db.commit()
+
+    res_reg = client.post("/api/register", json=payload)
+    assert res_reg.status_code == 200
+    assert "pin" not in res_reg.json()["user"], "PIN bocor di response register!"
+
+    # 2. Cek response login
+    res_login = client.post("/api/login", json={"email": email, "password": "Password123#"})
+    assert res_login.status_code == 200
+    assert "pin" not in res_login.json()["user"], "PIN bocor di response login!"
+
+    # 3. Cek endpoint /api/user/current
+    res_curr = client.get("/api/user/current")
+    assert res_curr.status_code == 200
+    assert "pin" not in res_curr.json(), "PIN bocor di response /api/user/current!"
+
+    # 4. Cek secure pin verification via constant time
+    res_pin_ok = client.post("/api/user/verify-pin", json={"pin": "123456"})
+    assert res_pin_ok.status_code == 200
+    assert res_pin_ok.json()["valid"] is True
+
+    res_pin_fail = client.post("/api/user/verify-pin", json={"pin": "999999"})
+    assert res_pin_fail.status_code == 200
+    assert res_pin_fail.json()["valid"] is False
+    print("  -> Credential Hygiene lolos: PIN tidak pernah diekspos di endpoint publik.")
+
+
+def test_milestone4_provider_authentication():
+    print("\n[TEST 8] Pengujian Service-to-Service Provider Authentication (P1 Item 5)...")
+    db = next(get_db())
+    s_id = "LQ-V-TEST-PROV-AUTH"
+    existing_s = db.query(VerificationSession).filter(VerificationSession.session_id == s_id).first()
+    if existing_s:
+        db.delete(existing_s)
+        db.commit()
+
+    s = VerificationSession(
+        session_id=s_id,
+        user_id="USR-001928",
+        nmid="ID1020000000001",
+        trust_score=95.0,
+        risk_level="NORMAL",
+        decision="ALLOW"
+    )
+    db.add(s)
+    db.commit()
+
+    # Simulasikan mode production
+    os.environ["LAQRIS_ENV"] = "production"
+
+    tx_payload = {
+        "verification_session_id": s_id,
+        "provider": "DemoPay",
+        "provider_transaction_id": "TX-PROV-001",
+        "amount": 25000.0,
+        "status": "SUCCESS",
+        "response_code": "00"
+    }
+
+    # 1. Panggilan tanpa API Key di mode production -> 401 Unauthorized
+    res_fail = client.post("/api/v1/transactions/events", json=tx_payload)
+    assert res_fail.status_code == 401, f"Harusnya ditolak 401, tapi {res_fail.status_code}"
+    print(f"  -> Provider tanpa auth ditolak 401: {res_fail.json()['detail']}")
+
+    # 2. Panggilan dengan X-Provider-Api-Key yang valid -> 200 OK
+    res_ok = client.post(
+        "/api/v1/transactions/events",
+        json=tx_payload,
+        headers={"X-Provider-Api-Key": "demopay-live-key-2026-auth"}
+    )
+    assert res_ok.status_code == 200, f"Provider auth gagal: {res_ok.text}"
+    print("  -> Provider dengan X-Provider-Api-Key valid diterima (HTTP 200).")
+
+    os.environ["LAQRIS_ENV"] = "development"
+
+
+def test_milestone4_strict_merchant_binding():
+    print("\n[TEST 9] Pengujian Strict Merchant/Session Binding (P1 Item 6)...")
+    db = next(get_db())
+    s_id = "LQ-V-TEST-STRICT-NMID"
+    existing_s = db.query(VerificationSession).filter(VerificationSession.session_id == s_id).first()
+    if existing_s:
+        db.delete(existing_s)
+        db.commit()
+
+    s = VerificationSession(
+        session_id=s_id,
+        user_id="USR-001928",
+        nmid="ID1020000000123", # NMID sesi resmi
+        trust_score=95.0,
+        risk_level="NORMAL",
+        decision="ALLOW"
+    )
+    db.add(s)
+    db.commit()
+
+    # Provider mengirim transaksi dengan NMID toko lain yang berbeda!
+    tx_mismatch_payload = {
+        "verification_session_id": s_id,
+        "provider": "DemoPay",
+        "provider_transaction_id": "TX-MISMATCH-001",
+        "amount": 50000.0,
+        "status": "SUCCESS",
+        "response_code": "00",
+        "nmid": "ID9999999999999" # Mismatch sengaja
+    }
+
+    res_mismatch = client.post(
+        "/api/v1/transactions/events",
+        json=tx_mismatch_payload,
+        headers={"X-Provider-Api-Key": "demopay-live-key-2026-auth"}
+    )
+    assert res_mismatch.status_code == 422, f"Harusnya ditolak 422 Unprocessable, tapi {res_mismatch.status_code}"
+    assert "Strict merchant binding mismatch" in res_mismatch.json()["detail"]
+    print(f"  -> Strict NMID mismatch berhasil ditolak (HTTP 422): {res_mismatch.json()['detail']}")
+
+
+def test_milestone4_transaction_status_enum_validation():
+    print("\n[TEST 10] Pengujian Validasi Mandatory Status Enum (P1 Item 7)...")
+    s_id = "LQ-V-TEST-ENUM"
+    # Status invalid (bukan salah satu dari SUCCESS, FAILED, TIMEOUT, CANCELLED, REVERSED)
+    tx_invalid_status = {
+        "verification_session_id": s_id,
+        "provider": "DemoPay",
+        "provider_transaction_id": "TX-ENUM-001",
+        "amount": 10000.0,
+        "status": "PENDING_UNKNOWN",
+        "response_code": "00"
+    }
+    res_inv = client.post(
+        "/api/v1/transactions/events",
+        json=tx_invalid_status,
+        headers={"X-Provider-Api-Key": "demopay-live-key-2026-auth"}
+    )
+    assert res_inv.status_code == 422, "Status transaksi invalid harusnya ditolak Pydantic 422"
+    print("  -> Status transaksi di luar enum berhasil ditolak oleh Pydantic schema (HTTP 422).")
 
 
 if __name__ == "__main__":
@@ -227,6 +380,10 @@ if __name__ == "__main__":
     test_milestone4_sensitive_field_sanitization()
     test_milestone4_seed_endpoint_protection()
     test_milestone4_rate_limiting()
+    test_milestone4_pin_and_pan_credential_hygiene()
+    test_milestone4_provider_authentication()
+    test_milestone4_strict_merchant_binding()
+    test_milestone4_transaction_status_enum_validation()
     print("=" * 70)
-    print("SELURUH 6 PENGUJIAN KEAMANAN ROADMAP MILESTONE 4 BERHASIL 100%!")
+    print("SELURUH 10 PENGUJIAN KEAMANAN ROADMAP MILESTONE 4 BERHASIL 100%!")
     print("=" * 70)

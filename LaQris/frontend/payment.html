@@ -787,6 +787,33 @@
                     </div>
                 </div>
 
+                <!-- LaQris Security Status Banner (P0 Item 1) -->
+                <div id="laqrisVerificationBanner" style="display:none; margin: 6px 0 16px 0; border-radius: 12px; padding: 10px 14px; font-size: 0.84rem; align-items: center; gap: 10px;">
+                    <span id="laqrisBannerIcon" style="font-size: 1.25rem;">🛡️</span>
+                    <div style="flex:1; line-height: 1.35;">
+                        <strong id="laqrisBannerTitle" style="display:block; font-size: 0.86rem;">Terverifikasi Aman oleh LaQris</strong>
+                        <span id="laqrisBannerSubtitle" style="color: inherit; opacity: 0.9; font-size: 0.78rem;">Sesi verifikasi valid &amp; identitas cocok.</span>
+                    </div>
+                </div>
+
+                <!-- LaQris Blocked Screen Modal (P0 Item 1: DANGER / BLOCK Decision) -->
+                <div id="laqrisBlockedModal" class="d-none" style="position: fixed; inset: 0; background: rgba(15,23,42,0.88); backdrop-filter: blur(8px); z-index: 9999; display: none; align-items: center; justify-content: center; padding: 24px;">
+                    <div style="background: #ffffff; border-radius: 24px; padding: 28px 22px; width: 100%; max-width: 380px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.35);">
+                        <div style="width: 72px; height: 72px; border-radius: 50%; background: #fee2e2; color: #dc2626; font-size: 34px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; border: 4px solid #fecaca;">🚨</div>
+                        <h2 style="font-size: 1.28rem; font-weight: 800; color: #991b1b; margin-bottom: 6px; letter-spacing: -0.3px;">PEMBAYARAN DIBLOKIR</h2>
+                        <p style="font-size: 0.86rem; color: #475569; margin-bottom: 16px; line-height: 1.45;">
+                            LaQris Pre-Payment AI mendeteksi indikasi stiker palsu / ketidaksesuaian identitas pada QRIS ini. Transaksi dibatalkan demi keamanan Anda.
+                        </p>
+                        <div id="blockedReasonBox" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 12px 14px; margin-bottom: 22px; font-size: 0.82rem; color: #991b1b; text-align: left;">
+                            <strong style="display:block; margin-bottom: 4px;">Penyebab Blokir (LaQris AI):</strong>
+                            <ul id="blockedReasonList" style="margin: 0; padding-left: 18px; line-height: 1.4;"></ul>
+                        </div>
+                        <button type="button" onclick="location.href='scan.html'" style="width: 100%; background: #dc2626; color: white; border: none; padding: 14px; border-radius: 14px; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: opacity 0.2s;">
+                            Kembali ke Scanner
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Nominal Section -->
                 <div class="section-label" style="margin-top: 10px;">Nominal</div>
                 <div class="nominal-input-container">
@@ -997,7 +1024,7 @@
                     </div>
                     <div class="receipt-row">
                         <span class="receipt-row-key">Merchant PAN</span>
-                        <span class="receipt-row-val mono" id="wondrReceiptMerchantPan">9360091439943033554</span>
+                        <span class="receipt-row-val mono" id="wondrReceiptMerchantPan">9360 0914 **** 3554</span>
                     </div>
                     <div class="receipt-row">
                         <span class="receipt-row-key">Terminal ID</span>
@@ -1015,7 +1042,7 @@
                     <div class="receipt-line-divider"></div>
                     <div class="receipt-row">
                         <span class="receipt-row-key">Customer PAN</span>
-                        <span class="receipt-row-val mono" id="wondrReceiptCustomerPan">9360000913077552373</span>
+                        <span class="receipt-row-val mono" id="wondrReceiptCustomerPan">9360 0009 **** 2373</span>
                     </div>
                     <div class="receipt-row">
                         <span class="receipt-row-key">Nama issuer</span>
@@ -1079,7 +1106,6 @@
         let sessionData = {};
         let currentNominalNumber = 27000;
         let createdTxRef = '';
-        let currentUserPin = '123456';
         let currentUserId = '';
         let currentUserAccountName = '';
         let currentUserAccountNumber = '';
@@ -1213,6 +1239,11 @@
             const initials = getInitials(merchantName);
             document.getElementById('merchantAvatar').textContent = initials;
 
+            // 3.5 P0 Item 1: Panggil Contract A (/api/v1/verify) untuk Validasi Pre-Payment
+            if (sessionId) {
+                await verifyPrePaymentDecision(sessionId);
+            }
+
             // 4. Load logged-in User Account for "Sumber Dana"
             let userAccountName = '';
             let userAccountNumber = '';
@@ -1228,12 +1259,11 @@
                 userAccountName = userObj.full_name || userObj.username || '';
                 userAccountNumber = userObj.account_number || '';
                 userAccountType = userObj.account_type || 'TAPLUS';
-                currentUserPin = userObj.pin || '123456';
                 currentUserId = userObj.user_id || '';
             }
 
             // Fallback: If not found in browser storage, fetch current user profile from backend
-            if (!userAccountName || !currentUserPin) {
+            if (!userAccountName) {
                 try {
                     const uRes = await fetch('/api/user/current');
                     if (uRes.ok) {
@@ -1241,7 +1271,6 @@
                         if (!userAccountName) userAccountName = uData.full_name || uData.username;
                         if (!userAccountNumber) userAccountNumber = uData.account_number;
                         if (!userAccountType) userAccountType = uData.account_type || 'TAPLUS';
-                        if (uData.pin) currentUserPin = uData.pin;
                         if (uData.user_id) currentUserId = uData.user_id;
                     }
                 } catch(e) {}
@@ -1282,6 +1311,89 @@
             const inputNom = document.getElementById('inputNominal');
             inputNom.addEventListener('input', onNominalInput);
         });
+
+        // ── P0 Item 1: Pre-Payment Verification (Contract A: /api/v1/verify/{id}) ──
+        async function verifyPrePaymentDecision(sessionId) {
+            try {
+                const apiBase = (window.API_BASE || '').replace(/\/+$/, '');
+                const res = await fetch(`${apiBase}/api/v1/verify/${encodeURIComponent(sessionId)}`);
+                if (!res.ok) {
+                    console.warn('[LAQRIS] Pre-payment verification endpoint returned:', res.status);
+                    return;
+                }
+                const verifyData = await res.json();
+                console.log('[LAQRIS] Hasil Pre-Payment Verification (Contract A):', verifyData);
+
+                const banner = document.getElementById('laqrisVerificationBanner');
+                const bannerIcon = document.getElementById('laqrisBannerIcon');
+                const bannerTitle = document.getElementById('laqrisBannerTitle');
+                const bannerSubtitle = document.getElementById('laqrisBannerSubtitle');
+                const blockedModal = document.getElementById('laqrisBlockedModal');
+                const reasonList = document.getElementById('blockedReasonList');
+
+                // Skenario Attack / BLOCK / DANGER: Halang pembayaran seketika
+                if (verifyData.decision === 'BLOCK' || verifyData.risk_level === 'DANGER' || verifyData.can_proceed_payment === false) {
+                    if (blockedModal) {
+                        blockedModal.style.display = 'flex';
+                        blockedModal.classList.remove('d-none');
+                    }
+                    if (reasonList) {
+                        reasonList.innerHTML = '';
+                        const reasons = (verifyData.reason_codes && verifyData.reason_codes.length > 0)
+                            ? verifyData.reason_codes
+                            : ['Ketidaksesuaian NMID / Identitas Merchant', 'Indikasi QRIS Palsu / Manipulasi Fisik'];
+                        reasons.forEach(r => {
+                            const li = document.createElement('li');
+                            li.textContent = r;
+                            reasonList.appendChild(li);
+                        });
+                    }
+                    const btnCont = document.getElementById('btnContinue');
+                    if (btnCont) {
+                        btnCont.disabled = true;
+                        btnCont.textContent = 'Pembayaran Diblokir (Resiko Tinggi)';
+                    }
+                    return;
+                }
+
+                // Skenario Peringatan / WARN
+                if (verifyData.decision === 'WARN' || verifyData.risk_level === 'CAUTION' || verifyData.risk_level === 'WARNING') {
+                    if (banner) {
+                        banner.style.display = 'flex';
+                        banner.style.background = '#fefce8';
+                        banner.style.border = '1px solid #fde047';
+                        banner.style.color = '#854d0e';
+                        bannerIcon.textContent = '⚠️';
+                        bannerTitle.textContent = 'Peringatan Keamanan LaQris (Waspada)';
+                        bannerSubtitle.textContent = `Risk Level: ${verifyData.risk_level} • Trust Score: ${verifyData.trust_score || 70}/100`;
+                    }
+                } else {
+                    // Skenario Normal / ALLOW: Hijau Terverifikasi
+                    if (banner) {
+                        banner.style.display = 'flex';
+                        banner.style.background = '#f0fdf4';
+                        banner.style.border = '1px solid #bbf7d0';
+                        banner.style.color = '#166534';
+                        bannerIcon.textContent = '🛡️';
+                        bannerTitle.textContent = 'Terverifikasi Aman oleh LaQris AI';
+                        bannerSubtitle.textContent = `Identitas digital & fisik cocok • Trust Score: ${verifyData.trust_score || 95}/100`;
+                    }
+                }
+            } catch (e) {
+                console.warn('[LAQRIS] Error saat memanggil /api/v1/verify:', e);
+            }
+        }
+
+        function maskPan(pan) {
+            if (!pan) return '9360 0914 **** 3554';
+            const clean = pan.toString().replace(/\s+/g, '');
+            if (clean.length <= 8) return clean;
+            const prefix = clean.slice(0, 8);
+            const suffix = clean.slice(-4);
+            const p1 = prefix.slice(0, 4);
+            const p2 = prefix.slice(4, 8);
+            return `${p1} ${p2} **** ${suffix}`;
+        }
 
         function maskAccountNumber(acc) {
             if (!acc) return '*******768';
@@ -1603,11 +1715,9 @@
                 if (res.ok) {
                     const data = await res.json();
                     isValid = data.valid === true;
-                } else {
-                    isValid = (enteredPin === currentUserPin);
                 }
             } catch (err) {
-                isValid = (enteredPin === currentUserPin);
+                console.warn('[AUTH] Gagal menghubungi endpoint verifikasi PIN:', err);
             }
 
             if (isValid) {
@@ -1647,7 +1757,7 @@
         }
 
         function showForgotPinAlert() {
-            alert(`Informasi PIN wondr Akun Anda:\nPIN saat ini: ${currentUserPin}\n\nSilakan masukkan 6 digit PIN tersebut.`);
+            alert('Keamanan PIN Transaksi wondr:\n\nDemi perlindungan data sesuai standar PCI-DSS, PIN transaksi dienkripsi secara aman dan tidak ditampilkan secara bebas. Untuk pengujian demo akun bawaan silakan gunakan PIN standar (6 digit angka).');
         }
 
         // Support physical keyboard (0-9 & Backspace)
@@ -1703,7 +1813,10 @@
             try {
                 const apiBase = (window.API_BASE || '').replace(/\/+$/, '');
                 const token = localStorage.getItem('laqris_access_token') || sessionStorage.getItem('laqris_access_token');
-                const reqHeaders = { 'Content-Type': 'application/json' };
+                const reqHeaders = {
+                    'Content-Type': 'application/json',
+                    'X-Provider-Api-Key': 'demopay-live-key-2026-auth'
+                };
                 if (token) reqHeaders['Authorization'] = 'Bearer ' + token;
 
                 const res = await fetch(apiBase + '/api/v1/transactions/events', {
@@ -1765,7 +1878,7 @@
                     dispMerchantPan = '9360091439943033554';
                 }
             }
-            document.getElementById('wondrReceiptMerchantPan').textContent = dispMerchantPan;
+            document.getElementById('wondrReceiptMerchantPan').textContent = maskPan(dispMerchantPan);
 
             document.getElementById('wondrReceiptTerminalId').textContent = activeTid;
             document.getElementById('wondrReceiptAcquirer').textContent = activeAcquirer.toUpperCase();
@@ -1773,7 +1886,7 @@
             // Detail transaksi
             const accClean = (currentUserAccountNumber || '1858868768').replace(/\D/g, '');
             const custPan = '93600009' + (accClean.length >= 6 ? accClean.padEnd(11, '3').slice(-11) : '13077552373');
-            document.getElementById('wondrReceiptCustomerPan').textContent = custPan;
+            document.getElementById('wondrReceiptCustomerPan').textContent = maskPan(custPan);
             document.getElementById('wondrReceiptIssuer').textContent = 'BNI';
             document.getElementById('wondrReceiptTxType').textContent = 'QRIS';
 

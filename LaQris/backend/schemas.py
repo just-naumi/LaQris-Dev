@@ -1,6 +1,16 @@
+from enum import Enum
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+
+
+class TransactionStatusEnum(str, Enum):
+    """Status transaksi resmi dari payment provider (P1 Item 7 di Readme)."""
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+    TIMEOUT = "TIMEOUT"
+    CANCELLED = "CANCELLED"
+    REVERSED = "REVERSED"
 
 
 # ─────────────────────────────────────────────────────────────
@@ -244,8 +254,8 @@ class PaymentTransactionCreateSchema(BaseModel):
     provider: str = "DemoPay"
     provider_transaction_id: str
     amount: float
-    status: str = "SUCCESS"
-    response_code: str = "00"
+    status: TransactionStatusEnum        # Mandatory TransactionStatusEnum (P1 Item 7)
+    response_code: str                   # Mandatory ISO 8583 / ASPI Response Code (e.g. "00")
     merchant_id: Optional[Any] = None
     merchant_name: Optional[str] = None
     nmid: Optional[str] = None
@@ -387,7 +397,6 @@ class UserResponseSchema(BaseModel):
     role: str
     account_number: Optional[str] = "1858868768"
     account_type: Optional[str] = "TAPLUS"
-    pin: Optional[str] = "123456"
     created_at: datetime
 
     class Config:
