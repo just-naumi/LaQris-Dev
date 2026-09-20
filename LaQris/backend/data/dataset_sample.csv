@@ -1,0 +1,13 @@
+text,label
+"Nama di rekening tujuan beda jauh dengan nama plang toko",identity_mismatch
+"Nama pemilik rekening yang muncul bukan nama merchant resmi",identity_mismatch
+"Stiker QRIS ditempel ganda di atas kode QR aslinya",qr_replacement
+"Ada stiker palsu yang sengaja ditimpa di atas akrilik QRIS toko",qr_replacement
+"Kasir meminta tambahan biaya 2000 untuk transaksi QRIS",additional_fees
+"Dikenakan biaya admin tanpa pemberitahuan sebelumnya",additional_fees
+"Transaksi berkali-kali gagal tapi saldo saya terpotong",suspicious_transaction
+"Sistem QRIS mencurigakan meminta transfer berulang kali",suspicious_transaction
+"QRIS resmi nama toko sesuai dan transaksi sangat lancar",safe_confirmation
+"Pembayaran berhasil nama toko cocok dan aman digunakan",safe_confirmation
+"Pelayanannya kurang ramah dan toko agak kotor",other
+"Parkir di depan toko susah sekali",other
