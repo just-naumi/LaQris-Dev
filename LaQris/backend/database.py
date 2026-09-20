@@ -232,10 +232,13 @@ def init_db():
             is_verified=True, evidence_level=1, created_at=now - timedelta(days=120)
         ))
 
-        # Seed User Accounts Awal (yantoalim & demo)
-        import hashlib
-        def _hash(p: str) -> str:
-            return hashlib.sha256(p.encode('utf-8')).hexdigest()
+        # Seed User Accounts Awal (yantoalim & demo) dengan Argon2id (Step 28 di Readme)
+        try:
+            from auth import hash_password as _hash
+        except ImportError:
+            import hashlib
+            def _hash(p: str) -> str:
+                return hashlib.sha256(p.encode('utf-8')).hexdigest()
 
         u1 = models.User(
             user_id="USR-001928",

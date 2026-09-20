@@ -2,7 +2,10 @@ import os
 import shutil
 import cv2
 import numpy as np
-from fastapi import FastAPI, File, UploadFile, Form, Depends, HTTPException
+import time
+from collections import defaultdict
+from threading import Lock
+from fastapi import FastAPI, File, UploadFile, Form, Depends, HTTPException, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
@@ -14,6 +17,7 @@ import hashlib
 from database import init_db, get_db, reset_db
 from models import Merchant, Report, Dispute, VerificationSession, User, PaymentTransaction
 import schemas
+import auth
 from engine import (
     process_qris_verification,
     evaluasi_posisi_qris,
@@ -38,14 +42,78 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# Middleware CORS
+# ─────────────────────────────────────────────────────────────────────────────
+# Step 30 di Readme2.md: CORS Restriction & Production Baseline
+# ─────────────────────────────────────────────────────────────────────────────
+ALLOWED_ORIGINS = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:5500",
+    "http://127.0.0.1:5500",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "null"  # Mengizinkan file HTML lokal yang dibuka via protokol file://
+]
+custom_origins_env = os.getenv("LAQRIS_ALLOWED_ORIGINS")
+if custom_origins_env:
+    for o in custom_origins_env.split(","):
+        if o.strip() and o.strip() not in ALLOWED_ORIGINS:
+            ALLOWED_ORIGINS.append(o.strip())
+
+ALLOW_ALL_CORS = os.getenv("LAQRIS_ALLOW_ALL_CORS", "false").lower() == "true"
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"] if ALLOW_ALL_CORS else ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Step 30 di Readme2.md: In-Memory Sliding Window Rate Limiter
+# ─────────────────────────────────────────────────────────────────────────────
+class SlidingWindowRateLimiter:
+    """
+    In-memory thread-safe rate limiter untuk mencegah brute force dan flooding API.
+    """
+    def __init__(self):
+        self._records = defaultdict(list)
+        self._lock = Lock()
+
+    def check(self, key: str, max_requests: int, window_seconds: int = 60) -> tuple:
+        now = time.time()
+        cutoff = now - window_seconds
+        with self._lock:
+            timestamps = self._records[key]
+            # Hapus timestamp di luar window waktu
+            self._records[key] = [t for t in timestamps if t > cutoff]
+            if len(self._records[key]) >= max_requests:
+                oldest = self._records[key][0]
+                retry_after = int(window_seconds - (now - oldest)) + 1
+                return False, max(retry_after, 1)
+            self._records[key].append(now)
+            return True, max_requests - len(self._records[key])
+
+rate_limiter = SlidingWindowRateLimiter()
+
+def enforce_rate_limit(request: Request, max_requests: int, window_seconds: int = 60, endpoint_tag: str = "generic"):
+    """Validasi pembatasan laju panggilan (Rate Limiter) per IP client."""
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        client_ip = forwarded.split(",")[0].strip()
+    rate_key = f"{endpoint_tag}:{client_ip}"
+    allowed, val = rate_limiter.check(rate_key, max_requests, window_seconds)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Terlalu banyak permintaan ({endpoint_tag}). Silakan coba lagi dalam {val} detik.",
+            headers={"Retry-After": str(val)}
+        )
 
 FOLDER_BACKEND = os.path.dirname(os.path.abspath(__file__))
 FOLDER_STATIC = os.path.join(FOLDER_BACKEND, "static")
@@ -79,6 +147,7 @@ def health_check():
 
 @app.post("/api/scan")
 async def scan_qris_endpoint(
+    request: Request,
     file: Optional[UploadFile] = File(None),
     sample_name: Optional[str] = Form(None),
     user_id: Optional[str] = Form(None),
@@ -94,6 +163,7 @@ async def scan_qris_endpoint(
 
     Returns: { session_id, current_qr_risk, merchant_reputation, visualization_url }
     """
+    enforce_rate_limit(request, max_requests=30, window_seconds=60, endpoint_tag="scan-verify")
     folder_project_utama = os.path.abspath(os.path.join(FOLDER_BACKEND, "..", ".."))
     folder_physical_exp = os.path.join(folder_project_utama, "LaQris Physical Identity Extraction")
 
@@ -183,35 +253,151 @@ def get_merchant_reputation(nmid: str):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.post("/api/feedback", response_model=schemas.FeedbackResponseSchema)
-def submit_feedback(payload: schemas.FeedbackSubmitSchema):
+def submit_feedback(
+    request: Request,
+    payload: schemas.FeedbackSubmitSchema
+):
     """
-    Menerima feedback/complaint pengguna terhadap merchant.
-
-    Evidence Level:
-    - Level 1 (has_evidence=false): Laporan tanpa bukti → bobot 0.5x
-    - Level 2 (has_evidence=true):  Laporan + bukti transaksi → bobot 1.0x
-
-    Constraint: Satu transaction_ref hanya boleh submit satu feedback.
-    Setelah submit, EMRS merchant otomatis di-recalculate.
+    Endpoint Feedback Legacy / Direct.
+    Menerima feedback pengguna, menjalankan inferensi IndoBERT, dan memperbarui EMRS.
     """
+    enforce_rate_limit(request, max_requests=20, window_seconds=60, endpoint_tag="feedback")
+    nlp_res = classify_feedback(payload.description or "")
+    cat_to_use = payload.category
+    if not cat_to_use or cat_to_use in ["other", "General Complaint"]:
+        cat_to_use = nlp_res["category_key"]
+
     result = submit_feedback_to_db(
         nmid=payload.nmid,
-        category=payload.category,
-        severity=payload.severity,
-        description=payload.description,
+        category=cat_to_use,
+        severity=payload.severity or nlp_res["severity"],
+        description=payload.description or "",
         transaction_ref=payload.transaction_ref,
         has_evidence=payload.has_evidence
     )
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result["message"])
 
-    # Jalankan klasifikasi model NLP pada deskripsi pengalaman
-    nlp_res = classify_feedback(payload.description)
     result["detected_category"] = nlp_res["category_title"]
     result["detected_category_key"] = nlp_res["category_key"]
     result["confidence"] = nlp_res["confidence"]
+    result["severity"] = nlp_res["severity"]
+    result["action"] = nlp_res["action"]
 
     return result
+
+
+@app.post("/api/v1/feedback", response_model=schemas.FeedbackContractCResponseSchema)
+def submit_feedback_contract_c(
+    request: Request,
+    payload: schemas.FeedbackContractCSchema,
+    token: Optional[str] = Depends(auth.oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    """
+    Contract C: Post-Payment User Feedback Ingestion Endpoint.
+    Menerima ulasan naratif pengguna, menjalankan inferensi IndoBERT 7-kelas,
+    menghitung Evidence Level secara otomatis (0, 1, 2), mengikat transaksi,
+    memvalidasi user ownership (Step 29), dan memperbarui reputasi merchant (EMRS).
+    """
+    enforce_rate_limit(request, max_requests=20, window_seconds=60, endpoint_tag="feedback")
+
+    if not payload.comment or not payload.comment.strip():
+        raise HTTPException(status_code=400, detail="Komentar ulasan feedback tidak boleh kosong.")
+
+    # 1. Jalankan Model IndoBERT 7-Kelas
+    nlp_res = classify_feedback(payload.comment)
+    event_type = nlp_res["category_key"]
+    severity = nlp_res["severity"]
+    confidence = nlp_res["confidence"]
+
+    # 2. Tentukan Hubungan & Resolusi NMID serta Evidence Level
+    target_nmid = payload.nmid
+    evidence_level = 0
+    resolved_session = None
+    resolved_tx = None
+
+    # A. Cek relasi Transaction
+    if payload.transaction_id:
+        resolved_tx = db.query(PaymentTransaction).filter(
+            PaymentTransaction.provider_transaction_id == payload.transaction_id
+        ).first()
+        if resolved_tx:
+            evidence_level = 2
+            if not target_nmid:
+                target_nmid = resolved_tx.nmid
+            if resolved_tx.verification_session_id and not payload.verification_id:
+                payload.verification_id = resolved_tx.verification_session_id
+
+    # B. Cek relasi Verification Session
+    if payload.verification_id:
+        resolved_session = db.query(VerificationSession).filter(
+            VerificationSession.session_id == payload.verification_id
+        ).first()
+        if resolved_session:
+            if evidence_level < 1:
+                evidence_level = 1
+            if not target_nmid:
+                target_nmid = resolved_session.nmid
+
+    # 2.5 Enforcement User Ownership (Step 29 di Readme2.md)
+    # User A tidak dapat mengirim feedback atas transaksi / sesi milik User B
+    requester_user_id = None
+    if token:
+        user_claims = auth.decode_access_token(token)
+        if user_claims:
+            requester_user_id = user_claims.get("sub")
+    if not requester_user_id and getattr(payload, "user_id", None):
+        requester_user_id = payload.user_id
+
+    if requester_user_id:
+        if resolved_tx and resolved_tx.user_id:
+            auth.verify_user_ownership(requester_user_id, resolved_tx.user_id, "transaksi pembayaran")
+        if resolved_session and resolved_session.user_id:
+            auth.verify_user_ownership(requester_user_id, resolved_session.user_id, "sesi verifikasi")
+
+    # Jika bukti fisik diunggah dan sudah ada session
+    if payload.has_evidence and evidence_level >= 1:
+        evidence_level = 2
+
+    if not target_nmid:
+        raise HTTPException(
+            status_code=400,
+            detail="NMID toko tidak ditemukan. Mohon sertakan verification_id, transaction_id, atau nmid yang valid."
+        )
+
+    # 3. Transaksi DB & Kalkulasi EMRS
+    tx_ref = payload.transaction_id or (f"VERIF-{payload.verification_id}" if payload.verification_id else None)
+
+    result = submit_feedback_to_db(
+        nmid=target_nmid,
+        category=event_type,
+        severity=severity,
+        description=payload.comment,
+        transaction_ref=tx_ref,
+        has_evidence=payload.has_evidence,
+        evidence_level=evidence_level
+    )
+
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["message"])
+
+    return schemas.FeedbackContractCResponseSchema(
+        success=True,
+        message="Feedback berhasil dianalisis oleh AI dan reputasi toko telah diperbarui.",
+        event_type=event_type,
+        category_title=nlp_res["category_title"],
+        severity=severity,
+        evidence_level=evidence_level,
+        confidence=confidence,
+        merchant_reputation_updated=True,
+        previous_reputation_score=result.get("previous_reputation_score"),
+        new_reputation_score=result["new_reputation_score"],
+        recommended_action=nlp_res["action"],
+        model_used=nlp_res.get("model_used", "IndoBERT-FineTuned-EMRS"),
+        verification_id=payload.verification_id,
+        transaction_id=payload.transaction_id
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -255,8 +441,24 @@ def submit_dispute(nmid: str, description: str = Form(...), evidence_ref: str = 
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.post("/api/seed")
-def seed_database_endpoint():
-    """Reset & re-seed seluruh data reputasi SQLite (termasuk skema EMRS baru)."""
+def seed_database_endpoint(
+    request: Request,
+    x_admin_secret: Optional[str] = Header(None, alias="X-Admin-Secret")
+):
+    """
+    Reset & re-seed seluruh data reputasi SQLite (termasuk skema EMRS baru).
+    Step 31 di Readme2.md: Dilindungi pada environment production / non-dev.
+    """
+    env_mode = os.getenv("LAQRIS_ENV", "development").lower()
+    admin_secret = os.getenv("LAQRIS_ADMIN_SECRET", "admin-secret-laqris-2026")
+
+    if env_mode == "production":
+        if not x_admin_secret or x_admin_secret != admin_secret:
+            raise HTTPException(
+                status_code=403,
+                detail="Akses ditolak: Endpoint seed dinonaktifkan di mode production atau memerlukan otentikasi admin (X-Admin-Secret)."
+            )
+
     reset_db()
     return {"message": "Database SQLite berhasil di-reset dan di-seed ulang dengan skema EMRS v2!"}
 
@@ -341,6 +543,7 @@ def list_scan_sessions_endpoint(limit: int = 20):
 
 @app.post("/api/v1/verify", response_model=schemas.VerifyResponseSchema)
 def verify_pre_payment(
+    request: Request,
     payload: schemas.VerifyRequestSchema,
     db: Session = Depends(get_db)
 ):
@@ -349,6 +552,7 @@ def verify_pre_payment(
     Memeriksa integritas QRIS dan mengembalikan keputusan ALLOW / WARN / BLOCK
     sebelum otorisasi transaksi dilakukan di payment server.
     """
+    enforce_rate_limit(request, max_requests=30, window_seconds=60, endpoint_tag="scan-verify")
     v_id = payload.session_id or payload.verification_id
     if not v_id:
         raise HTTPException(status_code=400, detail="Parameter session_id atau verification_id diperlukan.")
@@ -402,9 +606,9 @@ def verify_pre_payment(
 
 
 @app.get("/api/v1/verify/{session_id}", response_model=schemas.VerifyResponseSchema)
-def get_verification_session_status(session_id: str, db: Session = Depends(get_db)):
+def get_verification_session_status(request: Request, session_id: str, db: Session = Depends(get_db)):
     """Mengecek status dan masa berlaku sesi verifikasi QRIS."""
-    return verify_pre_payment(schemas.VerifyRequestSchema(session_id=session_id), db=db)
+    return verify_pre_payment(request, schemas.VerifyRequestSchema(session_id=session_id), db=db)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -425,6 +629,7 @@ def _sanitize_payment_payload(raw_dict: dict) -> dict:
 @app.post("/api/v1/transaction-events", response_model=schemas.PaymentTransactionResponseSchema)
 @app.post("/api/v1/transactions/events", response_model=schemas.PaymentTransactionResponseSchema)
 def record_transaction_event(
+    request: Request,
     payload: schemas.PaymentTransactionCreateSchema,
     db: Session = Depends(get_db)
 ):
@@ -434,6 +639,7 @@ def record_transaction_event(
     melakukan sanitasi data sensitif, mengikat (binding) sesi verifikasi
     secara atomik, dan memperbarui metrik reputasi merchant.
     """
+    enforce_rate_limit(request, max_requests=60, window_seconds=60, endpoint_tag="transaction-events")
     v_id = payload.verification_id or payload.verification_session_id
     if not v_id:
         raise HTTPException(status_code=400, detail="verification_id diperlukan untuk binding transaksi.")
@@ -469,7 +675,10 @@ def record_transaction_event(
     # 3. Sanitasi Payload (Step 15 di Readme)
     sanitized_data = _sanitize_payment_payload(payload.model_dump())
 
-    # User ID binding
+    # User Ownership Enforcement (Step 29 di Readme2.md)
+    if session.user_id and sanitized_data.get("user_id"):
+        auth.verify_user_ownership(sanitized_data["user_id"], session.user_id, "sesi verifikasi")
+
     target_user_id = sanitized_data.get("user_id") or session.user_id or "USR-001928"
     if not session.user_id:
         session.user_id = target_user_id
@@ -584,7 +793,8 @@ import secrets
 import random
 
 def _hash_password(raw_password: str) -> str:
-    return hashlib.sha256(raw_password.encode('utf-8')).hexdigest()
+    """Argon2id hashing wrapper (Step 28 di Readme2.md)."""
+    return auth.hash_password(raw_password)
 
 
 def _generate_user_id() -> str:
@@ -592,8 +802,17 @@ def _generate_user_id() -> str:
 
 
 @app.post("/api/register")
-def register_user(payload: schemas.UserRegisterSchema, db: Session = Depends(get_db)):
-    """Registrasi pengguna / merchant baru ke database LaQris."""
+def register_user(
+    request: Request,
+    payload: schemas.UserRegisterSchema,
+    db: Session = Depends(get_db)
+):
+    """
+    Registrasi pengguna / merchant baru ke database LaQris.
+    Menggunakan hashing password Argon2id & access token JWT (Step 28).
+    """
+    enforce_rate_limit(request, max_requests=5, window_seconds=60, endpoint_tag="auth-register")
+
     existing = db.query(User).filter(User.email == payload.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email ini sudah terdaftar. Silakan login.")
@@ -613,13 +832,19 @@ def register_user(payload: schemas.UserRegisterSchema, db: Session = Depends(get
         status="ACTIVE",
         account_number=acc_num,
         account_type="TAPLUS",
-        password_hash=_hash_password(payload.password)
+        password_hash=auth.hash_password(payload.password)
     )
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    token = f"laqris_token_{secrets.token_hex(16)}"
+    # Buat JWT Bearer Token standar RFC 7519
+    token = auth.create_access_token({
+        "sub": user.user_id,
+        "username": user.username,
+        "email": user.email,
+        "role": user.role
+    })
 
     return {
         "message": "Registrasi berhasil!",
@@ -641,13 +866,34 @@ def register_user(payload: schemas.UserRegisterSchema, db: Session = Depends(get
 
 
 @app.post("/api/login")
-def login_user(payload: schemas.UserLoginSchema, db: Session = Depends(get_db)):
-    """Autentikasi masuk pengguna dengan email dan password."""
+def login_user(
+    request: Request,
+    payload: schemas.UserLoginSchema,
+    db: Session = Depends(get_db)
+):
+    """
+    Autentikasi masuk pengguna dengan verifikasi password Argon2id & JWT token.
+    Mendukung migrasi otomatis akun lama (SHA-256) ke Argon2id.
+    """
+    enforce_rate_limit(request, max_requests=10, window_seconds=60, endpoint_tag="auth-login")
+
     user = db.query(User).filter(User.email == payload.email).first()
-    if not user or user.password_hash != _hash_password(payload.password):
+    if not user or not auth.verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Email atau password yang Anda masukkan salah.")
 
-    token = f"laqris_token_{secrets.token_hex(16)}"
+    # Migrasi transparan: jika hash di DB masih legacy (SHA-256), rehash ke Argon2id
+    if auth.is_legacy_hash(user.password_hash):
+        user.password_hash = auth.hash_password(payload.password)
+        db.commit()
+        db.refresh(user)
+
+    # Terbitkan JWT Access Token
+    token = auth.create_access_token({
+        "sub": user.user_id,
+        "username": user.username,
+        "email": user.email,
+        "role": user.role
+    })
 
     return {
         "message": "Login berhasil!",
@@ -670,13 +916,24 @@ def login_user(payload: schemas.UserLoginSchema, db: Session = Depends(get_db)):
 
 
 @app.get("/api/user/current")
-def get_current_user_profile(user_id: Optional[str] = None, db: Session = Depends(get_db)):
-    """Mengambil data profil pengguna yang sedang aktif beserta nomor rekening dan PIN."""
+def get_current_user_profile(
+    user_id: Optional[str] = None,
+    token: Optional[str] = Depends(auth.oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    """Mengambil data profil pengguna yang sedang aktif dari Bearer JWT atau query param."""
     user = None
-    if user_id:
+    if token:
+        claims = auth.decode_access_token(token)
+        if claims and claims.get("sub"):
+            user = db.query(User).filter(User.user_id == claims["sub"]).first()
+
+    if not user and user_id:
         user = db.query(User).filter(User.user_id == user_id).first()
+
     if not user:
         user = db.query(User).order_by(User.id.desc()).first()
+
     if not user:
         return {
             "user_id": "USR-001928",

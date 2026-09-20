@@ -13,3 +13,5 @@ python-multipart
 pyyaml
 optimum[onnxruntime]
 onnxruntime
+argon2-cffi>=23.1.0
+pyjwt>=2.8.0

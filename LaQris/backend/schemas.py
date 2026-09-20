@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
@@ -299,13 +299,13 @@ class MerchantSchema(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────
-# Feedback Submission Schema
+# Feedback Submission Schema (Legacy + Contract C)
 # ─────────────────────────────────────────────────────────────
 
 class FeedbackSubmitSchema(BaseModel):
     nmid: str
-    category: str           # "Verified Authentic" | "QRIS Replacement" | "Additional Fee" | "Merchant Mismatch" | "General Complaint"
-    severity: str           # "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+    category: str           # "PENIPUAN_STIKER_QRIS_PALSU", "KETIDAKSESUAIAN_IDENTITAS_MERCHANT", dll
+    severity: str = "MEDIUM"# "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
     description: Optional[str] = None
     transaction_ref: Optional[str] = None
     has_evidence: bool = False
@@ -319,6 +319,44 @@ class FeedbackResponseSchema(BaseModel):
     detected_category: Optional[str] = None
     detected_category_key: Optional[str] = None
     confidence: Optional[float] = None
+    severity: Optional[str] = None
+    action: Optional[str] = None
+
+
+class FeedbackContractCSchema(BaseModel):
+    """
+    Contract C: Post-Payment User Feedback Payload
+    Sesuai Bagian 32 & 37 Dokumen Roadmap LaQris.
+    """
+    verification_id: Optional[str] = None      # e.g. "LQ-V-001"
+    transaction_id: Optional[str] = None       # e.g. "TX-001"
+    comment: str                               # Cerita/ulasan pengalaman pengguna
+    nmid: Optional[str] = None                 # Opsional jika verification_id disertakan
+    manual_category: Optional[str] = None      # Opsional input manual pengguna
+    has_evidence: bool = False                 # Apakah mengunggah file bukti fisik
+    user_id: Optional[str] = None              # Identitas akun pengguna pengulas
+
+
+class FeedbackContractCResponseSchema(BaseModel):
+    """
+    Contract C: Post-Payment Feedback Response
+    Mengembalikan hasil inferensi NLP IndoBERT, tingkat bukti, dan dampak EMRS toko.
+    """
+    success: bool = True
+    message: str
+    event_type: str                            # e.g. "KETIDAKSESUAIAN_IDENTITAS_MERCHANT"
+    category_title: str                        # Judul ramah pengguna
+    severity: str                              # "CRITICAL" | "HIGH" | "MEDIUM" | "LOW"
+    evidence_level: int                        # 0: comment only, 1: +verification, 2: +tx event
+    confidence: float                          # Confidence model (0.0 - 1.0)
+    merchant_reputation_updated: bool = True
+    previous_reputation_score: Optional[float] = None
+    new_reputation_score: float
+    recommended_action: Optional[str] = None
+    model_used: Optional[str] = "IndoBERT-FineTuned-EMRS"
+    verification_id: Optional[str] = None
+    transaction_id: Optional[str] = None
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 
 # ─────────────────────────────────────────────────────────────

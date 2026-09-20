@@ -195,12 +195,13 @@
             </div>
             <select id="fbManualCategory" class="form-input">
                 <option value="">Pilih kategori jika Anda mengetahuinya</option>
-                <option value="identity_mismatch">Nama merchant tidak sesuai</option>
-                <option value="qr_replacement">QRIS diduga diganti / ditempel</option>
-                <option value="additional_fees">Biaya tambahan tidak sah</option>
-                <option value="suspicious_transaction">Transaksi mencurigakan</option>
-                <option value="safe_confirmation">Konfirmasi QRIS aman</option>
-                <option value="other">Lainnya</option>
+                <option value="PENIPUAN_STIKER_QRIS_PALSU">🚨 Stiker QRIS Diduga Palsu / Ditimpa (Kritikal)</option>
+                <option value="KETIDAKSESUAIAN_IDENTITAS_MERCHANT">⚠️ Nama Merchant / NMID Berbeda (Tinggi)</option>
+                <option value="PUNGUTAN_BIAYA_TAMBAHAN_SURCHARGE">💸 Pungutan Biaya Tambahan / Surcharge (Tinggi)</option>
+                <option value="KONDISI_FISIK_QRIS_RUSAK">🔍 Kondisi Fisik QRIS Rusak / Pudar / Sobek</option>
+                <option value="KUALITAS_LAYANAN_MERCHANT">👤 Kasir Menolak QRIS / Ketus / Batas Belanja</option>
+                <option value="QRIS_NORMAL_MERCHANT_TERPERCAYA">✅ Transaksi Normal & QRIS Toko Asli (Aman)</option>
+                <option value="FEEDBACK_AMBIGU">💬 Pertanyaan / Kendala Umum Lainnya</option>
             </select>
             <div class="field-subtext" style="font-size: 11px;">Jika tidak yakin, biarkan kosong. Sistem akan membantu mengklasifikasikan feedback Anda.</div>
         </div>
@@ -293,217 +294,257 @@
     <button class="btn-cancel" onclick="goBack()">Batal &amp; Kembali</button>
 </div>
 
-<!-- Success Screen Card -->
-<div class="success-card" id="successCard">
-    <div class="success-circle">&#9989;</div>
-    <div class="success-title">Feedback Berhasil Dikirim</div>
-    <div class="success-desc">Feedback Anda telah diterima dan akan diproses oleh sistem.</div>
+    <!-- Success Screen Card -->
+    <div class="success-card" id="successCard">
+        <div class="success-circle">&#9989;</div>
+        <div class="success-title">Feedback Berhasil Diproses</div>
+        <div class="success-desc">AI IndoBERT &amp; LaQris Intelligence telah menganalisis laporan Anda untuk pembaruan reputasi merchant.</div>
 
-    <div class="feedback-result-pill" id="feedbackResultPill">
-        <div class="feedback-result-row">
-            <span style="color: var(--text-muted);">Status Proses:</span>
-            <strong id="resStatusText" style="color:#0284c7;">Feedback sedang diproses</strong>
+        <div class="feedback-result-pill" id="feedbackResultPill">
+            <div class="feedback-result-row">
+                <span style="color: var(--text-muted);">Klasifikasi AI:</span>
+                <strong id="resStatusText" style="color:#0284c7;">-</strong>
+            </div>
+            <div class="feedback-result-row">
+                <span style="color: var(--text-muted);">Tingkat Risiko:</span>
+                <strong id="resSeverityText" style="color:#ef4444;">-</strong>
+            </div>
+            <div class="feedback-result-row">
+                <span style="color: var(--text-muted);">Tingkat Bukti:</span>
+                <strong id="resEvidenceText" style="color:#10b981;">-</strong>
+            </div>
+            <div class="feedback-result-row">
+                <span style="color: var(--text-muted);">Skor Reputasi Toko:</span>
+                <strong id="resReputationText" style="color:#1e3a8a;">-</strong>
+            </div>
+            <div class="feedback-result-row" id="resActionRow" style="display:none; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1;">
+                <span style="color: var(--text-muted); font-size: 11px;">Rekomendasi LaQris:</span>
+                <span id="resActionText" style="font-size: 11px; color:#475569; text-align: right; max-width: 260px;">-</span>
+            </div>
         </div>
-        <div class="feedback-result-row">
-            <span style="color: var(--text-muted);">Status Verifikasi:</span>
-            <strong id="resEvidenceText" style="color:#d97706;">Menunggu Verifikasi</strong>
-        </div>
+
+        <button class="btn-back-scan" onclick="goBack()">Kembali ke Halaman Sebelumnya</button>
     </div>
 
-    <button class="btn-back-scan" onclick="goBack()">Kembali ke Halaman Scan</button>
-</div>
+    <script>
+        const params    = new URLSearchParams(window.location.search);
+        const nmid      = params.get('nmid') || '';
+        const backUrl   = params.get('back') || 'dashboard.html';
+        const txRef     = params.get('tx_ref') || params.get('transaction_ref') || params.get('transaction_id') || '';
+        const sessionId = params.get('session_id') || params.get('verification_id') || '';
 
-<script>
-    const params  = new URLSearchParams(window.location.search);
-    const nmid    = params.get('nmid') || '';
-    const backUrl = params.get('back') || 'select_scan.html';
-    const txRef   = params.get('tx_ref') || params.get('transaction_ref') || '';
+        let selectedEvidenceFile = null;
 
-    let selectedEvidenceFile = null;
+        // Inisialisasi tampilan NMID
+        const nmidDisplay = document.getElementById('merchantNmidDisplay');
+        if (nmidDisplay) nmidDisplay.textContent = nmid || 'NMID terhubung sesi';
+        if (!nmid && !sessionId) document.getElementById('merchantStrip').classList.add('hidden');
 
-    // Inisialisasi tampilan NMID
-    const nmidDisplay = document.getElementById('merchantNmidDisplay');
-    if (nmidDisplay) nmidDisplay.textContent = nmid || 'NMID tidak terdeteksi';
-    if (!nmid) document.getElementById('merchantStrip').classList.add('hidden');
+        // Auto-fill nomor referensi jika ada dari navigasi sebelumnya
+        if (txRef) {
+            const txInput = document.getElementById('fbTxRef');
+            if (txInput) txInput.value = txRef;
+        }
 
-    // Auto-fill nomor referensi jika ada dari navigasi sebelumnya
-    if (txRef) {
-        const txInput = document.getElementById('fbTxRef');
-        if (txInput) txInput.value = txRef;
-    }
+        document.getElementById('btnBack').addEventListener('click', goBack);
 
-    document.getElementById('btnBack').addEventListener('click', goBack);
+        function goBack() {
+            window.location.href = backUrl;
+        }
 
-    function goBack() {
-        window.location.href = backUrl;
-    }
+        // Upload & File Handling
+        function triggerFileSelect() {
+            document.getElementById('fbFileInput').click();
+        }
 
-    // Upload & File Handling
-    function triggerFileSelect() {
-        document.getElementById('fbFileInput').click();
-    }
+        function handleFileSelected(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
 
-    function handleFileSelected(event) {
-        const file = event.target.files && event.target.files[0];
-        if (!file) return;
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+            const allowedExts  = ['.jpg', '.jpeg', '.png', '.pdf'];
+            const fileExt = '.' + file.name.split('.').pop().toLowerCase();
 
-        // Validasi Ekstensi
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-        const allowedExts  = ['.jpg', '.jpeg', '.png', '.pdf'];
-        const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+            if (!allowedTypes.includes(file.type) && !allowedExts.includes(fileExt)) {
+                alert('Format file tidak valid. Harap pilih format JPG, PNG, atau PDF.');
+                resetFileInput();
+                return;
+            }
 
-        if (!allowedTypes.includes(file.type) && !allowedExts.includes(fileExt)) {
-            alert('Format file tidak valid. Harap pilih format JPG, PNG, atau PDF.');
+            const maxSize = 5 * 1024 * 1024;
+            if (file.size > maxSize) {
+                alert('Ukuran file melebihi batas maksimal 5 MB.');
+                resetFileInput();
+                return;
+            }
+
+            selectedEvidenceFile = file;
+
+            document.getElementById('fbFileName').textContent = file.name;
+            document.getElementById('fbFileSize').textContent = formatFileSize(file.size);
+            document.getElementById('fbFileIcon').textContent = file.type === 'application/pdf' ? '📑' : '🖼️';
+            document.getElementById('fbFilePreview').classList.add('active');
+            document.getElementById('fbUploadArea').style.display = 'none';
+            document.getElementById('fbUploadStatusContainer').style.display = 'block';
+        }
+
+        function removeSelectedFile() {
             resetFileInput();
-            return;
+            document.getElementById('fbFilePreview').classList.remove('active');
+            document.getElementById('fbUploadArea').style.display = 'flex';
+            document.getElementById('fbUploadStatusContainer').style.display = 'none';
         }
 
-        // Validasi Ukuran (Maksimal 5 MB = 5 * 1024 * 1024 bytes)
-        const maxSize = 5 * 1024 * 1024;
-        if (file.size > maxSize) {
-            alert('Ukuran file melebihi batas maksimal 5 MB.');
-            resetFileInput();
-            return;
+        function resetFileInput() {
+            selectedEvidenceFile = null;
+            const fileInput = document.getElementById('fbFileInput');
+            if (fileInput) fileInput.value = '';
         }
 
-        selectedEvidenceFile = file;
-
-        // Render Preview
-        document.getElementById('fbFileName').textContent = file.name;
-        document.getElementById('fbFileSize').textContent = formatFileSize(file.size);
-        document.getElementById('fbFileIcon').textContent = file.type === 'application/pdf' ? '📑' : '🖼️';
-        document.getElementById('fbFilePreview').classList.add('active');
-        document.getElementById('fbUploadArea').style.display = 'none';
-        document.getElementById('fbUploadStatusContainer').style.display = 'block';
-    }
-
-    function removeSelectedFile() {
-        resetFileInput();
-        document.getElementById('fbFilePreview').classList.remove('active');
-        document.getElementById('fbUploadArea').style.display = 'flex';
-        document.getElementById('fbUploadStatusContainer').style.display = 'none';
-    }
-
-    function resetFileInput() {
-        selectedEvidenceFile = null;
-        const fileInput = document.getElementById('fbFileInput');
-        if (fileInput) fileInput.value = '';
-    }
-
-    function formatFileSize(bytes) {
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-    }
-
-    // Mapping Kategori Opsional ke Format Backend Lama
-    function mapCategoryToLegacy(manualCategory) {
-        switch (manualCategory) {
-            case 'identity_mismatch':      return 'Merchant Mismatch';
-            case 'qr_replacement':         return 'QRIS Replacement';
-            case 'additional_fees':        return 'Additional Fee';
-            case 'safe_confirmation':      return 'Verified Authentic';
-            case 'suspicious_transaction': return 'General Complaint';
-            case 'other':                  return 'General Complaint';
-            default:                       return 'General Complaint';
-        }
-    }
-
-    // Submit Feedback
-    async function handleFeedbackSubmit() {
-        const descInput = document.getElementById('fbDescription');
-        const description = descInput.value.trim();
-
-        if (!description) {
-            descInput.focus();
-            descInput.style.borderColor = '#ef4444';
-            descInput.style.boxShadow = '0 0 0 3px rgba(239,68,68,0.15)';
-            return;
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
         }
 
-        if (!nmid) {
-            alert('NMID Merchant tidak terdeteksi. Silakan kembali dan pilih merchant terlebih dahulu.');
-            return;
-        }
+        // Submit Feedback (Menggunakan Contract C /api/v1/feedback)
+        async function handleFeedbackSubmit() {
+            const descInput = document.getElementById('fbDescription');
+            const description = descInput.value.trim();
 
-        const btn = document.getElementById('btnSubmit');
-        btn.classList.add('loading');
-        btn.disabled = true;
+            if (!description) {
+                descInput.focus();
+                descInput.style.borderColor = '#ef4444';
+                descInput.style.boxShadow = '0 0 0 3px rgba(239,68,68,0.15)';
+                return;
+            }
 
-        const manualCat = document.getElementById('fbManualCategory').value || null;
-        const txReference = document.getElementById('fbTxRef').value.trim() || null;
-        const hasEvidence = Boolean(selectedEvidenceFile);
+            const btn = document.getElementById('btnSubmit');
+            btn.classList.add('loading');
+            btn.disabled = true;
 
-        // Payload terstruktur kompatibel dengan backend lama & siap pipeline NLP
-        const payload = {
-            nmid: nmid,
-            description: description,
-            manual_category: manualCat,
-            transaction_ref: txReference,
-            category: mapCategoryToLegacy(manualCat),
-            severity: 'LOW',
-            has_evidence: hasEvidence
-        };
+            const manualCat = document.getElementById('fbManualCategory').value || null;
+            const txReference = document.getElementById('fbTxRef').value.trim() || null;
+            const hasEvidence = Boolean(selectedEvidenceFile);
 
-        try {
-            const apiBase = (window.API_BASE || '').replace(/\/+$/, '');
-            const res = await fetch(apiBase + '/api/feedback', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            // Payload resmi Contract C LaQris Roadmap
+            const payload = {
+                verification_id: sessionId || null,
+                transaction_id: txReference || null,
+                comment: description,
+                nmid: nmid || null,
+                manual_category: manualCat,
+                has_evidence: hasEvidence
+            };
 
-            const data = await res.json();
-
-            if (res.ok && data.success) {
-                // Sembunyikan Form
-                document.getElementById('heroBanner').style.display = 'none';
-                document.getElementById('merchantStrip').style.display = 'none';
-                document.getElementById('formCard').style.display = 'none';
-                document.getElementById('actionArea').style.display = 'none';
-
-                // Tampilkan Success Card dengan status verifikasi objektif
-                const successCard = document.getElementById('successCard');
-                successCard.style.display = 'block';
-
-                const resEvidenceText = document.getElementById('resEvidenceText');
-                if (hasEvidence) {
-                    resEvidenceText.textContent = 'Menunggu Verifikasi (Bukti Diunggah)';
-                    resEvidenceText.style.color = '#d97706';
-                } else {
-                    resEvidenceText.textContent = 'Laporan Tanpa Bukti';
-                    resEvidenceText.style.color = '#64748b';
+            try {
+                const apiBase = (window.API_BASE || '').replace(/\/+$/, '');
+                const token = localStorage.getItem('laqris_access_token') || sessionStorage.getItem('laqris_access_token');
+                const reqHeaders = { 'Content-Type': 'application/json' };
+                if (token) {
+                    reqHeaders['Authorization'] = 'Bearer ' + token;
                 }
 
-                // Fallback informasi proses AI / Sistem
-                const resStatusText = document.getElementById('resStatusText');
-                if (data.detected_category) {
-                    const confText = data.confidence ? ` (${Math.round(data.confidence * 100)}%)` : '';
-                    resStatusText.textContent = `${data.detected_category}${confText}`;
-                } else {
-                    resStatusText.textContent = 'Feedback sedang diproses oleh sistem';
+                let res = await fetch(apiBase + '/api/v1/feedback', {
+                    method: 'POST',
+                    headers: reqHeaders,
+                    body: JSON.stringify(payload)
+                });
+
+                let data = await res.json();
+
+                // Fallback ke legacy /api/feedback jika v1 belum tersedia
+                if (!res.ok && res.status === 404) {
+                    const legacyPayload = {
+                        nmid: nmid,
+                        description: description,
+                        category: manualCat || 'FEEDBACK_AMBIGU',
+                        severity: 'MEDIUM',
+                        transaction_ref: txReference,
+                        has_evidence: hasEvidence
+                    };
+                    res = await fetch(apiBase + '/api/feedback', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(legacyPayload)
+                    });
+                    data = await res.json();
                 }
 
-                setTimeout(() => {
-                    window.location.href = backUrl;
-                }, 2800);
-            } else {
-                alert('Gagal mengirim feedback: ' + (data.detail || data.message || 'Terjadi kesalahan sistem.'));
+                if (res.ok && data.success) {
+                    // Sembunyikan Form Card
+                    document.getElementById('heroBanner').style.display = 'none';
+                    document.getElementById('merchantStrip').style.display = 'none';
+                    document.getElementById('formCard').style.display = 'none';
+                    document.getElementById('actionArea').style.display = 'none';
+
+                    // Tampilkan Success Card
+                    const successCard = document.getElementById('successCard');
+                    successCard.style.display = 'block';
+
+                    // 1. Kategori & Confidence AI
+                    const catTitle = data.category_title || data.detected_category || 'Feedback Diproses';
+                    const confVal = data.confidence != null ? Math.round(data.confidence * 100) : 0;
+                    document.getElementById('resStatusText').textContent = `${catTitle} (${confVal}%)`;
+
+                    // 2. Severity Badge
+                    const sev = (data.severity || 'MEDIUM').toUpperCase();
+                    const sevEl = document.getElementById('resSeverityText');
+                    sevEl.textContent = sev;
+                    if (sev === 'CRITICAL') sevEl.style.color = '#dc2626';
+                    else if (sev === 'HIGH') sevEl.style.color = '#ea580c';
+                    else if (sev === 'MEDIUM') sevEl.style.color = '#d97706';
+                    else sevEl.style.color = '#16a34a';
+
+                    // 3. Evidence Level
+                    const evLevel = data.evidence_level != null ? data.evidence_level : (hasEvidence ? 2 : 1);
+                    const evEl = document.getElementById('resEvidenceText');
+                    if (evLevel >= 2) {
+                        evEl.textContent = 'Level 2: Terverifikasi Transaksi (100% Bobot)';
+                        evEl.style.color = '#16a34a';
+                    } else if (evLevel === 1) {
+                        evEl.textContent = 'Level 1: Terverifikasi Sesi Scan (50% Bobot)';
+                        evEl.style.color = '#2563eb';
+                    } else {
+                        evEl.textContent = 'Level 0: Ulasan Pengguna (25% Bobot)';
+                        evEl.style.color = '#64748b';
+                    }
+
+                    // 4. Skor EMRS
+                    const repEl = document.getElementById('resReputationText');
+                    if (data.new_reputation_score != null) {
+                        const prev = data.previous_reputation_score != null ? data.previous_reputation_score.toFixed(1) : null;
+                        const curr = data.new_reputation_score.toFixed(1);
+                        repEl.textContent = prev ? `${prev} → ${curr} / 100` : `${curr} / 100`;
+                    } else {
+                        repEl.textContent = 'Diperbarui';
+                    }
+
+                    // 5. Rekomendasi Tindakan
+                    if (data.recommended_action || data.action) {
+                        document.getElementById('resActionRow').style.display = 'flex';
+                        document.getElementById('resActionText').textContent = data.recommended_action || data.action;
+                    }
+
+                    setTimeout(() => {
+                        window.location.href = backUrl;
+                    }, 4000);
+                } else {
+                    alert('Gagal memproses feedback: ' + (data.detail || data.message || 'Terjadi kesalahan sistem.'));
+                    btn.classList.remove('loading');
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                alert('Terjadi kesalahan koneksi saat mengirim feedback: ' + err.message);
                 btn.classList.remove('loading');
                 btn.disabled = false;
             }
-        } catch (err) {
-            alert('Terjadi kesalahan koneksi saat mengirim feedback: ' + err.message);
-            btn.classList.remove('loading');
-            btn.disabled = false;
         }
-    }
 
-    // Reset style error saat user mengetik
-    document.getElementById('fbDescription').addEventListener('input', function() {
-        this.style.borderColor = '';
-        this.style.boxShadow = '';
-    });
-</script>
+        document.getElementById('fbDescription').addEventListener('input', function() {
+            this.style.borderColor = '';
+            this.style.boxShadow = '';
+        });
+    </script>
 </body>
 </html>

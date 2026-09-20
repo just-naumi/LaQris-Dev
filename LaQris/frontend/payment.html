@@ -1701,9 +1701,14 @@
             };
 
             try {
-                const res = await fetch('/api/v1/transactions/events', {
+                const apiBase = (window.API_BASE || '').replace(/\/+$/, '');
+                const token = localStorage.getItem('laqris_access_token') || sessionStorage.getItem('laqris_access_token');
+                const reqHeaders = { 'Content-Type': 'application/json' };
+                if (token) reqHeaders['Authorization'] = 'Bearer ' + token;
+
+                const res = await fetch(apiBase + '/api/v1/transactions/events', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: reqHeaders,
                     body: JSON.stringify(payload)
                 });
                 const data = await res.json();
@@ -1816,7 +1821,8 @@
             const nmid = encodeURIComponent(sessionData.nmid || '');
             const tx = encodeURIComponent(createdTxRef || '');
             const merchant = encodeURIComponent(sessionData.merchant_name || '');
-            window.location.href = `feedback.html?nmid=${nmid}&tx_ref=${tx}&merchant=${merchant}&back=dashboard.html`;
+            const sessionId = encodeURIComponent(sessionData.session_id || '');
+            window.location.href = `feedback.html?nmid=${nmid}&tx_ref=${tx}&session_id=${sessionId}&merchant=${merchant}&back=dashboard.html`;
         }
 
         function finishAndGoHome() {

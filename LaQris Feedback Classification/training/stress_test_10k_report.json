@@ -1,6 +1,6 @@
 {
   "total_samples": 10000,
-  "execution_time_seconds": 36.37,
+  "execution_time_seconds": 35.07,
   "overall_accuracy": 90.45,
   "macro_f1": 90.74,
   "mean_confidence": 93.31,

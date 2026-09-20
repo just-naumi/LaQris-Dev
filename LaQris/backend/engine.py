@@ -23,6 +23,7 @@ from PIL import Image
 from pyzbar import pyzbar
 import warnings
 from datetime import datetime, timedelta
+from typing import Optional, Dict, Any, List
 from ultralytics import YOLO
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel, ViTImageProcessor, RobertaTokenizer
 
@@ -900,10 +901,16 @@ def calculate_emrs(merchant: Merchant, reports: list, disputes: list) -> dict:
     # 2. Komponen C: Complaint Score (30%)
     C = 100.0
     for rpt in reports:
-        if rpt.category == "Verified Authentic":
-            continue  # Laporan positif / pujian tidak mengikis skor C
+        if rpt.category in ["Verified Authentic", "QRIS_NORMAL_MERCHANT_TERPERCAYA", "safe_confirmation"]:
+            continue  # Laporan positif / konfirmasi normal tidak mengikis skor C
         sev_penalty = SEVERITY_PENALTY.get(rpt.severity, 5)
-        ev_weight = 1.0 if rpt.evidence_level >= 2 else 0.5
+        # Hierarki Bukti (Section 25 Readme): Level 2 = 1.0x, Level 1 = 0.5x, Level 0 = 0.25x
+        if rpt.evidence_level >= 2:
+            ev_weight = 1.0
+        elif rpt.evidence_level == 1:
+            ev_weight = 0.5
+        else:
+            ev_weight = 0.25
         td = time_decay_weight(rpt.created_at)
         C -= sev_penalty * ev_weight * td
     C = max(0.0, min(100.0, C))
@@ -2470,9 +2477,11 @@ def _update_merchant_identity_counter(dig_nmid, phys_nmid, dig_name, phys_name, 
 # FUNGSI 13: Menyimpan Laporan/Feedback Pengguna (submit_feedback_to_db)
 # =============================================================================
 def submit_feedback_to_db(nmid: str, category: str, severity: str,
-                          description: str, transaction_ref: str, has_evidence: bool) -> dict:
+                          description: str, transaction_ref: str, has_evidence: bool,
+                          evidence_level: Optional[int] = None) -> dict:
     """
     Fungsi ini menyimpan laporan masalah pengguna ke database dan memperbarui skor EMRS toko.
+    Mendukung 7 Kategori EMRS dan 3 Tingkat Bukti (Evidence Level 0, 1, 2).
     """
     db = SessionLocal()
     try:
@@ -2489,8 +2498,11 @@ def submit_feedback_to_db(nmid: str, category: str, severity: str,
             db.add(m)
             db.flush() # Ambil m.id baru
 
-        # Level 2 jika melampirkan bukti transaksi, Level 1 jika laporan tanpa bukti
-        evidence_level = 2 if has_evidence else 1
+        # Tentukan evidence_level: gunakan parameter eksplisit jika tersedia
+        if evidence_level is None:
+            evidence_level = 2 if has_evidence else 1
+
+        prev_score = m.reputation_score or 50.0
 
         # Cek pencegahan laporan duplikat untuk transaksi yang sama
         if transaction_ref:
@@ -2499,7 +2511,13 @@ def submit_feedback_to_db(nmid: str, category: str, severity: str,
                 Report.transaction_ref == transaction_ref
             ).first()
             if existing:
-                return {"success": False, "message": "Feedback untuk transaksi ini sudah pernah disubmit.", "evidence_level": evidence_level, "new_reputation_score": m.reputation_score}
+                return {
+                    "success": False,
+                    "message": "Feedback untuk transaksi ini sudah pernah disubmit.",
+                    "evidence_level": evidence_level,
+                    "previous_reputation_score": prev_score,
+                    "new_reputation_score": prev_score
+                }
 
         # Buat objek laporan baru
         rpt = Report(
@@ -2509,17 +2527,23 @@ def submit_feedback_to_db(nmid: str, category: str, severity: str,
             description=description,
             evidence_level=evidence_level,
             transaction_ref=transaction_ref,
-            is_verified=(evidence_level == 2),
+            is_verified=(evidence_level >= 2),
             created_at=datetime.utcnow()
         )
         db.add(rpt)
 
-        # Update counter total laporan pada merchant
+        # Update counter statistik pada merchant
         m.total_reports = (m.total_reports or 0) + 1
-        if evidence_level == 2:
+        if evidence_level >= 2:
             m.verified_reports = (m.verified_reports or 0) + 1
-        if category == "QRIS Replacement" and severity == "CRITICAL":
+
+        # Pembobotan Authenticity & Mismatch sesuai 7 Kelas EMRS
+        if category in ["QRIS Replacement", "PENIPUAN_STIKER_QRIS_PALSU"] and severity == "CRITICAL":
             m.critical_mismatch_count = (m.critical_mismatch_count or 0) + 1
+        elif category in ["Merchant Mismatch", "KETIDAKSESUAIAN_IDENTITAS_MERCHANT"]:
+            m.identity_mismatch_count = (m.identity_mismatch_count or 0) + 1
+        elif category in ["Verified Authentic", "QRIS_NORMAL_MERCHANT_TERPERCAYA", "safe_confirmation"]:
+            m.identity_match_count = (m.identity_match_count or 0) + 1
 
         db.commit()
 
@@ -2534,8 +2558,9 @@ def submit_feedback_to_db(nmid: str, category: str, severity: str,
 
         return {
             "success": True,
-            "message": "Feedback berhasil disimpan. Terima kasih atas laporan Anda!",
+            "message": "Feedback berhasil disimpan. Reputasi merchant telah diperbarui oleh LaQris EMRS Intelligence.",
             "evidence_level": evidence_level,
+            "previous_reputation_score": prev_score,
             "new_reputation_score": emrs["reputation_score"]
         }
     finally:
