@@ -59,6 +59,10 @@ def init_db():
                 conn.execute(text("ALTER TABLE verification_sessions ADD COLUMN is_bound BOOLEAN DEFAULT 0"))
             if "bound_at" not in v_cols:
                 conn.execute(text("ALTER TABLE verification_sessions ADD COLUMN bound_at DATETIME"))
+            if "amount" not in v_cols:
+                conn.execute(text("ALTER TABLE verification_sessions ADD COLUMN amount FLOAT"))
+            if "amount_locked" not in v_cols:
+                conn.execute(text("ALTER TABLE verification_sessions ADD COLUMN amount_locked BOOLEAN DEFAULT 0"))
             conn.commit()
 
     # Safe in-place migration for payment_transactions user_id

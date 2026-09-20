@@ -7,8 +7,9 @@ Mengimplementasikan:
 """
 
 import os
+import time
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 
 from fastapi import Depends, HTTPException, status
@@ -145,21 +146,25 @@ def get_current_user_required(
 
 def verify_user_ownership(requester_user_id: Optional[str], resource_owner_id: Optional[str], resource_name: str = "transaksi"):
     """
-    Enforce Step 29 di Readme2.md (User Ownership Rule):
-    User A tidak dapat mengirim feedback atau memodifikasi transaksi/sesi milik User B.
+    Enforce Step 29 di Readme2.md & P1 Item 8 di Readme.md (Strict User Ownership Rule):
+    User A tidak dapat mengakses/memodifikasi transaksi/sesi milik User B.
+    Jika resource memiliki pemilik, requester WAJIB terotentikasi (fail closed).
     """
-    if not requester_user_id or not resource_owner_id:
-        return  # Jika salah satu tidak terikat user, izinkan dengan fallback
-
-    if requester_user_id != resource_owner_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"User ownership violation: Akun '{requester_user_id}' tidak memiliki hak otorisasi atas {resource_name} milik '{resource_owner_id}'."
-        )
+    if resource_owner_id:
+        if not requester_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Autentikasi diperlukan: Akses atas {resource_name} memerlukan akun pengguna terverifikasi."
+            )
+        if requester_user_id != resource_owner_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"User ownership violation: Akun '{requester_user_id}' tidak memiliki hak otorisasi atas {resource_name} milik '{resource_owner_id}'."
+            )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Step 25 di Readme2.md: Payment Provider Service-to-Service Authentication
+# Step 25 di Readme2.md & P1 Item 7: Payment Provider S2S Auth + Anti-Replay
 # ─────────────────────────────────────────────────────────────────────────────
 import hmac
 
@@ -170,44 +175,100 @@ PROVIDER_API_KEYS = {
     "GOPAY": os.getenv("GOPAY_API_KEY", "gopay-gw-secret-key-2026")
 }
 
+# Cache in-memory untuk melacak nonce guna mencegah serangan replay (P1 Item 7)
+SEEN_NONCES = set()
+
 def verify_provider_authentication(
     provider: str,
     api_key: Optional[str] = None,
     signature: Optional[str] = None,
-    raw_body: Optional[bytes] = None
+    raw_body: Optional[bytes] = None,
+    timestamp: Optional[str] = None,
+    nonce: Optional[str] = None
 ) -> bool:
     """
-    Verifikasi service-to-service autentikasi payment provider (Step 25 / P1).
-    Mendukung X-Provider-Api-Key atau X-LaQris-Signature (HMAC-SHA256).
+    Verifikasi service-to-service autentikasi payment provider (Step 25 / P1 Item 7).
+    Mendukung X-Provider-Api-Key atau X-LaQris-Signature (HMAC-SHA256) dengan
+    proteksi anti-replay callback (X-LaQris-Timestamp & X-LaQris-Nonce).
     """
+    # 1. Anti-Replay Check (Timestamp freshness & Nonce uniqueness)
+    if timestamp:
+        try:
+            if str(timestamp).replace(".", "", 1).isdigit():
+                req_ts = float(timestamp)
+            else:
+                clean_ts = str(timestamp).replace("Z", "+00:00")
+                dt = datetime.fromisoformat(clean_ts)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                req_ts = dt.timestamp()
+            now_ts = time.time()
+            # Toleransi jeda waktu jaringan maksimal 5 menit (300 detik)
+            if abs(now_ts - req_ts) > 300:
+                return False
+        except Exception:
+            return False
+
+    if nonce:
+        if nonce in SEEN_NONCES:
+            return False  # Nonce sudah pernah dipakai -> REPLAY ATTACK TERTOLAK!
+        SEEN_NONCES.add(nonce)
+        if len(SEEN_NONCES) > 10000:
+            SEEN_NONCES.clear()
+
+    # 2. Verifikasi Kredensial Provider
     if api_key:
         expected_key = PROVIDER_API_KEYS.get(provider, PROVIDER_API_KEYS.get("DemoPay"))
         if expected_key and hmac.compare_digest(api_key, expected_key):
             return True
 
     if signature and raw_body:
-        expected_sig = hmac.new(
+        # A. Cek kecocokan HMAC langsung terhadap raw_body
+        expected_sig_raw = hmac.new(
             PROVIDER_SECRET_KEY.encode("utf-8"),
             raw_body,
             hashlib.sha256
         ).hexdigest()
-        if hmac.compare_digest(signature, expected_sig):
+        if hmac.compare_digest(signature, expected_sig_raw):
             return True
 
-    # Izinkan di mode development untuk kemudahan demo local
-    if os.getenv("LAQRIS_ENV", "development").lower() == "development":
-        return True
+        # B. Cek kecocokan HMAC dengan format timestamp + "." + raw_body
+        if timestamp:
+            expected_sig_ts = hmac.new(
+                PROVIDER_SECRET_KEY.encode("utf-8"),
+                f"{timestamp}.".encode("utf-8") + raw_body,
+                hashlib.sha256
+            ).hexdigest()
+            if hmac.compare_digest(signature, expected_sig_ts):
+                return True
+
+    # 3. Fail-Closed: Di mode non-development, tolak seluruh request tanpa auth valid
+    if is_development_mode():
+        # Hanya izinkan jika request sama sekali tidak membawa header auth di mode lokal
+        if not api_key and not signature:
+            return True
 
     return False
 
 
+def is_development_mode() -> bool:
+    """Mengecek apakah sistem berjalan dalam mode development lokal."""
+    return os.getenv("LAQRIS_ENV", "development").lower() == "development"
+
+
 def verify_pin_secure(input_pin: str, stored_pin: Optional[str] = None) -> bool:
     """
-    Verifikasi PIN transaksi secara aman dengan constant-time comparison.
-    Mencegah timing attack dan tidak pernah mengekspos PIN mentah.
+    Verifikasi PIN transaksi secara aman dengan constant-time comparison (P0 Item 1.B).
+    Mencegah timing attack. PIN wajib diverifikasi dari database user;
+    di mode local development, jika stored_pin belum diset maka fallback ke '123456'.
     """
     if not input_pin:
         return False
-    target = stored_pin if stored_pin else "123456"
-    return hmac.compare_digest(str(input_pin).strip(), str(target).strip())
+    if not stored_pin:
+        if is_development_mode():
+            stored_pin = "123456"
+        else:
+            return False
+    return hmac.compare_digest(str(input_pin).strip(), str(stored_pin).strip())
+
 

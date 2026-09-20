@@ -3,6 +3,9 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
 
+# Unified Constant Lifecycle Sesi Verifikasi LaQris (P0 Item 3 di Readme.md)
+VERIFICATION_SESSION_TTL_MINUTES = 30
+
 
 class Merchant(Base):
     __tablename__ = "merchants"
@@ -107,9 +110,11 @@ class VerificationSession(Base):
     # ── Session Hardening & Security Decision ─────────────────
     decision = Column(String, default="ALLOW")       # "ALLOW" | "WARN" | "BLOCK"
     reason_codes = Column(Text, default="[]")        # JSON string array e.g. '["NMID_MISMATCH"]'
-    expires_at = Column(DateTime, nullable=True)     # Sesi kedaluwarsa setelah 15 menit
+    expires_at = Column(DateTime, nullable=True)     # Sesi kedaluwarsa setelah 30 menit (VERIFICATION_SESSION_TTL_MINUTES)
     is_bound = Column(Boolean, default=False)        # Anti-replay: True jika sudah diikat transaksi
     bound_at = Column(DateTime, nullable=True)       # Waktu sesi diikat ke transaksi
+    amount = Column(Float, nullable=True)            # Nominal transaksi yang dikunci (Payment Intent anti-tamper)
+    amount_locked = Column(Boolean, default=False)   # Status penguncian nominal di server
 
     # Relasi 0..1 ke transaksi pembayaran (Post-Payment Transaction Event)
     payment_transaction = relationship("PaymentTransaction", back_populates="verification_session", uselist=False)

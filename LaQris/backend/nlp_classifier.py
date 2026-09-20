@@ -209,11 +209,40 @@ def _semantic_baseline_classify(text: str) -> Dict[str, Any]:
     }
 
 
+def _apply_hybrid_guard(text: str, predicted_cat: str, confidence: float) -> tuple:
+    """
+    Hybrid Guard (P1 Item 11 di Readme.md):
+    Mendeteksi pernyataan identitas positif / ulasan transaksi normal yang sering mengalami
+    boundary false-positive pada model klasifikasi teks (misal: "nama merchant sama dengan nama toko").
+    Mencegah feedback positif salah diprediksi sebagai KETIDAKSESUAIAN_IDENTITAS_MERCHANT.
+    """
+    text_clean = text.lower()
+    positive_cues = [
+        "nama merchant sama", "nama toko sama", "sama dengan nama toko", "sama persis",
+        "nominal sesuai", "jumlah sesuai", "pembayaran berhasil", "tanpa kendala",
+        "transaksi lancar", "lancar jaya", "kasir ramah", "resmi", "tidak ada biaya",
+        "langsung masuk sesuai nama"
+    ]
+    negative_cues = [
+        "beda", "berbeda", "tidak sesuai", "bukan nama", "salah nama", "nama orang lain",
+        "ditimpa", "ditempel", "stiker palsu", "palsu", "rusak", "sobek", "luntur",
+        "biaya tambahan", "surcharge", "dipalak", "menolak", "tolak qris", "judes"
+    ]
+    has_positive = any(cue in text_clean for cue in positive_cues)
+    has_negative = any(cue in text_clean for cue in negative_cues)
+
+    if has_positive and not has_negative:
+        if predicted_cat in ["KETIDAKSESUAIAN_IDENTITAS_MERCHANT", "FEEDBACK_AMBIGU"]:
+            return "QRIS_NORMAL_MERCHANT_TERPERCAYA", max(confidence, 0.94)
+    return predicted_cat, confidence
+
+
 def classify_feedback(text: Optional[str]) -> Dict[str, Any]:
     """
     Fungsi utama klasifikasi feedback:
     Menerima teks deskripsi dan mengembalikan kategori 7-kelas EMRS,
     confidence, severity, rekomendasi aksi, dan tipe penalti EMRS.
+    Dilengkapi Hybrid Guard untuk mencegah boundary false-positive (P1 Item 11).
     """
     if not text or not text.strip():
         cat_meta = CATEGORIES["FEEDBACK_AMBIGU"]
@@ -249,6 +278,9 @@ def classify_feedback(text: Optional[str]) -> Dict[str, Any]:
                 cat_keys = list(CATEGORIES.keys())
                 cat_key = cat_keys[pred_idx] if 0 <= pred_idx < len(cat_keys) else "FEEDBACK_AMBIGU"
 
+            # Terapkan Hybrid Guard (P1 Item 11)
+            cat_key, confidence = _apply_hybrid_guard(text, cat_key, confidence)
+
             if cat_key in CATEGORIES:
                 cat_meta = CATEGORIES[cat_key]
                 return {
@@ -264,4 +296,15 @@ def classify_feedback(text: Optional[str]) -> Dict[str, Any]:
             logger.error("Error inferensi IndoBERT: %s. Fallback ke semantic baseline.", err)
 
     # Fallback ke semantic engine jika inferensi neural network gagal
-    return _semantic_baseline_classify(text)
+    res = _semantic_baseline_classify(text)
+    guarded_key, guarded_conf = _apply_hybrid_guard(text, res["category_key"], res["confidence"])
+    if guarded_key != res["category_key"]:
+        meta = CATEGORIES[guarded_key]
+        res["category_key"] = guarded_key
+        res["category_title"] = meta["title"]
+        res["confidence"] = guarded_conf
+        res["severity"] = meta["severity"]
+        res["action"] = meta["action"]
+        res["emrs_penalty"] = meta["emrs_penalty"]
+    return res
+

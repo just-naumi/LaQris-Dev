@@ -1616,7 +1616,28 @@
         }
 
         // PIN Step Navigation
-        function goToStepPin() {
+        async function goToStepPin() {
+            // P0 Item 2: Lock nominal on server via Payment Intent before PIN entry
+            try {
+                const apiBase = (window.API_BASE || '').replace(/\/+$/, '');
+                const token = localStorage.getItem('laqris_access_token') || sessionStorage.getItem('laqris_access_token');
+                const reqHeaders = { 'Content-Type': 'application/json' };
+                if (token) reqHeaders['Authorization'] = 'Bearer ' + token;
+
+                if (sessionData && sessionData.session_id && currentNominalNumber > 0) {
+                    await fetch(apiBase + '/api/v1/payment-intent', {
+                        method: 'POST',
+                        headers: reqHeaders,
+                        body: JSON.stringify({
+                            session_id: sessionData.session_id,
+                            amount: currentNominalNumber
+                        })
+                    });
+                }
+            } catch (intentErr) {
+                console.warn('[INTENT] Pre-lock nominal warning:', intentErr);
+            }
+
             enteredPin = '';
             updatePinDotsDisplay(false);
             const errEl = document.getElementById('pinErrorText');
@@ -1790,7 +1811,7 @@
                 activeAcquirer = 'DOMPET ANAK BANGSA';
             }
 
-            const enteredPinStr = enteredPin.join('');
+            const enteredPinStr = typeof enteredPin === 'string' ? enteredPin : (Array.isArray(enteredPin) ? enteredPin.join('') : '');
             const payload = {
                 session_id: sessionData.session_id || ('LQ-S-' + Date.now()),
                 amount: currentNominalNumber,
@@ -1823,8 +1844,8 @@
                         btnPay.disabled = false;
                         btnPay.textContent = 'Konfirmasi Pembayaran';
                     }
-                    enteredPin = [];
-                    updatePinDots();
+                    enteredPin = '';
+                    updatePinDotsDisplay(false);
                     return;
                 }
 
@@ -1850,8 +1871,8 @@
                     btnPay.disabled = false;
                     btnPay.textContent = 'Konfirmasi Pembayaran';
                 }
-                enteredPin = [];
-                updatePinDots();
+                enteredPin = '';
+                updatePinDotsDisplay(false);
             }
         }
 

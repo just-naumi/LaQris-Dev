@@ -38,7 +38,7 @@ except ImportError:
 
 # Impor koneksi database dan tabel dari file lokal
 from database import SessionLocal
-from models import Merchant, Report, Dispute, VerificationSession
+from models import Merchant, Report, Dispute, VerificationSession, VERIFICATION_SESSION_TTL_MINUTES
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -2367,7 +2367,7 @@ def process_qris_verification(gambar_input, filename_base="scan", user_id=None):
             reputation_score=merchant_reputation.get("reputation_score", 50.0),
             decision=payment_decision,
             reason_codes=json.dumps(reason_codes),
-            expires_at=datetime.utcnow() + timedelta(minutes=15),
+            expires_at=datetime.utcnow() + timedelta(minutes=VERIFICATION_SESSION_TTL_MINUTES),
             is_bound=False
         )
         db.add(session_rec)

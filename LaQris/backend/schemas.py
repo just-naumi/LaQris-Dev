@@ -294,6 +294,7 @@ class DemoPayProcessPaymentSchema(BaseModel):
     terminal_id: Optional[str] = "A01"
     user_id: Optional[str] = None
     account_number: Optional[str] = None
+    scenario: Optional[str] = "SUCCESS"  # P0 Item 4: "SUCCESS" | "FAILED" | "TIMEOUT" | "CANCELLED"
 
 
 class DemoPayProcessPaymentResponseSchema(BaseModel):
@@ -312,6 +313,23 @@ class DemoPayProcessPaymentResponseSchema(BaseModel):
     nmid: Optional[str] = None
     merchant_name: Optional[str] = None
     acquirer: Optional[str] = None
+
+
+# ─────────────────────────────────────────────────────────────
+# Payment Intent / Confirmed Amount Schema (P0 Item 2)
+# ─────────────────────────────────────────────────────────────
+
+class PaymentIntentSchema(BaseModel):
+    session_id: str
+    amount: float
+
+
+class PaymentIntentResponseSchema(BaseModel):
+    success: bool
+    message: str
+    session_id: str
+    amount: float
+    amount_locked: bool
 
 
 # ─────────────────────────────────────────────────────────────

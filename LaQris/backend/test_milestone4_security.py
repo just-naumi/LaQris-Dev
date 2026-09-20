@@ -15,6 +15,7 @@ import sys
 import json
 import hmac
 import hashlib
+from datetime import datetime, timedelta
 from fastapi.testclient import TestClient
 
 # Pastikan path modul terdaftar
@@ -440,7 +441,8 @@ def test_milestone4_demopay_server_processing():
     res_block = client.post("/api/v1/demopay/process-payment", json={
         "session_id": block_s_id,
         "amount": 50000.0,
-        "pin": "123456"
+        "pin": "123456",
+        "user_id": "USR-001928"
     })
     assert res_block.status_code == 403, f"Harusnya 403 BLOCK, dapat {res_block.status_code}"
     assert "DANGER" in res_block.json()["detail"] or "BLOCK" in res_block.json()["detail"]
@@ -465,10 +467,21 @@ def test_milestone4_demopay_server_processing():
     db.add(s_allow)
     db.commit()
 
+    # Uji penolakan jika user_id tidak cocok dengan pemilik sesi (P0 Item 1.A)
+    res_user_mismatch = client.post("/api/v1/demopay/process-payment", json={
+        "session_id": allow_s_id,
+        "amount": 25000.0,
+        "pin": "123456",
+        "user_id": "USR-OTHER-USER"
+    })
+    assert res_user_mismatch.status_code == 403
+    print(f"  -> DemoPay menolak transaksi dari user bukan pemilik sesi (HTTP 403).")
+
     res_wrong_pin = client.post("/api/v1/demopay/process-payment", json={
         "session_id": allow_s_id,
         "amount": 25000.0,
-        "pin": "999999"
+        "pin": "999999",
+        "user_id": "USR-001928"
     })
     assert res_wrong_pin.status_code == 400
     assert "PIN" in res_wrong_pin.json()["detail"]
@@ -479,7 +492,8 @@ def test_milestone4_demopay_server_processing():
         "session_id": allow_s_id,
         "amount": 25000.0,
         "pin": "123456",
-        "terminal_id": "A01"
+        "terminal_id": "A01",
+        "user_id": "USR-001928"
     })
     assert res_pay_ok.status_code == 200, f"DemoPay pay gagal: {res_pay_ok.text}"
     p_data = res_pay_ok.json()
@@ -504,6 +518,218 @@ def test_milestone4_demopay_server_processing():
     print("  -> Database persistence terverifikasi: Session terikat & PaymentTransaction tersimpan aman.")
 
 
+def test_milestone4_nominal_locking_and_anti_tamper():
+    print("\n[TEST 12] Pengujian Anti-Tamper Nominal Locking (P0 Item 2 di Readme.md)...")
+    db = next(get_db())
+    s_id = "LQ-V-TEST-LOCK-NOMINAL"
+    db.query(VerificationSession).filter(VerificationSession.session_id == s_id).delete()
+    db.commit()
+
+    s = VerificationSession(
+        session_id=s_id,
+        user_id="USR-001928",
+        nmid="ID1020000000001",
+        trust_score=95.0,
+        risk_level="NORMAL",
+        decision="ALLOW"
+    )
+    db.add(s)
+    db.commit()
+
+    # 1. Kunci nominal Rp27.000 via Payment Intent
+    res_intent = client.post("/api/v1/payment-intent", json={
+        "session_id": s_id,
+        "amount": 27000.0
+    })
+    assert res_intent.status_code == 200
+    assert res_intent.json()["amount_locked"] is True
+    assert res_intent.json()["amount"] == 27000.0
+
+    # 2. Penyerang / client mencoba memanipulasi nominal menjadi Rp270.000 -> Harus ditolak HTTP 422!
+    res_tamper = client.post("/api/v1/demopay/process-payment", json={
+        "session_id": s_id,
+        "amount": 270000.0,
+        "pin": "123456",
+        "user_id": "USR-001928"
+    })
+    assert res_tamper.status_code == 422, f"Harusnya 422 Unprocessable, tapi {res_tamper.status_code}"
+    assert "Anti-tamper" in res_tamper.json()["detail"]
+    print(f"  -> Manipulasi nominal berhasil digagalkan (HTTP 422): {res_tamper.json()['detail']}")
+
+    # 3. Transaksi dengan nominal yang sesuai -> Berhasil (HTTP 200)
+    res_valid_nom = client.post("/api/v1/demopay/process-payment", json={
+        "session_id": s_id,
+        "amount": 27000.0,
+        "pin": "123456",
+        "user_id": "USR-001928"
+    })
+    assert res_valid_nom.status_code == 200
+    assert res_valid_nom.json()["amount"] == 27000.0
+    print("  -> Pembayaran dengan nominal terkunci yang sah berhasil diproses.")
+
+
+def test_milestone4_demopay_multistatus_scenarios():
+    print("\n[TEST 13] Pengujian Skenario Multi-Status DemoPay (P0 Item 4 di Readme.md)...")
+    db = next(get_db())
+
+    # Skenario FAILED
+    s_failed_id = "LQ-V-TEST-STATUS-FAIL"
+    db.query(VerificationSession).filter(VerificationSession.session_id == s_failed_id).delete()
+    db.commit()
+    s_f = VerificationSession(
+        session_id=s_failed_id,
+        user_id="USR-001928",
+        nmid="ID1020000000001",
+        trust_score=95.0,
+        risk_level="NORMAL",
+        decision="ALLOW"
+    )
+    db.add(s_f)
+    db.commit()
+
+    res_failed = client.post("/api/v1/demopay/process-payment", json={
+        "session_id": s_failed_id,
+        "amount": 15000.0,
+        "pin": "123456",
+        "scenario": "FAILED",
+        "user_id": "USR-001928"
+    })
+    assert res_failed.status_code == 200
+    f_data = res_failed.json()
+    assert f_data["status"] == "FAILED"
+    assert f_data["response_code"] == "05"
+    assert f_data["success"] is False
+    print(f"  -> Skenario FAILED terverifikasi: Status={f_data['status']}, RC={f_data['response_code']}")
+
+    # Skenario TIMEOUT
+    s_to_id = "LQ-V-TEST-STATUS-TIMEOUT"
+    db.query(VerificationSession).filter(VerificationSession.session_id == s_to_id).delete()
+    db.commit()
+    s_to = VerificationSession(
+        session_id=s_to_id,
+        user_id="USR-001928",
+        nmid="ID1020000000001",
+        trust_score=95.0,
+        risk_level="NORMAL",
+        decision="ALLOW"
+    )
+    db.add(s_to)
+    db.commit()
+
+    res_to = client.post("/api/v1/demopay/process-payment", json={
+        "session_id": s_to_id,
+        "amount": 20000.0,
+        "pin": "123456",
+        "scenario": "TIMEOUT",
+        "user_id": "USR-001928"
+    })
+    assert res_to.status_code == 200
+    to_data = res_to.json()
+    assert to_data["status"] == "TIMEOUT"
+    assert to_data["response_code"] == "68"
+    assert to_data["success"] is False
+    print(f"  -> Skenario TIMEOUT terverifikasi: Status={to_data['status']}, RC={to_data['response_code']}")
+
+
+def test_milestone4_anti_replay_nonce_and_timestamp():
+    print("\n[TEST 14] Pengujian Anti-Replay Nonce & Timestamp Header (P1 Item 7 di Readme.md)...")
+    os.environ["LAQRIS_ENV"] = "production"
+    db = next(get_db())
+    s_id = "LQ-V-TEST-NONCE-01"
+    db.query(VerificationSession).filter(VerificationSession.session_id == s_id).delete()
+    db.commit()
+    s = VerificationSession(
+        session_id=s_id,
+        user_id="USR-001928",
+        nmid="ID1020000000001",
+        trust_score=95.0,
+        risk_level="NORMAL",
+        decision="ALLOW"
+    )
+    db.add(s)
+    db.commit()
+
+    # 1. Test expired timestamp (> 300 detik)
+    old_ts = (datetime.utcnow() - timedelta(seconds=350)).isoformat() + "Z"
+    res_old = client.post(
+        "/api/v1/transactions/events",
+        json={
+            "verification_session_id": s_id,
+            "provider": "DemoPay",
+            "provider_transaction_id": "TX-OLD-TS",
+            "amount": 10000.0,
+            "status": "SUCCESS",
+            "response_code": "00"
+        },
+        headers={
+            "X-Provider-Api-Key": "demopay-live-key-2026-auth",
+            "X-LaQris-Timestamp": old_ts,
+            "X-LaQris-Nonce": "nonce-old-123"
+        }
+    )
+    assert res_old.status_code == 401
+    assert "anti-replay" in res_old.json()["detail"].lower()
+    print("  -> Request dengan timestamp kedaluwarsa berhasil ditolak (HTTP 401).")
+
+    # 2. Test valid nonce pertama kali
+    current_ts = datetime.utcnow().isoformat() + "Z"
+    test_nonce = f"nonce-test-{int(datetime.utcnow().timestamp())}"
+    res_nonce_1 = client.post(
+        "/api/v1/transactions/events",
+        json={
+            "verification_session_id": s_id,
+            "provider": "DemoPay",
+            "provider_transaction_id": "TX-NONCE-01",
+            "amount": 10000.0,
+            "status": "SUCCESS",
+            "response_code": "00"
+        },
+        headers={
+            "X-Provider-Api-Key": "demopay-live-key-2026-auth",
+            "X-LaQris-Timestamp": current_ts,
+            "X-LaQris-Nonce": test_nonce
+        }
+    )
+    assert res_nonce_1.status_code == 200
+    print("  -> Request pertama dengan nonce unik berhasil diterima (HTTP 200).")
+
+    # 3. Test replay attack: nonce yang sama dikirim ulang -> Harus ditolak 401!
+    res_nonce_replay = client.post(
+        "/api/v1/transactions/events",
+        json={
+            "verification_session_id": s_id,
+            "provider": "DemoPay",
+            "provider_transaction_id": "TX-NONCE-REPLAY",
+            "amount": 10000.0,
+            "status": "SUCCESS",
+            "response_code": "00"
+        },
+        headers={
+            "X-Provider-Api-Key": "demopay-live-key-2026-auth",
+            "X-LaQris-Timestamp": current_ts,
+            "X-LaQris-Nonce": test_nonce
+        }
+    )
+    assert res_nonce_replay.status_code == 401
+    assert "anti-replay" in res_nonce_replay.json()["detail"].lower()
+    print("  -> Replay attack dengan nonce sama berhasil dicegah (HTTP 401).")
+
+    os.environ["LAQRIS_ENV"] = "development"
+
+
+def test_milestone4_hybrid_nlp_guard():
+    print("\n[TEST 15] Pengujian Hybrid Guard NLP Feedback (P1 Item 11 di Readme.md)...")
+    from nlp_classifier import classify_feedback
+
+    text = "Nama merchant sama dengan nama toko, nominal sesuai, pembayaran berhasil tanpa kendala."
+    res = classify_feedback(text)
+    assert res["category_key"] == "QRIS_NORMAL_MERCHANT_TERPERCAYA", f"Hasil tidak terproteksi guard: {res}"
+    assert res["severity"] == "LOW"
+    assert res["emrs_penalty"] == "BOOST_TRUST"
+    assert res["confidence"] >= 0.90
+    print(f"  -> Hybrid Guard berhasil memproteksi boundary test: category={res['category_key']}, confidence={res['confidence']}")
+
+
 if __name__ == "__main__":
     print("=" * 70)
     print("MENJALANKAN PENGUJIAN OTOMATIS MILESTONE 4: SECURITY HARDENING")
@@ -519,6 +745,10 @@ if __name__ == "__main__":
     test_milestone4_strict_merchant_binding()
     test_milestone4_transaction_status_enum_validation()
     test_milestone4_demopay_server_processing()
+    test_milestone4_nominal_locking_and_anti_tamper()
+    test_milestone4_demopay_multistatus_scenarios()
+    test_milestone4_anti_replay_nonce_and_timestamp()
+    test_milestone4_hybrid_nlp_guard()
     print("=" * 70)
-    print("SELURUH 11 PENGUJIAN KEAMANAN ROADMAP MILESTONE 4 BERHASIL 100%!")
+    print("SELURUH 15 PENGUJIAN KEAMANAN ROADMAP MILESTONE 4 BERHASIL 100%!")
     print("=" * 70)
