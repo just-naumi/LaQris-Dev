@@ -566,8 +566,33 @@
             document.getElementById('resPrevScore').textContent = prev;
             document.getElementById('resNewScore').textContent = curr;
 
-            // Action / Status Toko
-            document.getElementById('resAction').textContent = data.recommended_action || 'Aman & Terpercaya';
+            // Status Toko — berdasarkan grade EMRS dari new_reputation_score
+            const actionEl = document.getElementById('resAction');
+            const newScore = data.new_reputation_score != null ? parseFloat(data.new_reputation_score) : null;
+            if (newScore != null) {
+                let grade, gradeClass;
+                if (newScore >= 85) {
+                    grade = '⭐ Excellent — Toko Terpercaya';
+                    gradeClass = 'receipt-val val-safe';
+                } else if (newScore >= 65) {
+                    grade = '🟢 Good — Rekam Jejak Baik';
+                    gradeClass = 'receipt-val val-safe';
+                } else if (newScore >= 45) {
+                    grade = '🟡 Fair — Perlu Dipantau';
+                    gradeClass = 'receipt-val val-blue';
+                } else if (newScore >= 25) {
+                    grade = '🟠 Poor — Riwayat Bermasalah';
+                    gradeClass = 'receipt-val';
+                } else {
+                    grade = '🔴 Very Poor — Tidak Direkomendasikan';
+                    gradeClass = 'receipt-val val-danger';
+                }
+                actionEl.textContent = grade;
+                actionEl.className = gradeClass;
+            } else {
+                actionEl.textContent = 'Aman & Terpercaya';
+                actionEl.className = 'receipt-val val-safe';
+            }
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
