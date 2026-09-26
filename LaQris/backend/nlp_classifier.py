@@ -157,12 +157,22 @@ def _semantic_baseline_classify(text: str) -> Dict[str, Any]:
             ("ditimpa", 4.0), ("ditempel", 3.5), ("stiker palsu", 4.5),
             ("stiker baru", 3.0), ("ditumpuk", 4.0), ("qris palsu", 4.5),
             ("lapisan stiker", 3.5), ("dobel stiker", 4.0), ("akrilik ditutup", 3.5),
-            ("stiker siluman", 4.0)
+            ("stiker siluman", 4.0),
+            # Kata informal / sehari-hari
+            ("palsu", 3.0), ("kayaknya palsu", 4.5), ("sepertinya palsu", 4.5),
+            ("terindikasi palsu", 4.5), ("dicurigai palsu", 4.5),
+            ("qris-nya palsu", 4.5), ("qrisnya palsu", 4.5),
+            ("seperti ditimpa", 4.0), ("kayak ditempel", 4.0)
         ],
         "KETIDAKSESUAIAN_IDENTITAS_MERCHANT": [
             ("nama beda", 3.5), ("nama berbeda", 4.0), ("bukan nama toko", 4.0),
             ("tidak sesuai", 3.0), ("rekening pribadi", 4.0), ("nama orang lain", 3.5),
-            ("nama tidak cocok", 3.5), ("rekening perorangan", 3.5), ("bukan nama usaha", 3.5)
+            ("nama tidak cocok", 3.5), ("rekening perorangan", 3.5), ("bukan nama usaha", 3.5),
+            # Frasa informal / kontekstual
+            ("tidak sesuai dengan merchant", 4.5), ("tidak sesuai merchant", 4.5),
+            ("tidak cocok dengan toko", 4.5), ("datanya tidak sesuai", 4.0),
+            ("menunjukkan tidak sesuai", 4.0), ("data tidak sesuai", 4.0),
+            ("namanya beda", 4.0), ("beda sama toko", 4.0), ("nama tokonya beda", 4.5)
         ],
         "PUNGUTAN_BIAYA_TAMBAHAN_SURCHARGE": [
             ("biaya tambahan", 4.5), ("surcharge", 4.5), ("biaya admin", 4.0),
@@ -217,10 +227,9 @@ def _semantic_baseline_classify(text: str) -> Dict[str, Any]:
 
 def _apply_hybrid_guard(text: str, predicted_cat: str, confidence: float) -> tuple:
     """
-    Pelindung Ulasan Positif (Hybrid Guard):
-    Memastikan ulasan pembeli yang bernada memuji dan menyatakan transaksi sukses
-    (misal: "nama toko sama persis dan pembayaran lancar")
-    tidak keliru dikategorikan sebagai masalah penipuan.
+    Pelindung Ulasan Hybrid Guard:
+    1. Positive Guard  — ulasan puas yang salah dikategorikan sebagai penipuan → di-override ke NORMAL
+    2. Negative Guard  — ulasan bermasalah yang salah dikategorikan sebagai NORMAL oleh IndoBERT → di-override ke kategori yang tepat
     """
     text_clean = text.lower()
     positive_cues = [
@@ -234,12 +243,39 @@ def _apply_hybrid_guard(text: str, predicted_cat: str, confidence: float) -> tup
         "ditimpa", "ditempel", "stiker palsu", "palsu", "rusak", "sobek", "luntur",
         "biaya tambahan", "surcharge", "dipalak", "menolak", "tolak qris", "judes"
     ]
+
+    # Sinyal negatif kuat yang secara eksplisit menunjukkan penipuan / ketidaksesuaian
+    # Guard ini berjalan SETELAH IndoBERT agar mencegah false positive NORMAL
+    strong_fraud_cues = [
+        "palsu", "ditimpa", "ditempel", "stiker palsu", "qris palsu",
+        "kayaknya palsu", "sepertinya palsu", "terindikasi palsu", "dicurigai palsu"
+    ]
+    strong_mismatch_cues = [
+        "tidak sesuai dengan merchant", "tidak sesuai merchant", "datanya tidak sesuai",
+        "menunjukkan tidak sesuai", "data tidak sesuai", "tidak cocok dengan toko",
+        "namanya beda", "beda sama toko", "nama tokonya beda", "nama beda", "nama berbeda"
+    ]
+
     has_positive = any(cue in text_clean for cue in positive_cues)
     has_negative = any(cue in text_clean for cue in negative_cues)
+    has_strong_fraud = any(cue in text_clean for cue in strong_fraud_cues)
+    has_strong_mismatch = any(cue in text_clean for cue in strong_mismatch_cues)
 
+    # ── Negative Guard: IndoBERT predict NORMAL padahal ada sinyal negatif kuat ──
+    if predicted_cat == "QRIS_NORMAL_MERCHANT_TERPERCAYA":
+        if has_strong_fraud and not has_positive:
+            return "PENIPUAN_STIKER_QRIS_PALSU", max(confidence, 0.80)
+        if has_strong_mismatch and not has_positive:
+            return "KETIDAKSESUAIAN_IDENTITAS_MERCHANT", max(confidence, 0.80)
+        if has_negative and not has_positive:
+            # Sinyal negatif ada tapi tidak cukup spesifik → turunkan ke AMBIGU
+            return "FEEDBACK_AMBIGU", 0.65
+
+    # ── Positive Guard: Ulasan puas keliru dikategorikan sebagai masalah ──
     if has_positive and not has_negative:
         if predicted_cat in ["KETIDAKSESUAIAN_IDENTITAS_MERCHANT", "FEEDBACK_AMBIGU"]:
             return "QRIS_NORMAL_MERCHANT_TERPERCAYA", max(confidence, 0.94)
+
     return predicted_cat, confidence
 
 
