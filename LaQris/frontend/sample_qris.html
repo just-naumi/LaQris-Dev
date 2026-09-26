@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaQris - Contoh QRIS Resmi (Normal & Aman)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563EB;
+            --primary-dark: #1D4ED8;
+            --safe-green: #16A34A;
+            --danger-red: #E11D48;
+            --dark-bg: #0F172A;
+            --card-bg: #FFFFFF;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #F8FAFC;
+            color: #0F172A;
+            margin: 0;
+            padding: 24px 16px 60px;
+        }
+
+        .container-custom {
+            max-width: 680px;
+            margin: 0 auto;
+        }
+
+        .header-title {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #0F172A;
+            margin-bottom: 4px;
+        }
+
+        .header-sub {
+            font-size: 0.9rem;
+            color: #64748B;
+            margin-bottom: 24px;
+        }
+
+        .nav-tabs-custom {
+            display: flex;
+            background: #E2E8F0;
+            border-radius: 14px;
+            padding: 4px;
+            margin-bottom: 20px;
+            gap: 4px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: #64748B;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .tab-btn.active-safe {
+            background: #FFFFFF;
+            color: #16A34A;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .tab-btn.active-danger {
+            background: #FFFFFF;
+            color: #E11D48;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .qris-card {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            font-weight: 800;
+            margin-bottom: 16px;
+        }
+
+        .badge-safe {
+            background: #DCFCE7;
+            color: #15803D;
+        }
+
+        .badge-danger {
+            background: #FEE2E2;
+            color: #B91C1C;
+        }
+
+        .qris-display-frame {
+            background: #F8FAFC;
+            border: 2px dashed #CBD5E1;
+            border-radius: 16px;
+            padding: 16px;
+            margin: 0 auto 20px;
+            max-width: 440px;
+            position: relative;
+        }
+
+        .qris-img {
+            width: 100%;
+            height: auto;
+            max-height: 480px;
+            object-fit: contain;
+            border-radius: 8px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .spec-table {
+            width: 100%;
+            text-align: left;
+            margin-top: 14px;
+            border-collapse: collapse;
+        }
+
+        .spec-table tr {
+            border-bottom: 1px solid #F1F5F9;
+        }
+
+        .spec-table tr:last-child {
+            border-bottom: none;
+        }
+
+        .spec-table td {
+            padding: 10px 12px;
+            font-size: 0.86rem;
+        }
+
+        .spec-label {
+            color: #64748B;
+            font-weight: 600;
+            width: 42%;
+        }
+
+        .spec-val {
+            color: #0F172A;
+            font-weight: 700;
+            text-align: right;
+        }
+
+        .val-green {
+            color: #16A34A;
+        }
+
+        .val-red {
+            color: #E11D48;
+        }
+
+        .action-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .btn-main-action {
+            flex: 1;
+            min-width: 180px;
+            padding: 14px 20px;
+            border-radius: 14px;
+            font-weight: 800;
+            font-size: 0.92rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-blue {
+            background: #2563EB;
+            color: #FFFFFF;
+        }
+
+        .btn-blue:hover {
+            background: #1D4ED8;
+            color: #FFFFFF;
+        }
+
+        .btn-outline {
+            background: #FFFFFF;
+            color: #334155;
+            border: 1.5px solid #CBD5E1;
+        }
+
+        .btn-outline:hover {
+            background: #F1F5F9;
+            color: #0F172A;
+        }
+
+        .instruction-box {
+            background: #EFF6FF;
+            border: 1px solid #BFDBFE;
+            border-radius: 14px;
+            padding: 14px 16px;
+            font-size: 0.84rem;
+            color: #1E40AF;
+            line-height: 1.5;
+            margin-top: 16px;
+            text-align: left;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container-custom">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <a href="select_scan.html" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold">
+                ← Kembali ke Scanner
+            </a>
+            <span class="badge bg-primary-subtle text-primary fw-bold px-3 py-2 rounded-pill">LaQris Testing Suite</span>
+        </div>
+
+        <h1 class="header-title mt-3">Contoh Stiker QRIS untuk Pengujian</h1>
+        <p class="header-sub">Gunakan gambar di bawah ini untuk menguji hasil pemindaian sistem AI LaQris secara langsung.</p>
+
+        <!-- Tab Selector: Normal (Aman) vs Palsu (Tampered) -->
+        <div class="nav-tabs-custom">
+            <button class="tab-btn active-safe" id="tabSafe" onclick="switchTab('safe')">
+                ✓ QRIS Normal (Resmi & Aman)
+            </button>
+            <button class="tab-btn" id="tabDanger" onclick="switchTab('danger')">
+                ⚠ QRIS Palsu (Stiker Ditimpa)
+            </button>
+        </div>
+
+        <!-- 1. KONTEN QRIS NORMAL (SAFE) -->
+        <div id="contentSafe" class="qris-card">
+            <span class="badge-pill badge-safe">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+                STATUS: 🟢 NORMAL (ALLOW / AMAN)
+            </span>
+
+            <h3 class="fw-bold fs-5 text-dark mb-1">082 PUSK PUNGGING</h3>
+            <p class="text-muted small mb-3">Puskesmas Pungging, Kab. Mojokerto (Merchant Resmi Terverifikasi)</p>
+
+            <div class="qris-display-frame">
+                <img src="assets/qris_normal_resmi.png" alt="QRIS Normal Resmi" id="imgSafe" class="qris-img">
+            </div>
+
+            <!-- Ringkasan Parameter Forensik -->
+            <table class="spec-table">
+                <tr>
+                    <td class="spec-label">Nama di Stiker Fisik</td>
+                    <td class="spec-val val-green">082 PUSK PUNGGING</td>
+                </tr>
+                <tr>
+                    <td class="spec-label">Nama Rekening QRIS</td>
+                    <td class="spec-val val-green">082 PUSK PUNGGING</td>
+                </tr>
+                <tr>
+                    <td class="spec-label">Kesesuaian Identitas</td>
+                    <td class="spec-val val-green">100% - Cocok Sempurna</td>
+                </tr>
+                <tr>
+                    <td class="spec-label">Nomor ID Toko (NMID)</td>
+                    <td class="spec-val font-monospace">ID2023269910873</td>
+                </tr>
+                <tr>
+                    <td class="spec-label">Bank / Dompet Digital</td>
+                    <td class="spec-val">LinkAja - 93600114</td>
+                </tr>
+                <tr>
+                    <td class="spec-label">Skor Reputasi (EMRS)</td>
+                    <td class="spec-val val-green">97.8 / 100 (Sangat Baik)</td>
+                </tr>
+                <tr>
+                    <td class="spec-label">Keputusan Sistem</td>
+                    <td class="spec-val val-green fw-bold">ALLOW (Lakukan Pembayaran)</td>
+                </tr>
+            </table>
+
+            <div class="instruction-box">
+                <b>💡 Cara Menguji:</b><br>
+                1. Jika membuka di laptop/PC: Buka aplikasi scanner LaQris di HP Anda, lalu <b>arahkan kamera HP langsung ke gambar QRIS di atas</b>.<br>
+                2. Atau klik tombol <b>"Uji Otomatis Sekarang"</b> di bawah untuk langsung memproses gambar ini di halaman hasil verifikasi!
+            </div>
+
+            <div class="action-group">
+                <button class="btn-main-action btn-blue" onclick="testDirectly('assets/qris_normal_resmi.png', 'qris_normal_resmi.png')">
+                    🚀 Uji Otomatis Sekarang
+                </button>
+                <a href="assets/qris_normal_resmi.png" download="qris_normal_resmi.png" class="btn-main-action btn-outline">
+                    📥 Download Gambar
+                </a>
+            </div>
+        </div>
+
+        <!-- 2. KONTEN QRIS PALSU (DANGER / TAMPERED) -->
+        <div id="contentDanger" class="qris-card d-none">
+            <span class="badge-pill badge-danger">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+                STATUS: 🔴 DANGER (BLOCK / PENIPUAN)
+            </span>
+
+            <h3 class="fw-bold fs-5 text-dark mb-1">Indikasi Stiker QRIS Ditimpa</h3>
+            <p class="text-muted small mb-3">Stiker Fisik Puskesmas tetapi Barcode Digital mengarah ke Rekening Penipu</p>
+
+            <div class="qris-display-frame" style="border-color: #FECDD3;">
+                <img src="assets/qris_danger_tampered.png" alt="QRIS Palsu Ditimpa" class="qris-img">
+            </div>
+
+            <!-- Ringkasan Parameter Forensik -->
+            <table class="spec-table">
+                <tr>
+                    <td class="spec-label">Nama di Stiker Fisik</td>
+                    <td class="spec-val">082 PUSK PUNGGING</td>
+                </tr>
+                <tr>
+                    <td class="spec-label">Nama Rekening QRIS</td>
+                    <td class="spec-val val-red">vi store (Penipu)</td>
+                </tr>
+                <tr>
+                    <td class="spec-label">Kesesuaian Identitas</td>
+                    <td class="spec-val val-red">16% - Nama Berbeda</td>
+                </tr>
+                <tr>
+                    <td class="spec-label">NMID Fisik vs Digital</td>
+                    <td class="spec-val val-red font-monospace">NMID BERBEDA (Mismatch)</td>
+                </tr>
+                <tr>
+                    <td class="spec-label">Keputusan Sistem</td>
+                    <td class="spec-val val-red fw-bold">BLOCK (Pembayaran Dicegah)</td>
+                </tr>
+            </table>
+
+            <div class="instruction-box" style="background:#FFF1F2; border-color:#FECDD3; color:#9F1239;">
+                <b>🛡️ Pembuktian Keamanan:</b><br>
+                Saat gambar ini dipindai, LaQris mendeteksi bahwa barcode digital QRIS telah ditempeli stiker baru yang mengalihkan uang ke akun "vi store". Sistem secara otomatis <b>MEMBLOKIR</b> pembayaran.
+            </div>
+
+            <div class="action-group">
+                <button class="btn-main-action btn-blue" style="background:#E11D48;" onclick="testDirectly('assets/qris_danger_tampered.png', 'qris_danger_tampered.png')">
+                    🚨 Uji Deteksi Bahaya
+                </button>
+                <a href="assets/qris_danger_tampered.png" download="qris_danger_tampered.png" class="btn-main-action btn-outline">
+                    📥 Download Gambar
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function switchTab(mode) {
+            const tabSafe = document.getElementById('tabSafe');
+            const tabDanger = document.getElementById('tabDanger');
+            const contentSafe = document.getElementById('contentSafe');
+            const contentDanger = document.getElementById('contentDanger');
+
+            if (mode === 'safe') {
+                tabSafe.className = 'tab-btn active-safe';
+                tabDanger.className = 'tab-btn';
+                contentSafe.classList.remove('d-none');
+                contentDanger.classList.add('d-none');
+            } else {
+                tabDanger.className = 'tab-btn active-danger';
+                tabSafe.className = 'tab-btn';
+                contentDanger.classList.remove('d-none');
+                contentSafe.classList.add('d-none');
+            }
+        }
+
+        async function testDirectly(imagePath, filename) {
+            try {
+                const res = await fetch(imagePath);
+                const blob = await res.blob();
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    sessionStorage.setItem('laqris_pending_file', e.target.result);
+                    sessionStorage.setItem('laqris_pending_filename', filename);
+                    sessionStorage.setItem('laqris_scan_origin', 'sample_qris.html');
+                    location.href = 'scan.html';
+                };
+                reader.readAsDataURL(blob);
+            } catch (err) {
+                alert('Gagal memuat gambar: ' + err.message);
+            }
+        }
+    </script>
+</body>
+
+</html>

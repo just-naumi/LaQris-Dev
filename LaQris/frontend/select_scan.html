@@ -697,7 +697,7 @@
             <div class="scan-laser-line" id="scanLaserLine"></div>
         </div>
 
-        <!-- 3. Floating Viewfinder Controls (Torch & Gallery) -->
+        <!-- 3. Floating Viewfinder Controls (Torch, Gallery & Preset Normal) -->
         <div class="viewfinder-tools">
             <!-- Torch / Senter Button -->
             <button class="round-tool-btn" id="btnTorch" onclick="toggleFlashlight(event)" title="Nyalakan Lampu Kilat">
@@ -714,6 +714,11 @@
                     <path d="M21 15l-5-5L5 21" />
                     <path d="M14 14l2-2 5 5" />
                 </svg>
+            </button>
+
+            <!-- Preset Normal Sample Button -->
+            <button class="round-tool-btn" onclick="testPresetNormal(event)" title="Uji Coba QRIS Normal (Resmi)" style="background: rgba(22, 163, 74, 0.88); border-color: rgba(74, 222, 128, 0.5);">
+                <span style="font-size: 0.68rem; font-weight: 900; color: #FFFFFF; line-height: 1; letter-spacing: 0.02em;">NORMAL</span>
             </button>
         </div>
 
@@ -771,6 +776,14 @@
                         </div>
                         <span class="mode-label-text">QRIS Tap</span>
                     </div>
+                </div>
+
+                <!-- Link Cepat ke Contoh QRIS Normal & Pengujian -->
+                <div style="margin-top: 18px; text-align: center;">
+                    <a href="sample_qris.html" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 800; color: #2563EB; background: #EFF6FF; border: 1px solid #BFDBFE; padding: 7px 16px; border-radius: 20px; text-decoration: none;">
+                        <span>🎯 Butuh QRIS untuk di-scan? Buka Contoh Resmi</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 5l7 7-7 7"/></svg>
+                    </a>
                 </div>
             </div>
         </div>
@@ -1236,6 +1249,29 @@
         function openGalleryPicker(event) {
             if (event) event.stopPropagation();
             document.getElementById('fileInputGallery').click();
+        }
+
+        // Test Preset Normal Sample directly
+        async function testPresetNormal(event) {
+            if (event) event.stopPropagation();
+            showLoading();
+            try {
+                const res = await fetch('assets/qris_normal_resmi.png');
+                const blob = await res.blob();
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    sessionStorage.setItem('laqris_pending_file', e.target.result);
+                    sessionStorage.setItem('laqris_pending_filename', 'qris_normal_resmi.png');
+                    sessionStorage.setItem('laqris_scan_origin', 'select_scan.html');
+                    stopCameraStream();
+                    location.href = 'scan.html';
+                };
+                reader.readAsDataURL(blob);
+            } catch (err) {
+                alert('Gagal memuat gambar sampel: ' + err.message);
+                const loadingOverlay = document.getElementById('loadingOverlay');
+                if (loadingOverlay) loadingOverlay.classList.add('d-none');
+            }
         }
 
         // Handle Image Selection from file inputs (Gallery / Camera fallback)
