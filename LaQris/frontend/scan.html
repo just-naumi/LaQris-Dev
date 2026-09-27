@@ -1452,10 +1452,13 @@
             let sId = currentScanData?.session_id || '';
             let mName = currentScanData?.current_qr_risk?.digital_merchant || currentScanData?.current_qr_risk?.physical_merchant || '';
             if (mName === 'Tidak ditemukan' || mName === 'Tidak terbaca') mName = '';
+            let mCity = currentScanData?.current_qr_risk?.digital_city || '';
+            if (mCity === '-' || mCity === 'Tidak ditemukan') mCity = '';
             const fParams = new URLSearchParams();
             if (currentNmid) fParams.set('nmid', currentNmid);
             if (sId) fParams.set('session_id', sId);
             if (mName) fParams.set('merchant', mName);
+            if (mCity) fParams.set('city', mCity);
             fParams.set('back', 'scan.html');
             window.location.href = 'feedback.html?' + fParams.toString();
         }

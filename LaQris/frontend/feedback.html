@@ -401,6 +401,7 @@
         let txRef = params.get('tx_ref') || params.get('transaction_ref') || params.get('transaction_id') || '';
         let sessionId = params.get('session_id') || params.get('verification_id') || '';
         let merchantName = params.get('merchant') || params.get('merchant_name') || '';
+        let cityParam = params.get('city') || '';
         let backUrl = params.get('back') || 'dashboard.html';
 
         let currentUserId = '';
@@ -445,7 +446,9 @@
             document.getElementById('lblMerchantName').textContent = merchantName.toUpperCase();
             document.getElementById('lblNmid').textContent = nmid || 'ID1022154178621';
             if (document.getElementById('lblCity').textContent === '-') {
-                document.getElementById('lblCity').textContent = 'INDONESIA';
+                document.getElementById('lblCity').textContent = cityParam
+                    ? cityParam.toUpperCase()
+                    : 'INDONESIA';
             }
 
             // C. Transaction Ref & Evidence
