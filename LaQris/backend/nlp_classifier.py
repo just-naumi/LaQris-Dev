@@ -18,6 +18,138 @@ import re
 import logging
 from typing import Dict, Any, Optional
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Kamus Normalisasi Slang / Singkatan Bahasa Indonesia (Preprocessing)
+# Mengubah kata gaul, singkatan, dan typo umum ke bentuk baku
+# sebelum teks dianalisis oleh model atau keyword matcher.
+# ─────────────────────────────────────────────────────────────────────────────
+SLANG_MAP = {
+    # Singkatan umum
+    "bgt":    "banget",
+    "bgtt":   "banget",
+    "bngt":   "banget",
+    "bgt":    "banget",
+    "yg":     "yang",
+    "dgn":    "dengan",
+    "dg":     "dengan",
+    "krn":    "karena",
+    "karna":  "karena",
+    "utk":    "untuk",
+    "tdk":    "tidak",
+    "gak":    "tidak",
+    "gk":     "tidak",
+    "ga":     "tidak",
+    "nggak":  "tidak",
+    "ngga":   "tidak",
+    "enggak": "tidak",
+    "g":      "tidak",
+    "sm":     "sama",
+    "sama2":  "sama",
+    "aja":    "saja",
+    "aj":     "saja",
+    "dah":    "sudah",
+    "udah":   "sudah",
+    "udh":    "sudah",
+    "sdh":    "sudah",
+    "emg":    "memang",
+    "emang":  "memang",
+    "hrs":    "harus",
+    "kl":     "kalau",
+    "klo":    "kalau",
+    "kalo":   "kalau",
+    "blm":    "belum",
+    "blum":   "belum",
+    "msh":    "masih",
+    "tmn":    "teman",
+    "nih":    "ini",
+    "tuh":    "itu",
+    "tp":     "tapi",
+    "tpi":    "tapi",
+    "cz":     "karena",
+    "soalnya":"karena",
+    "pdhl":   "padahal",
+    "mau":    "mau",
+    "mo":     "mau",
+
+    # Kata positif pendek / informal
+    "ok":       "oke",
+    "oke":      "oke",
+    "okelah":   "oke",
+    "sip":      "oke",
+    "sipp":     "oke",
+    "sippp":    "oke",
+    "jos":      "bagus",
+    "joss":     "bagus",
+    "josss":    "bagus",
+    "mantap":   "mantap",
+    "mntap":    "mantap",
+    "mantul":   "mantap",
+    "keren":    "bagus",
+    "kece":     "bagus",
+    "bgs":      "bagus",
+    "bgus":     "bagus",
+    "baguss":   "bagus",
+    "baguus":   "bagus",
+    "good":     "bagus",
+    "nice":     "bagus",
+    "top":      "bagus",
+    "topp":     "bagus",
+    "toppp":    "bagus",
+    "work":     "berhasil",
+    "works":    "berhasil",
+    "aman":     "aman",
+    "amaan":    "aman",
+    "amann":    "aman",
+    "puas":     "puas",
+    "puass":    "puas",
+    "lancar":   "lancar",
+    "lancer":   "lancar",
+    "beres":    "selesai",
+    "bres":     "selesai",
+    "sukses":   "berhasil",
+    "suksess":  "berhasil",
+    "berhasil": "berhasil",
+    "works":    "berhasil",
+    "fine":     "oke",
+
+    # Kata negatif pendek / informal
+    "palsu":    "palsu",
+    "plsu":     "palsu",
+    "palzuu":   "palsu",
+    "paisu":    "palsu",
+    "fake":     "palsu",
+    "rusak":    "rusak",
+    "rsk":      "rusak",
+    "ancur":    "rusak",
+    "hancur":   "rusak",
+    "beda":     "berbeda",
+    "bdo":      "berbeda",
+    "bedo":     "berbeda",
+    "bdes":     "berbeda",
+    "berbeda":  "berbeda",
+    "salah":    "salah",
+    "curiga":   "curiga",
+    "mencurigakan": "curiga",
+    "tipu":     "penipuan",
+    "nipu":     "penipuan",
+    "ditipu":   "penipuan",
+    "scam":     "penipuan",
+    "bohong":   "penipuan",
+    "nabrak":   "ditimpa",
+    "ditimpa":  "ditimpa",
+    "sobek":    "sobek",
+    "sbk":      "sobek",
+    "pudar":    "pudar",
+    "pdr":      "pudar",
+    "kotor":    "kotor",
+    "ktr":      "kotor",
+    "mahal":    "mahal",
+    "kemahalan":"mahal",
+    "dipalak":  "dipalak",
+    "pungli":   "pungutan",
+    "punglii":  "pungutan",
+}
+
 logger = logging.getLogger("laqris.nlp")
 
 # Rincian 7 Kategori Masalah beserta Tindakan Penanganannya
@@ -103,6 +235,26 @@ _model_device = None
 _model_loaded = False
 
 
+def _normalize_slang(text: str) -> str:
+    """
+    Preprocessing — Normalisasi Slang & Singkatan Bahasa Indonesia.
+    Mengubah kata gaul, singkatan, dan typo umum ke bentuk baku
+    agar keyword matcher dan IndoBERT bisa mengenali maknanya dengan lebih akurat.
+
+    Contoh:
+        "ok bgt aman" → "oke banget aman"
+        "palzuu gk sesuai" → "palsu tidak sesuai"
+        "joss mantul" → "bagus mantap"
+    """
+    # Hapus karakter berulang berlebihan ("amaaann" → "amaan" → diproses lanjut)
+    text = re.sub(r'(.)\1{2,}', r'\1\1', text)
+
+    # Tokenisasi sederhana per kata, lalu normalisasi satu per satu
+    words = text.lower().split()
+    normalized = [SLANG_MAP.get(w, w) for w in words]
+    return " ".join(normalized)
+
+
 def _load_custom_indobert():
     """
     Fungsi untuk memuat model kecerdasan buatan IndoBERT ke dalam memori.
@@ -162,7 +314,9 @@ def _semantic_baseline_classify(text: str) -> Dict[str, Any]:
             ("palsu", 3.0), ("kayaknya palsu", 4.5), ("sepertinya palsu", 4.5),
             ("terindikasi palsu", 4.5), ("dicurigai palsu", 4.5),
             ("qris-nya palsu", 4.5), ("qrisnya palsu", 4.5),
-            ("seperti ditimpa", 4.0), ("kayak ditempel", 4.0)
+            ("seperti ditimpa", 4.0), ("kayak ditempel", 4.0),
+            # Hasil normalisasi slang
+            ("penipuan", 3.5), ("curiga", 3.0), ("fake", 3.5)
         ],
         "KETIDAKSESUAIAN_IDENTITAS_MERCHANT": [
             ("nama beda", 3.5), ("nama berbeda", 4.0), ("bukan nama toko", 4.0),
@@ -172,13 +326,17 @@ def _semantic_baseline_classify(text: str) -> Dict[str, Any]:
             ("tidak sesuai dengan merchant", 4.5), ("tidak sesuai merchant", 4.5),
             ("tidak cocok dengan toko", 4.5), ("datanya tidak sesuai", 4.0),
             ("menunjukkan tidak sesuai", 4.0), ("data tidak sesuai", 4.0),
-            ("namanya beda", 4.0), ("beda sama toko", 4.0), ("nama tokonya beda", 4.5)
+            ("namanya beda", 4.0), ("beda sama toko", 4.0), ("nama tokonya beda", 4.5),
+            # Hasil normalisasi slang ("beda" -> "berbeda", urutan kata berubah)
+            ("berbeda", 3.0), ("salah nama", 3.5), ("nama salah", 3.5)
         ],
         "PUNGUTAN_BIAYA_TAMBAHAN_SURCHARGE": [
             ("biaya tambahan", 4.5), ("surcharge", 4.5), ("biaya admin", 4.0),
             ("kena admin", 3.5), ("dipalak", 3.5), ("minta tambahan", 4.0),
             ("cas tambahan", 4.0), ("nambah 1000", 4.5), ("nambah 2000", 4.5),
-            ("fee admin", 4.0), ("lebih mahal", 3.0)
+            ("fee admin", 4.0), ("lebih mahal", 3.0),
+            # Hasil normalisasi slang ("pungli" -> "pungutan", "mahal" sudah di map)
+            ("pungutan", 3.5), ("mahal", 2.5)
         ],
         "KONDISI_FISIK_QRIS_RUSAK": [
             ("sobek", 4.0), ("luntur", 4.0), ("pudar", 4.0), ("pecah", 3.5),
@@ -195,7 +353,13 @@ def _semantic_baseline_classify(text: str) -> Dict[str, Any]:
             ("sama persis", 4.5), ("sesuai", 3.5), ("cocok", 3.5),
             ("lancar", 3.5), ("berhasil", 3.0), ("normal", 3.5),
             ("tanpa kendala", 4.0), ("resmi", 3.5), ("puas", 3.0),
-            ("tidak ada biaya", 3.5), ("ramah", 3.0)
+            ("tidak ada biaya", 3.5), ("ramah", 3.0),
+            # Kata positif pendek / informal (setelah slang normalization)
+            ("bagus", 3.0), ("mantap", 3.0), ("oke", 2.5), ("aman", 3.0),
+            ("selesai", 2.5), ("sukses", 3.0), ("top", 2.5),
+            ("tidak ada masalah", 4.0), ("tidak ada kendala", 4.0),
+            ("sangat puas", 4.0), ("sangat lancar", 4.0), ("sangat aman", 4.0),
+            ("memuaskan", 3.5), ("terpercaya", 3.5), ("terjamin", 3.5)
         ]
     }
 
@@ -285,6 +449,7 @@ def classify_feedback(text: Optional[str]) -> Dict[str, Any]:
     Menerima kalimat ulasan lalu menentukan kategori masalah, tingkat keparahan,
     serta rekomendasi tindak lanjut bagi toko.
     Dilengkapi pelindung otomatis agar ulasan kepuasan pelanggan dinilai secara akurat.
+    Tahap preprocessing slang normalization dijalankan sebelum klasifikasi.
     """
     if not text or not text.strip():
         cat_meta = CATEGORIES["FEEDBACK_AMBIGU"]
@@ -298,13 +463,18 @@ def classify_feedback(text: Optional[str]) -> Dict[str, Any]:
             "model_used": "None"
         }
 
+    # ── PREPROCESSING: Normalisasi slang & singkatan sebelum klasifikasi ──
+    normalized_text = _normalize_slang(text)
+    logger.debug("[Preprocessing] '%s' → '%s'", text.strip(), normalized_text)
+
     # Cek ketersediaan model IndoBERT fine-tuned
     has_indobert = _load_custom_indobert()
     if has_indobert and _indobert_model and _indobert_tokenizer:
         try:
             import torch
+            # Gunakan teks yang sudah dinormalisasi untuk inferensi IndoBERT
             inputs = _indobert_tokenizer(
-                text, return_tensors="pt", truncation=True, max_length=128, padding=True
+                normalized_text, return_tensors="pt", truncation=True, max_length=128, padding=True
             ).to(_model_device)
             
             with torch.no_grad():
@@ -338,7 +508,8 @@ def classify_feedback(text: Optional[str]) -> Dict[str, Any]:
             logger.error("Error inferensi IndoBERT: %s. Fallback ke semantic baseline.", err)
 
     # Fallback ke semantic engine jika inferensi neural network gagal
-    res = _semantic_baseline_classify(text)
+    # Gunakan teks yang sudah dinormalisasi
+    res = _semantic_baseline_classify(normalized_text)
     guarded_key, guarded_conf = _apply_hybrid_guard(text, res["category_key"], res["confidence"])
     if guarded_key != res["category_key"]:
         meta = CATEGORIES[guarded_key]
