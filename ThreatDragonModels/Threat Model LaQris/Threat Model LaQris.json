@@ -123,8 +123,8 @@
                 "text": "P1 \nAuthentication"
               },
               "body": {
-                "stroke": "#333333",
-                "strokeWidth": 1.5,
+                "stroke": "red",
+                "strokeWidth": 2.5,
                 "strokeDasharray": null
               }
             },
@@ -221,12 +221,26 @@
               "outOfScope": false,
               "isTrustBoundary": false,
               "reasonOutOfScope": "",
-              "hasOpenThreats": false,
+              "hasOpenThreats": true,
               "handlesCardPayment": false,
               "handlesGoodsOrServices": false,
               "isWebApplication": false,
               "privilegeLevel": "",
-              "threats": []
+              "threats": [
+                {
+                  "id": "7f9682fd-eefe-4e8f-9e38-4a066b51f5cf",
+                  "title": "New generic threat",
+                  "status": "Open",
+                  "severity": "TBD",
+                  "type": "Spoofing",
+                  "description": "Provide a description for this threat",
+                  "mitigation": "Provide remediation for this threat or a reason if status is N/A",
+                  "modelType": "default",
+                  "new": true,
+                  "number": 3,
+                  "score": ""
+                }
+              ]
             }
           },
           {
@@ -2048,7 +2062,7 @@
             },
             "attrs": {
               "text": {
-                "text": "D1 PostgreSQL"
+                "text": "D1 History \nReputation"
               },
               "topLine": {
                 "strokeWidth": 1.5,
@@ -2147,7 +2161,7 @@
             "id": "839be517-f41f-4117-8440-ae4640432d9d",
             "data": {
               "type": "tm.Store",
-              "name": "D1 PostgreSQL",
+              "name": "D1 History \nReputation",
               "description": "",
               "outOfScope": false,
               "isTrustBoundary": false,
@@ -2406,6 +2420,6 @@
     ],
     "diagramTop": 1,
     "reviewer": "",
-    "threatTop": 2
+    "threatTop": 3
   }
 }
