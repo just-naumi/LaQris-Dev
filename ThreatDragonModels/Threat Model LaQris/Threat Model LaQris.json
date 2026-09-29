@@ -46,25 +46,14 @@
               "x": 290,
               "y": 10
             },
-            "tools": {
-              "items": [
-                "boundary",
-                "button-remove",
-                "vertices",
-                "source-arrowhead",
-                "target-arrowhead",
-                "boundary",
-                "button-remove",
-                "vertices",
-                "source-arrowhead",
-                "target-arrowhead"
-              ],
-              "name": null
-            },
             "vertices": [
               {
                 "x": 140,
                 "y": 580
+              },
+              {
+                "x": 190,
+                "y": 520
               },
               {
                 "x": 260,
@@ -111,20 +100,14 @@
                 "y": 590
               },
               {
+                "x": 980,
+                "y": 490
+              },
+              {
                 "x": 1050,
                 "y": 440
               }
-            ],
-            "tools": {
-              "items": [
-                "boundary",
-                "button-remove",
-                "vertices",
-                "source-arrowhead",
-                "target-arrowhead"
-              ],
-              "name": null
-            }
+            ]
           },
           {
             "position": {
