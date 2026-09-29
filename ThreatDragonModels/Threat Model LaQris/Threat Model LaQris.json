@@ -20,6 +20,88 @@
         "version": "2.6.2",
         "cells": [
           {
+            "shape": "trust-boundary-curve",
+            "width": 200,
+            "height": 100,
+            "zIndex": -1,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Boundary",
+              "name": "Trust Boundary",
+              "description": "",
+              "isTrustBoundary": true,
+              "hasOpenThreats": false,
+              "crossingFlows": [],
+              "containedElements": []
+            },
+            "labels": [
+              "Trust Boundary"
+            ],
+            "id": "30023690-9a30-47c6-b6c5-b4a300e6e724",
+            "source": {
+              "x": 80,
+              "y": 650
+            },
+            "target": {
+              "x": 290,
+              "y": 10
+            },
+            "vertices": [
+              {
+                "x": 140,
+                "y": 580
+              },
+              {
+                "x": 260,
+                "y": 360
+              }
+            ]
+          },
+          {
+            "shape": "trust-boundary-curve",
+            "width": 200,
+            "height": 100,
+            "zIndex": -1,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Boundary",
+              "name": "Trust Boundary",
+              "description": "",
+              "isTrustBoundary": true,
+              "hasOpenThreats": false,
+              "crossingFlows": [
+                "300d961a-f863-4aa2-bda8-16e76ac4b52b",
+                "b761706a-91da-41be-b7cb-8c87e167295e",
+                "3dc133d1-afa1-4d54-9b3b-a6fdbef33c33"
+              ],
+              "containedElements": [
+                "839be517-f41f-4117-8440-ae4640432d9d"
+              ]
+            },
+            "labels": [
+              "Trust Boundary"
+            ],
+            "id": "20ed4892-6f82-4724-a6e8-03cd055a0dde",
+            "source": {
+              "x": 1010,
+              "y": 720
+            },
+            "target": {
+              "x": 1260,
+              "y": 430
+            },
+            "vertices": [
+              {
+                "x": 960,
+                "y": 590
+              },
+              {
+                "x": 1050,
+                "y": 440
+              }
+            ]
+          },
+          {
             "position": {
               "x": 339.99999999999994,
               "y": 90.00000000000017
@@ -827,7 +909,9 @@
               "isPublicNetwork": false,
               "protocol": "",
               "threats": [],
-              "trustBoundaryIds": []
+              "trustBoundaryIds": [
+                "20ed4892-6f82-4724-a6e8-03cd055a0dde"
+              ]
             },
             "labels": [
               "New Observation"
@@ -1025,7 +1109,9 @@
               "isPublicNetwork": false,
               "protocol": "",
               "threats": [],
-              "trustBoundaryIds": []
+              "trustBoundaryIds": [
+                "20ed4892-6f82-4724-a6e8-03cd055a0dde"
+              ]
             },
             "labels": [
               "Classification Problem Feedback"
@@ -1077,7 +1163,9 @@
               "isPublicNetwork": false,
               "protocol": "",
               "threats": [],
-              "trustBoundaryIds": []
+              "trustBoundaryIds": [
+                "20ed4892-6f82-4724-a6e8-03cd055a0dde"
+              ]
             },
             "labels": [
               "Historical Score"
