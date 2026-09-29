@@ -2048,7 +2048,7 @@
             },
             "attrs": {
               "text": {
-                "text": "D1 Verification \nSession Store"
+                "text": "D1 PostgreSQL"
               },
               "topLine": {
                 "strokeWidth": 1.5,
@@ -2147,7 +2147,7 @@
             "id": "839be517-f41f-4117-8440-ae4640432d9d",
             "data": {
               "type": "tm.Store",
-              "name": "D1 Verification \nSession Store",
+              "name": "D1 PostgreSQL",
               "description": "",
               "outOfScope": false,
               "isTrustBoundary": false,
