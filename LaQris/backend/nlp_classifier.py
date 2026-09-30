@@ -326,6 +326,7 @@ def _semantic_baseline_classify(text: str) -> Dict[str, Any]:
             ("tidak sesuai dengan merchant", 4.5), ("tidak sesuai merchant", 4.5),
             ("tidak cocok dengan toko", 4.5), ("datanya tidak sesuai", 4.0),
             ("menunjukkan tidak sesuai", 4.0), ("data tidak sesuai", 4.0),
+            ("tidak sesuai", 4.5), ("nama merchant tidak sesuai", 4.5),
             ("namanya beda", 4.0), ("beda sama toko", 4.0), ("nama tokonya beda", 4.5),
             # Hasil normalisasi slang ("beda" -> "berbeda", urutan kata berubah)
             ("berbeda", 3.0), ("salah nama", 3.5), ("nama salah", 3.5)
@@ -341,13 +342,17 @@ def _semantic_baseline_classify(text: str) -> Dict[str, Any]:
         "KONDISI_FISIK_QRIS_RUSAK": [
             ("sobek", 4.0), ("luntur", 4.0), ("pudar", 4.0), ("pecah", 3.5),
             ("tergores", 3.5), ("retak", 3.5), ("buram", 3.5), ("kotor", 3.0),
-            ("tidak terbaca", 3.5), ("minyak", 3.0), ("kusam", 3.5)
+            ("tidak terbaca", 3.5), ("minyak", 3.0), ("kusam", 3.5),
+            ("tidak bisa scan", 4.0), ("gak bisa scan", 4.0), ("susah discan", 4.0)
         ],
         "KUALITAS_LAYANAN_MERCHANT": [
             ("menolak", 4.0), ("tolak qris", 4.5), ("minimal belanja", 4.5),
             ("hanya tunai", 4.0), ("judes", 4.0), ("ketus", 4.0),
             ("marah", 3.5), ("disembunyikan", 4.0), ("malas", 3.5),
-            ("tidak mau terima", 4.0)
+            ("tidak mau terima", 4.0), ("kasir judes", 4.5), ("pelayanan buruk", 4.0),
+            ("pelayanan jelek", 4.0), ("tidak bagus", 4.0), ("kurang ramah", 4.0),
+            ("tidak ramah", 4.0), ("tidak aman", 4.0), ("gak lancar", 4.0),
+            ("tidak lancar", 4.0), ("kecewa", 3.5), ("buruk", 3.5)
         ],
         "QRIS_NORMAL_MERCHANT_TERPERCAYA": [
             ("sama persis", 4.5), ("sesuai", 3.5), ("cocok", 3.5),
@@ -366,6 +371,12 @@ def _semantic_baseline_classify(text: str) -> Dict[str, Any]:
     for cat, kw_list in patterns.items():
         for kw, weight in kw_list:
             if kw in text_lower:
+                if cat == "QRIS_NORMAL_MERCHANT_TERPERCAYA":
+                    # Pastikan kata positif tidak dinegasi (misal: "tidak bagus", "gak lancar", "kurang ramah")
+                    neg_pattern = rf"\b(tidak|bukan|kurang|gak|nggak|ga|tdk|belum|bkn)\s+(\w+\s+)?{re.escape(kw)}\b"
+                    if re.search(neg_pattern, text_lower):
+                        scores["KUALITAS_LAYANAN_MERCHANT"] += weight
+                        continue
                 scores[cat] += weight
 
     best_cat = max(scores, key=scores.get)
@@ -389,56 +400,128 @@ def _semantic_baseline_classify(text: str) -> Dict[str, Any]:
     }
 
 
-def _apply_hybrid_guard(text: str, predicted_cat: str, confidence: float) -> tuple:
+def _apply_hybrid_guard(text: str, predicted_cat: str, confidence: float, normalized_text: str = "") -> tuple:
     """
-    Pelindung Ulasan Hybrid Guard:
-    1. Positive Guard  — ulasan puas yang salah dikategorikan sebagai penipuan → di-override ke NORMAL
-    2. Negative Guard  — ulasan bermasalah yang salah dikategorikan sebagai NORMAL oleh IndoBERT → di-override ke kategori yang tepat
+    Pelindung Ulasan Hybrid Guard & Ambiguity Resolver Cerdas (P1 Item 11):
+    1. Positive Guard  — ulasan kepuasan/pujian yang keliru dikategorikan bermasalah/ambigu di-override ke NORMAL
+    2. Negative Guard  — ulasan bermasalah (palsu, mismatch, surcharge, rusak, layanan) yang keliru
+       diprediksi sebagai NORMAL oleh IndoBERT di-override ke kategori yang tepat.
+    3. Ambiguity Resolver — jika IndoBERT memprediksi FEEDBACK_AMBIGU karena ulasan singkat atau informal,
+       guard memeriksa kata kunci spesifik domain QRIS dan semantic engine untuk mengembalikan hasil yang rinci.
     """
-    text_clean = text.lower()
-    positive_cues = [
+    t_clean = text.lower()
+    n_clean = (normalized_text or _normalize_slang(text)).lower()
+    combined = f" {t_clean} {n_clean} "
+
+    # 1. Cues per Kategori Masalah
+    fraud_cues = [
+        "stiker palsu", "qris palsu", "qris-nya palsu", "qrisnya palsu", "kayaknya palsu",
+        "sepertinya palsu", "terindikasi palsu", "dicurigai palsu", "stiker siluman",
+        "dobel stiker", "lapisan stiker", "stiker baru", "ditumpuk", "ditimpa stiker",
+        "ditimpa", "ditempel", "palsu", "fake", "penipuan", "scam"
+    ]
+
+    mismatch_cues = [
+        "tidak sesuai dengan merchant", "tidak sesuai merchant", "datanya tidak sesuai",
+        "menunjukkan tidak sesuai", "data tidak sesuai", "tidak cocok dengan toko",
+        "nama merchant tidak sesuai", "nama toko tidak sesuai", "tidak sesuai nama toko",
+        "namanya beda", "nama tokonya beda", "nama toko beda", "beda sama toko",
+        "nama beda", "nama berbeda", "namanya berbeda", "bukan nama toko", "bukan nama",
+        "nama orang lain", "rekening pribadi", "rekening perorangan", "salah nama",
+        "nama salah", "nama tidak cocok", "beda dengan nama", "berbeda dengan nama"
+    ]
+
+    surcharge_cues = [
+        "biaya tambahan", "surcharge", "biaya admin", "kena admin", "dipalak",
+        "minta tambahan", "cas tambahan", "charge tambahan", "nambah 1000", "nambah 2000",
+        "nambah 500", "fee admin", "lebih mahal", "ada biaya tambahan", "pungutan", "pungli"
+    ]
+
+    damaged_cues = [
+        "sobek", "luntur", "pudar", "pecah", "tergores", "retak", "buram", "kotor",
+        "tidak terbaca", "susah discan", "gak bisa discan", "tidak bisa scan",
+        "gabisa discan", "kusam", "rusak"
+    ]
+
+    service_cues = [
+        "menolak", "tolak qris", "minimal belanja", "hanya tunai", "judes", "ketus",
+        "marah", "disembunyikan", "malas", "tidak mau terima", "kasir judes", "pelayanan buruk",
+        "pelayanan jelek", "tidak bagus", "kurang bagus", "gak bagus", "tidak ramah",
+        "kurang ramah", "gak ramah", "tidak aman", "gak aman", "tidak lancar", "gak lancar",
+        "tidak puas", "kurang puas", "gak puas", "kecewa", "buruk"
+    ]
+
+    positive_phrases = [
         "nama merchant sama", "nama toko sama", "sama dengan nama toko", "sama persis",
         "nominal sesuai", "jumlah sesuai", "pembayaran berhasil", "tanpa kendala",
         "transaksi lancar", "lancar jaya", "kasir ramah", "resmi", "tidak ada biaya",
-        "langsung masuk sesuai nama"
-    ]
-    negative_cues = [
-        "beda", "berbeda", "tidak sesuai", "bukan nama", "salah nama", "nama orang lain",
-        "ditimpa", "ditempel", "stiker palsu", "palsu", "rusak", "sobek", "luntur",
-        "biaya tambahan", "surcharge", "dipalak", "menolak", "tolak qris", "judes"
+        "tidak ada kendala", "tidak ada masalah", "langsung masuk sesuai nama",
+        "sangat puas", "sangat lancar", "sangat aman", "pelayanan cepat",
+        "sesuai nama toko", "sesuai dengan toko", "sesuai nama"
     ]
 
-    # Sinyal negatif kuat yang secara eksplisit menunjukkan penipuan / ketidaksesuaian
-    # Guard ini berjalan SETELAH IndoBERT agar mencegah false positive NORMAL
-    strong_fraud_cues = [
-        "palsu", "ditimpa", "ditempel", "stiker palsu", "qris palsu",
-        "kayaknya palsu", "sepertinya palsu", "terindikasi palsu", "dicurigai palsu"
-    ]
-    strong_mismatch_cues = [
-        "tidak sesuai dengan merchant", "tidak sesuai merchant", "datanya tidak sesuai",
-        "menunjukkan tidak sesuai", "data tidak sesuai", "tidak cocok dengan toko",
-        "namanya beda", "beda sama toko", "nama tokonya beda", "nama beda", "nama berbeda"
+    positive_words = [
+        "bagus", "aman", "terpercaya", "mantap", "puas", "lancar", "sukses",
+        "berhasil", "cepat", "ramah", "recomended", "recommended", "terjamin",
+        "memuaskan", "top", "jos", "joss", "josss", "sip", "oke", "good",
+        "nice", "terima kasih", "makasih"
     ]
 
-    has_positive = any(cue in text_clean for cue in positive_cues)
-    has_negative = any(cue in text_clean for cue in negative_cues)
-    has_strong_fraud = any(cue in text_clean for cue in strong_fraud_cues)
-    has_strong_mismatch = any(cue in text_clean for cue in strong_mismatch_cues)
+    has_fraud = any(cue in combined for cue in fraud_cues)
+    has_mismatch = any(cue in combined for cue in mismatch_cues)
+    has_surcharge = any(cue in combined for cue in surcharge_cues)
+    has_damaged = any(cue in combined for cue in damaged_cues)
+    has_service = any(cue in combined for cue in service_cues)
 
-    # ── Negative Guard: IndoBERT predict NORMAL padahal ada sinyal negatif kuat ──
+    # Deteksi kepuasan pelanggan dengan pengecekan negasi
+    has_positive = any(phrase in combined for phrase in positive_phrases)
+    if not has_positive:
+        for pw in positive_words:
+            if pw in combined:
+                neg_pattern = rf"(tidak|bukan|kurang|gak|nggak|ga|tdk)\s+(\w+\s+)?{pw}"
+                if not re.search(neg_pattern, combined):
+                    has_positive = True
+                    break
+
+    has_specific_negative = has_fraud or has_mismatch or has_surcharge or has_damaged or has_service
+
+    # ── GUARD 1: IndoBERT memprediksi FEEDBACK_AMBIGU padahal ada sinyal domain spesifik ──
+    if predicted_cat == "FEEDBACK_AMBIGU":
+        if has_fraud:
+            return "PENIPUAN_STIKER_QRIS_PALSU", max(confidence, 0.95)
+        if has_mismatch:
+            return "KETIDAKSESUAIAN_IDENTITAS_MERCHANT", max(confidence, 0.95)
+        if has_surcharge:
+            return "PUNGUTAN_BIAYA_TAMBAHAN_SURCHARGE", max(confidence, 0.95)
+        if has_damaged:
+            return "KONDISI_FISIK_QRIS_RUSAK", max(confidence, 0.95)
+        if has_service:
+            return "KUALITAS_LAYANAN_MERCHANT", max(confidence, 0.95)
+        if has_positive and not has_specific_negative:
+            return "QRIS_NORMAL_MERCHANT_TERPERCAYA", max(confidence, 0.95)
+
+        # Cek semantic baseline jika cues langsung belum mencakup
+        sem_res = _semantic_baseline_classify(n_clean)
+        if sem_res["category_key"] != "FEEDBACK_AMBIGU":
+            return sem_res["category_key"], max(float(sem_res["confidence"]), 0.85)
+
+    # ── GUARD 2: IndoBERT memprediksi NORMAL padahal terdapat komplain atau keluhan nyata ──
     if predicted_cat == "QRIS_NORMAL_MERCHANT_TERPERCAYA":
-        if has_strong_fraud and not has_positive:
-            return "PENIPUAN_STIKER_QRIS_PALSU", max(confidence, 0.80)
-        if has_strong_mismatch and not has_positive:
-            return "KETIDAKSESUAIAN_IDENTITAS_MERCHANT", max(confidence, 0.80)
-        if has_negative and not has_positive:
-            # Sinyal negatif ada tapi tidak cukup spesifik → turunkan ke AMBIGU
-            return "FEEDBACK_AMBIGU", 0.65
+        if has_fraud:
+            return "PENIPUAN_STIKER_QRIS_PALSU", max(confidence, 0.90)
+        if has_mismatch:
+            return "KETIDAKSESUAIAN_IDENTITAS_MERCHANT", max(confidence, 0.90)
+        if has_surcharge:
+            return "PUNGUTAN_BIAYA_TAMBAHAN_SURCHARGE", max(confidence, 0.90)
+        if has_damaged:
+            return "KONDISI_FISIK_QRIS_RUSAK", max(confidence, 0.90)
+        if has_service:
+            return "KUALITAS_LAYANAN_MERCHANT", max(confidence, 0.90)
 
-    # ── Positive Guard: Ulasan puas keliru dikategorikan sebagai masalah ──
-    if has_positive and not has_negative:
-        if predicted_cat in ["KETIDAKSESUAIAN_IDENTITAS_MERCHANT", "FEEDBACK_AMBIGU"]:
-            return "QRIS_NORMAL_MERCHANT_TERPERCAYA", max(confidence, 0.94)
+    # ── GUARD 3: Ulasan positif murni keliru dikategorikan sebagai masalah ──
+    if has_positive and not has_specific_negative:
+        if predicted_cat in ["KETIDAKSESUAIAN_IDENTITAS_MERCHANT", "PENIPUAN_STIKER_QRIS_PALSU", "FEEDBACK_AMBIGU"]:
+            return "QRIS_NORMAL_MERCHANT_TERPERCAYA", max(confidence, 0.95)
 
     return predicted_cat, confidence
 
@@ -490,8 +573,8 @@ def classify_feedback(text: Optional[str]) -> Dict[str, Any]:
                 cat_keys = list(CATEGORIES.keys())
                 cat_key = cat_keys[pred_idx] if 0 <= pred_idx < len(cat_keys) else "FEEDBACK_AMBIGU"
 
-            # Terapkan Hybrid Guard (P1 Item 11)
-            cat_key, confidence = _apply_hybrid_guard(text, cat_key, confidence)
+            # Terapkan Hybrid Guard & Ambiguity Resolver Cerdas
+            cat_key, confidence = _apply_hybrid_guard(text, cat_key, confidence, normalized_text)
 
             if cat_key in CATEGORIES:
                 cat_meta = CATEGORIES[cat_key]
@@ -510,7 +593,7 @@ def classify_feedback(text: Optional[str]) -> Dict[str, Any]:
     # Fallback ke semantic engine jika inferensi neural network gagal
     # Gunakan teks yang sudah dinormalisasi
     res = _semantic_baseline_classify(normalized_text)
-    guarded_key, guarded_conf = _apply_hybrid_guard(text, res["category_key"], res["confidence"])
+    guarded_key, guarded_conf = _apply_hybrid_guard(text, res["category_key"], res["confidence"], normalized_text)
     if guarded_key != res["category_key"]:
         meta = CATEGORIES[guarded_key]
         res["category_key"] = guarded_key
