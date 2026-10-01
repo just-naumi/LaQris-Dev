@@ -21,12 +21,12 @@
         "cells": [
           {
             "position": {
-              "x": -685,
-              "y": 240
+              "x": -685.0000000000023,
+              "y": 240.00000000000364
             },
             "size": {
-              "width": 1320,
-              "height": 1110
+              "width": 1290,
+              "height": 960
             },
             "attrs": {
               "label": {
@@ -45,7 +45,8 @@
               "hasOpenThreats": false,
               "crossingFlows": [
                 "c1d5e130-3d4b-4e53-b9fd-bfb1fe9cecb5",
-                "80cd469a-4b74-40aa-ad88-1c252862ae9c"
+                "80cd469a-4b74-40aa-ad88-1c252862ae9c",
+                "b122c876-2c67-4e17-9348-edcfa20a3e32"
               ],
               "containedElements": [
                 "55ea8945-154b-4b1b-9079-6ba9769376e3",
@@ -185,7 +186,7 @@
             },
             "attrs": {
               "text": {
-                "text": "P1 \nQRIS \nAuthentication\n"
+                "text": "P1 \nAuthentication\n"
               },
               "body": {
                 "stroke": "#333333",
@@ -281,7 +282,7 @@
             "zIndex": 2,
             "data": {
               "type": "tm.Process",
-              "name": "P1 \nQRIS \nAuthentication\n",
+              "name": "P1 \nAuthentication\n",
               "description": "Validates the identity and session of incoming requests from the payment application.",
               "outOfScope": false,
               "isTrustBoundary": false,
@@ -810,6 +811,60 @@
               {
                 "x": 480,
                 "y": 700
+              }
+            ]
+          },
+          {
+            "shape": "flow",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "targetMarker": {
+                  "name": "block"
+                },
+                "sourceMarker": {
+                  "name": ""
+                },
+                "strokeDasharray": null
+              }
+            },
+            "width": 200,
+            "height": 100,
+            "zIndex": 10,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Flow",
+              "name": "Verification Request",
+              "description": "",
+              "outOfScope": false,
+              "isTrustBoundary": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "isBidirectional": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "",
+              "threats": [],
+              "trustBoundaryIds": [
+                "8ad114fd-3070-4f0e-bd24-984df0f9f540"
+              ]
+            },
+            "labels": [
+              "Verification Request"
+            ],
+            "id": "b122c876-2c67-4e17-9348-edcfa20a3e32",
+            "source": {
+              "cell": "aab52bf0-fe84-45b1-86dc-e1c042dca079",
+              "port": "14182fb6-97f9-474e-b134-e077cfd0d2d2"
+            },
+            "target": {
+              "cell": "55ea8945-154b-4b1b-9079-6ba9769376e3",
+              "port": "f39165c7-d11f-4a1a-80fb-801c6381ee89"
+            },
+            "vertices": [
+              {
+                "x": -70,
+                "y": 290
               }
             ]
           },
