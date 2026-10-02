@@ -142,7 +142,7 @@ DISPUTE_PENALTY = {
 }
 
 # Threshold minimum observasi untuk dianggap "cukup data" (bukan CAUTION)
-OBSERVATION_THRESHOLD = 10
+OBSERVATION_THRESHOLD = 1
 
 
 # =============================================================================
@@ -846,15 +846,19 @@ def calculate_identity_similarity(phys_name, dig_name):
         else:
             level = "COMPLETELY_DIFFERENT"
 
-    # Tentukan poin risiko identitas (semakin tidak cocok, semakin tinggi risikonya)
+    # Tentukan poin risiko identitas menggunakan skala gradual (proporsional terhadap kualitas OCR)
+    # Catatan: OCR secara natural tidak selalu 100% identik dengan teks digital,
+    # sehingga PROBABLE_MATCH (70-89%) dibagi menjadi dua tier risiko yang lebih adil.
     if sim >= 90.0:
-        identity_risk = 0.0
+        identity_risk = 0.0   # Exact / Normalized match → trust ~100
+    elif sim >= 85.0:
+        identity_risk = 5.0   # Hampir sempurna → trust ~96.5
     elif sim >= 70.0:
-        identity_risk = 30.0
+        identity_risk = 15.0  # PROBABLE_MATCH tipikal OCR → trust ~89.5
     elif sim >= 40.0:
-        identity_risk = 60.0
+        identity_risk = 60.0  # UNCERTAIN → trust ~58
     else:
-        identity_risk = 95.0
+        identity_risk = 95.0  # COMPLETELY_DIFFERENT → trust ~33.5
 
     return sim, level, identity_risk
 
@@ -1226,14 +1230,8 @@ def classify_qr_risk(
             "Pembayaran ditangguhkan untuk perlindungan nasabah."
         )
 
-    if match_level == "PROBABLE_MATCH" and name_similarity < 85.0:
-        return (
-            "WARNING",
-            "🟠 WARNING",
-            "orange",
-            "Kemiripan nama merchant fisik dan digital cukup tinggi namun tidak sempurna. "
-            "Pastikan nama penerima di aplikasi pembayaran sesuai dengan nama toko yang Anda kunjungi."
-        )
+    # PROBABLE_MATCH (similarity >= 70%) dianggap aman — tidak trigger WARNING.
+    # WARNING hanya untuk: UNCERTAIN (<70%), COMPLETELY_DIFFERENT, CRC invalid, atau keluhan tinggi.
 
     # Technical invalid saja (tanpa mismatch identitas) -> WARNING
     if not tech_valid:
