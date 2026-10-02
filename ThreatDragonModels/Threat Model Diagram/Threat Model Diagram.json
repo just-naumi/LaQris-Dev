@@ -21,12 +21,12 @@
         "cells": [
           {
             "position": {
-              "x": -685.0000000000023,
-              "y": 240.00000000000364
+              "x": -669.9999999999999,
+              "y": 210
             },
             "size": {
-              "width": 1290,
-              "height": 960
+              "width": 1260,
+              "height": 830
             },
             "attrs": {
               "label": {
@@ -35,8 +35,8 @@
             },
             "visible": true,
             "shape": "trust-boundary-box",
-            "id": "8ad114fd-3070-4f0e-bd24-984df0f9f540",
             "zIndex": -1,
+            "id": "8ad114fd-3070-4f0e-bd24-984df0f9f540",
             "data": {
               "type": "tm.BoundaryBox",
               "name": "LaQis Trust Boundary",
@@ -46,7 +46,9 @@
               "crossingFlows": [
                 "c1d5e130-3d4b-4e53-b9fd-bfb1fe9cecb5",
                 "80cd469a-4b74-40aa-ad88-1c252862ae9c",
-                "b122c876-2c67-4e17-9348-edcfa20a3e32"
+                "b122c876-2c67-4e17-9348-edcfa20a3e32",
+                "3b9cd1ad-c24c-4e30-b613-6e185e2f2ced",
+                "72e591c5-8684-4428-ae60-11cec47cdd14"
               ],
               "containedElements": [
                 "55ea8945-154b-4b1b-9079-6ba9769376e3",
@@ -79,6 +81,7 @@
             },
             "visible": true,
             "shape": "actor",
+            "zIndex": 1,
             "ports": {
               "groups": {
                 "top": {
@@ -162,7 +165,6 @@
               ]
             },
             "id": "aab52bf0-fe84-45b1-86dc-e1c042dca079",
-            "zIndex": 1,
             "data": {
               "type": "tm.Actor",
               "name": "Payment Application",
@@ -196,6 +198,7 @@
             },
             "visible": true,
             "shape": "process",
+            "zIndex": 2,
             "ports": {
               "groups": {
                 "top": {
@@ -279,7 +282,6 @@
               ]
             },
             "id": "55ea8945-154b-4b1b-9079-6ba9769376e3",
-            "zIndex": 2,
             "data": {
               "type": "tm.Process",
               "name": "P1 \nAuthentication\n",
@@ -316,6 +318,7 @@
             },
             "visible": true,
             "shape": "process",
+            "zIndex": 3,
             "ports": {
               "groups": {
                 "top": {
@@ -399,7 +402,6 @@
               ]
             },
             "id": "1dd55efb-8e3e-4027-be03-3f9178c04db3",
-            "zIndex": 3,
             "data": {
               "type": "tm.Process",
               "name": "P2 \nQRIS\n Verification",
@@ -757,7 +759,7 @@
             },
             "vertices": [
               {
-                "x": 390,
+                "x": 360,
                 "y": 170
               }
             ]
@@ -810,7 +812,7 @@
             "vertices": [
               {
                 "x": 480,
-                "y": 700
+                "y": 670
               }
             ]
           },
@@ -869,9 +871,163 @@
             ]
           },
           {
+            "shape": "flow",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "targetMarker": {
+                  "name": "block"
+                },
+                "sourceMarker": {
+                  "name": ""
+                },
+                "strokeDasharray": null
+              }
+            },
+            "width": 200,
+            "height": 100,
+            "zIndex": 10,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Flow",
+              "name": "Manipulated QRIS",
+              "description": "",
+              "outOfScope": false,
+              "isTrustBoundary": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "isBidirectional": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "",
+              "threats": [],
+              "trustBoundaryIds": []
+            },
+            "labels": [
+              "Manipulated QRIS"
+            ],
+            "id": "f1eed5d2-98f2-46f0-b6fc-257919d8a623",
+            "source": {
+              "cell": "97502fb6-92ee-4baf-8491-bb96c708f409",
+              "port": "bee6f955-deae-4e88-ad83-7fa1132fb813"
+            },
+            "target": {
+              "cell": "aab52bf0-fe84-45b1-86dc-e1c042dca079",
+              "port": "194b6557-6c64-453a-9e5e-e9a35ba140c2"
+            },
+            "vertices": []
+          },
+          {
+            "shape": "flow",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "targetMarker": {
+                  "name": "block"
+                },
+                "sourceMarker": {
+                  "name": ""
+                },
+                "strokeDasharray": null
+              }
+            },
+            "width": 200,
+            "height": 100,
+            "zIndex": 10,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Flow",
+              "name": "Fake / Manipulated Feedback",
+              "description": "",
+              "outOfScope": false,
+              "isTrustBoundary": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "isBidirectional": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "",
+              "threats": [],
+              "trustBoundaryIds": [
+                "8ad114fd-3070-4f0e-bd24-984df0f9f540"
+              ]
+            },
+            "labels": [
+              "Fake / Manipulated Feedback"
+            ],
+            "id": "3b9cd1ad-c24c-4e30-b613-6e185e2f2ced",
+            "source": {
+              "cell": "2c490909-1a1a-45ab-9f21-02a527c6ee85",
+              "port": "661939c1-a6c6-4c9c-915a-532c059d84d1"
+            },
+            "target": {
+              "cell": "caf9eacb-12a2-46ca-b142-6b3dcd20e606",
+              "port": "9222a4de-f1da-4c1a-bc62-0f6f78a25959"
+            },
+            "vertices": []
+          },
+          {
+            "shape": "flow",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "targetMarker": {
+                  "name": "block"
+                },
+                "sourceMarker": {
+                  "name": ""
+                },
+                "strokeDasharray": null
+              }
+            },
+            "width": 200,
+            "height": 100,
+            "zIndex": 10,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Flow",
+              "name": "Unauthorized Request",
+              "description": "",
+              "outOfScope": false,
+              "isTrustBoundary": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "isBidirectional": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "",
+              "threats": [],
+              "trustBoundaryIds": [
+                "8ad114fd-3070-4f0e-bd24-984df0f9f540"
+              ]
+            },
+            "labels": [
+              "Unauthorized Request"
+            ],
+            "id": "72e591c5-8684-4428-ae60-11cec47cdd14",
+            "source": {
+              "cell": "fdf4ef6a-c01e-4248-87da-0922bc1b1844",
+              "port": "b692a6e2-9c19-466e-905a-c5266e5353e9"
+            },
+            "target": {
+              "cell": "55ea8945-154b-4b1b-9079-6ba9769376e3",
+              "port": "1f1e3c6d-62d9-4851-918b-fca0831bbd7c"
+            },
+            "vertices": [
+              {
+                "x": -510,
+                "y": 540
+              },
+              {
+                "x": -460,
+                "y": 480
+              }
+            ]
+          },
+          {
             "position": {
-              "x": -380,
-              "y": 645
+              "x": -385,
+              "y": 555
             },
             "size": {
               "width": 200,
@@ -889,6 +1045,7 @@
             },
             "visible": true,
             "shape": "process",
+            "zIndex": 11,
             "ports": {
               "groups": {
                 "top": {
@@ -972,7 +1129,6 @@
               ]
             },
             "id": "61789c30-c240-4a54-9145-684e90e6668e",
-            "zIndex": 11,
             "data": {
               "type": "tm.Process",
               "name": "P3 \nQRIS\nIdentity Validation",
@@ -990,8 +1146,8 @@
           },
           {
             "position": {
-              "x": -370,
-              "y": 990
+              "x": -375,
+              "y": 820
             },
             "size": {
               "width": 180,
@@ -1009,6 +1165,7 @@
             },
             "visible": true,
             "shape": "process",
+            "zIndex": 12,
             "ports": {
               "groups": {
                 "top": {
@@ -1092,7 +1249,6 @@
               ]
             },
             "id": "24d4cdff-7f3e-4a2c-a47e-f4ca0980621e",
-            "zIndex": 12,
             "data": {
               "type": "tm.Process",
               "name": "P4 \nEMRS \nRisk Engine",
@@ -1110,8 +1266,8 @@
           },
           {
             "position": {
-              "x": 137.49999999999972,
-              "y": 670
+              "x": 140,
+              "y": 630
             },
             "size": {
               "width": 200,
@@ -1132,6 +1288,7 @@
             },
             "visible": true,
             "shape": "store",
+            "zIndex": 14,
             "ports": {
               "groups": {
                 "top": {
@@ -1215,7 +1372,6 @@
               ]
             },
             "id": "25aee498-0300-4da6-9339-7e984a1be18c",
-            "zIndex": 14,
             "data": {
               "type": "tm.Store",
               "name": "Merchant & Verification Data",
@@ -1234,8 +1390,8 @@
           },
           {
             "position": {
-              "x": 367.4999999999998,
-              "y": 360
+              "x": 300,
+              "y": 340
             },
             "size": {
               "width": 180,
@@ -1253,6 +1409,7 @@
             },
             "visible": true,
             "shape": "process",
+            "zIndex": 15,
             "ports": {
               "groups": {
                 "top": {
@@ -1336,7 +1493,6 @@
               ]
             },
             "id": "caf9eacb-12a2-46ca-b142-6b3dcd20e606",
-            "zIndex": 15,
             "data": {
               "type": "tm.Process",
               "name": "P5\nNLP\nFeedback Validation",
@@ -1349,6 +1505,357 @@
               "handlesGoodsOrServices": false,
               "isWebApplication": false,
               "privilegeLevel": "",
+              "threats": []
+            }
+          },
+          {
+            "position": {
+              "x": -81.25,
+              "y": -120
+            },
+            "size": {
+              "width": 112.5,
+              "height": 60
+            },
+            "attrs": {
+              "text": {
+                "text": "QRIS\nManipulator"
+              },
+              "body": {
+                "stroke": "#333333",
+                "strokeWidth": 1.5,
+                "strokeDasharray": null
+              }
+            },
+            "visible": true,
+            "shape": "actor",
+            "ports": {
+              "groups": {
+                "top": {
+                  "position": "top",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "right": {
+                  "position": "right",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "bottom": {
+                  "position": "bottom",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "left": {
+                  "position": "left",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                }
+              },
+              "items": [
+                {
+                  "group": "top",
+                  "id": "4e19d64d-bea2-4c80-a733-3b02cd80d7ce"
+                },
+                {
+                  "group": "right",
+                  "id": "b692a6e2-9c19-466e-905a-c5266e5353e9"
+                },
+                {
+                  "group": "bottom",
+                  "id": "bee6f955-deae-4e88-ad83-7fa1132fb813"
+                },
+                {
+                  "group": "left",
+                  "id": "661939c1-a6c6-4c9c-915a-532c059d84d1"
+                }
+              ]
+            },
+            "id": "97502fb6-92ee-4baf-8491-bb96c708f409",
+            "zIndex": 16,
+            "data": {
+              "type": "tm.Actor",
+              "name": "QRIS\nManipulator",
+              "description": "",
+              "isTrustBoundary": false,
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "providesAuthentication": false,
+              "threats": []
+            }
+          },
+          {
+            "position": {
+              "x": -896,
+              "y": 385
+            },
+            "size": {
+              "width": 112.5,
+              "height": 60
+            },
+            "attrs": {
+              "text": {
+                "text": "Malicious \nAPI \nUser"
+              },
+              "body": {
+                "stroke": "#333333",
+                "strokeWidth": 1.5,
+                "strokeDasharray": null
+              }
+            },
+            "visible": true,
+            "shape": "actor",
+            "ports": {
+              "groups": {
+                "top": {
+                  "position": "top",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "right": {
+                  "position": "right",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "bottom": {
+                  "position": "bottom",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "left": {
+                  "position": "left",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                }
+              },
+              "items": [
+                {
+                  "group": "top",
+                  "id": "4e19d64d-bea2-4c80-a733-3b02cd80d7ce"
+                },
+                {
+                  "group": "right",
+                  "id": "b692a6e2-9c19-466e-905a-c5266e5353e9"
+                },
+                {
+                  "group": "bottom",
+                  "id": "bee6f955-deae-4e88-ad83-7fa1132fb813"
+                },
+                {
+                  "group": "left",
+                  "id": "661939c1-a6c6-4c9c-915a-532c059d84d1"
+                }
+              ]
+            },
+            "id": "fdf4ef6a-c01e-4248-87da-0922bc1b1844",
+            "zIndex": 17,
+            "data": {
+              "type": "tm.Actor",
+              "name": "Malicious \nAPI \nUser",
+              "description": "",
+              "isTrustBoundary": false,
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "providesAuthentication": false,
+              "threats": []
+            }
+          },
+          {
+            "position": {
+              "x": 758.5,
+              "y": 385
+            },
+            "size": {
+              "width": 140,
+              "height": 80
+            },
+            "attrs": {
+              "text": {
+                "text": "Malicious \nFeedback \nSource"
+              },
+              "body": {
+                "stroke": "#333333",
+                "strokeWidth": 1.5,
+                "strokeDasharray": null
+              }
+            },
+            "visible": true,
+            "shape": "actor",
+            "ports": {
+              "groups": {
+                "top": {
+                  "position": "top",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "right": {
+                  "position": "right",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "bottom": {
+                  "position": "bottom",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "left": {
+                  "position": "left",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                }
+              },
+              "items": [
+                {
+                  "group": "top",
+                  "id": "4e19d64d-bea2-4c80-a733-3b02cd80d7ce"
+                },
+                {
+                  "group": "right",
+                  "id": "b692a6e2-9c19-466e-905a-c5266e5353e9"
+                },
+                {
+                  "group": "bottom",
+                  "id": "bee6f955-deae-4e88-ad83-7fa1132fb813"
+                },
+                {
+                  "group": "left",
+                  "id": "661939c1-a6c6-4c9c-915a-532c059d84d1"
+                }
+              ]
+            },
+            "id": "2c490909-1a1a-45ab-9f21-02a527c6ee85",
+            "zIndex": 18,
+            "data": {
+              "type": "tm.Actor",
+              "name": "Malicious \nFeedback \nSource",
+              "description": "",
+              "isTrustBoundary": false,
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "providesAuthentication": false,
               "threats": []
             }
           }
